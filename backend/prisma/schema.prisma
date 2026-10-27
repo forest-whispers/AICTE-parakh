@@ -8,13 +8,16 @@ datasource db {
 }
 
 model Application {
-  id                String     @id @default(cuid())
+  id                String           @id @default(cuid())
   institutionName   String
-  applicationNumber String     @unique
-  status            String     @default("SUBMITTED")
-  createdAt         DateTime   @default(now())
-  updatedAt         DateTime   @updatedAt
+  applicationNumber String           @unique
+  programCategory   String?          // e.g. "ENGINEERING_AND_TECHNOLOGY" | "OTHER"
+  proposedIntake    Int?             // e.g. 300, 600
+  status            String           @default("SUBMITTED")
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
   documents         Document[]
+  scrutinyReports   ScrutinyReport[]
 }
 
 model Document {
@@ -24,10 +27,26 @@ model Document {
   fileName         String
   originalName     String
   filePath         String
+  fileHash         String?     // SHA-256 file content hash
   mimeType         String
   fileSize         Int
   documentType     String
   extractionStatus String      @default("PENDING")
   extractedData    Json?
   createdAt        DateTime    @default(now())
+}
+
+model ScrutinyReport {
+  id              String      @id @default(cuid())
+  applicationId   String
+  application     Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  evaluationDate  DateTime    @default(now())
+  overallStatus   String      // "COMPLIANT" | "DEFICIENCIES_DETECTED" | "MANUAL_REVIEW_REQUIRED" | "INSUFFICIENT_INPUT"
+  totalRulesRun   Int
+  passedCount     Int
+  deficiencyCount Int
+  reviewCount     Int
+  missingCount    Int
+  findings        Json        // Detailed array of RuleFinding objects
+  createdAt       DateTime    @default(now())
 }

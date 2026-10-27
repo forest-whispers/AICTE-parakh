@@ -31,13 +31,59 @@ interface UploadedDocument {
   extractedData?: DocumentEnvelope | { error?: string; batchError?: string } | null;
 }
 
+interface FindingEvidence {
+  documentId: string;
+  documentType: string;
+  fieldName: string;
+  rawText: string | null;
+  extractedValue: any;
+  pageNumber: number | null;
+  excerpt: string | null;
+}
+
+interface RuleFinding {
+  ruleId: string;
+  ruleName: string;
+  aphClause: string;
+  outcome:
+    | "PASS"
+    | "FAIL_DEFICIENCY"
+    | "EXPIRED"
+    | "MISMATCH_DETECTED"
+    | "EVIDENCE_MISSING"
+    | "EXTRACTION_UNCERTAIN"
+    | "MANUAL_REVIEW_REQUIRED"
+    | "INSUFFICIENT_INPUT"
+    | "NOT_APPLICABLE";
+  severity: "CRITICAL" | "HIGH" | "MEDIUM" | "ADVISORY";
+  summary: string;
+  details: string;
+  evidence: FindingEvidence[];
+  remediationNote?: string;
+}
+
+interface ScrutinyReportData {
+  id: string;
+  evaluationDate: string;
+  overallStatus: "COMPLIANT" | "DEFICIENCIES_DETECTED" | "MANUAL_REVIEW_REQUIRED" | "INSUFFICIENT_INPUT";
+  totalRulesRun: number;
+  passedCount: number;
+  deficiencyCount: number;
+  reviewCount: number;
+  missingCount: number;
+  findings: RuleFinding[];
+}
+
 interface ApplicationData {
   id: string;
   institutionName: string;
   applicationNumber: string;
+  programCategory?: string | null;
+  proposedIntake?: number | null;
   status: string;
   createdAt: string;
   documents: UploadedDocument[];
+  scrutinyReports?: ScrutinyReportData[];
 }
 
 const DOCUMENT_TYPES = [
@@ -56,19 +102,23 @@ const DOCUMENT_TYPES = [
   { value: "UNRECOGNIZED", label: "Unspecified / Auto-Detect" },
 ];
 
-const API_BASE_URL = "http://localhost:3000";
+const API_BASE_URL = "http://localhost:5000";
 
 export default function App() {
   const [institutionName, setInstitutionName] = useState("");
   const [applicationNumber, setApplicationNumber] = useState("");
+  const [programCategory, setProgramCategory] = useState("ENGINEERING_AND_TECHNOLOGY");
+  const [proposedIntake, setProposedIntake] = useState("300");
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [fileDocTypes, setFileDocTypes] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
+  const [evaluatingScrutiny, setEvaluatingScrutiny] = useState(false);
   const [extracting, setExtracting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [applications, setApplications] = useState<ApplicationData[]>([]);
   const [activeApplication, setActiveApplication] = useState<ApplicationData | null>(null);
+  const [activeScrutinyReport, setActiveScrutinyReport] = useState<ScrutinyReportData | null>(null);
 
   const fetchApplications = async () => {
     try {
@@ -85,6 +135,23 @@ export default function App() {
   useEffect(() => {
     fetchApplications();
   }, []);
+
+  const loadApplicationDetails = async (appId: string) => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/applications/${appId}`);
+      const json = await res.json();
+      if (json.success) {
+        setActiveApplication(json.data);
+        if (json.data.scrutinyReports && json.data.scrutinyReports.length > 0) {
+          setActiveScrutinyReport(json.data.scrutinyReports[0]);
+        } else {
+          setActiveScrutinyReport(null);
+        }
+      }
+    } catch (err) {
+      console.error("Failed to load application details:", err);
+    }
+  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
@@ -120,6 +187,8 @@ export default function App() {
     const formData = new FormData();
     formData.append("institutionName", institutionName.trim());
     formData.append("applicationNumber", applicationNumber.trim());
+    if (programCategory) formData.append("programCategory", programCategory.trim());
+    if (proposedIntake) formData.append("proposedIntake", proposedIntake.trim());
     formData.append("documentTypes", JSON.stringify(fileDocTypes));
 
     for (const file of selectedFiles) {
@@ -138,13 +207,16 @@ export default function App() {
         throw new Error(json.error || "Upload failed");
       }
 
-      if (json.extractionSuccess === false) {
-        setMessage(`Application created, but VLM extraction reported error: ${json.extractionError}`);
+      setMessage(`Application ${json.data.applicationNumber} created, extracted, and evaluated!`);
+      setActiveApplication(json.data);
+      if (json.scrutinyReport) {
+        setActiveScrutinyReport(json.scrutinyReport);
+      } else if (json.data.scrutinyReports && json.data.scrutinyReports.length > 0) {
+        setActiveScrutinyReport(json.data.scrutinyReports[0]);
       } else {
-        setMessage(`Application ${json.data.applicationNumber} created and extracted successfully!`);
+        setActiveScrutinyReport(null);
       }
 
-      setActiveApplication(json.data);
       setInstitutionName("");
       setApplicationNumber("");
       setSelectedFiles([]);
@@ -154,6 +226,29 @@ export default function App() {
       setErrorMessage(err.message || "An unexpected error occurred.");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleRunScrutiny = async (appId: string) => {
+    setEvaluatingScrutiny(true);
+    setMessage(null);
+    setErrorMessage(null);
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/applications/${appId}/scrutiny`, {
+        method: "POST",
+      });
+      const json = await res.json();
+      if (!res.ok || !json.success) {
+        throw new Error(json.error || "Scrutiny evaluation failed");
+      }
+      setActiveScrutinyReport(json.scrutinyReport);
+      setActiveApplication(json.data);
+      setMessage("Deterministic scrutiny evaluation complete!");
+      fetchApplications();
+    } catch (err: any) {
+      setErrorMessage(err.message || "Failed to evaluate scrutiny.");
+    } finally {
+      setEvaluatingScrutiny(false);
     }
   };
 
@@ -170,7 +265,10 @@ export default function App() {
         throw new Error(json.error || "Extraction failed");
       }
       setActiveApplication(json.data);
-      setMessage("VLM Extraction completed!");
+      if (json.scrutinyReport) {
+        setActiveScrutinyReport(json.scrutinyReport);
+      }
+      setMessage("VLM Extraction and subsequent scrutiny completed!");
       fetchApplications();
     } catch (err: any) {
       setErrorMessage(err.message || "Failed to run extraction.");
@@ -179,24 +277,31 @@ export default function App() {
     }
   };
 
-  const getStateColor = (state: string) => {
-    switch (state) {
-      case "PRESENT":
-        return "#2e7d32"; // green
-      case "NOT_FOUND":
-        return "#757575"; // gray
-      case "ILLEGIBLE":
-        return "#d32f2f"; // red
-      case "AMBIGUOUS":
-        return "#ed6c02"; // orange
+  const getOutcomeBadgeStyle = (outcome: RuleFinding["outcome"]) => {
+    switch (outcome) {
+      case "PASS":
+        return { backgroundColor: "#e8f5e9", color: "#2e7d32", border: "1px solid #a5d6a7" };
+      case "FAIL_DEFICIENCY":
+        return { backgroundColor: "#ffebee", color: "#c62828", border: "1px solid #ef9a9a" };
+      case "EXPIRED":
+        return { backgroundColor: "#fbe9e7", color: "#d84315", border: "1px solid #ffab91" };
+      case "MISMATCH_DETECTED":
+        return { backgroundColor: "#fff3e0", color: "#e65100", border: "1px solid #ffcc80" };
+      case "EVIDENCE_MISSING":
+        return { backgroundColor: "#f5f5f5", color: "#616161", border: "1px solid #e0e0e0" };
+      case "EXTRACTION_UNCERTAIN":
+        return { backgroundColor: "#fff8e1", color: "#f57f17", border: "1px solid #ffe082" };
+      case "MANUAL_REVIEW_REQUIRED":
+        return { backgroundColor: "#ede7f6", color: "#4527a0", border: "1px solid #d1c4e9" };
+      case "INSUFFICIENT_INPUT":
+        return { backgroundColor: "#eceff1", color: "#37474f", border: "1px solid #cfd8dc" };
       case "NOT_APPLICABLE":
-        return "#9c27b0"; // purple
+        return { backgroundColor: "#fafafa", color: "#9e9e9e", border: "1px solid #e0e0e0" };
       default:
-        return "#000000";
+        return { backgroundColor: "#eee", color: "#333", border: "1px solid #ccc" };
     }
   };
 
-  // Helper to extract the populated doc-specific block from the envelope
   const getDocSpecificFields = (envelope: DocumentEnvelope) => {
     const docKeyMap: Record<string, string> = {
       DOC_01_REGISTRATION: "doc01Registration",
@@ -221,42 +326,67 @@ export default function App() {
   };
 
   return (
-    <div style={{ padding: "20px", fontFamily: "sans-serif", maxWidth: "1100px", margin: "0 auto" }}>
-      <h2>AICTE New Institution – Intake & VLM Extraction Inspector</h2>
+    <div style={{ padding: "20px", fontFamily: "sans-serif", maxWidth: "1150px", margin: "0 auto" }}>
+      <h2>AICTE New Institution – Scrutiny & Compliance Decision-Support</h2>
       <p style={{ color: "#666" }}>
-        Verification console for multimodal single-request VLM extraction, APH document classification, and structured field evidence.
+        Deterministic regulatory compliance scrutiny engine based on the AICTE Approval Process Handbook (APH 2024–2027).
       </p>
 
       {/* Upload Form */}
       <fieldset style={{ marginBottom: "20px", padding: "15px" }}>
-        <legend><strong>New Institution Application Submission</strong></legend>
+        <legend><strong>New Institution Application Intake</strong></legend>
         <form onSubmit={handleSubmit}>
-          <div style={{ marginBottom: "10px" }}>
-            <label><strong>Proposed Institution Name: </strong></label>
-            <input
-              type="text"
-              value={institutionName}
-              onChange={(e) => setInstitutionName(e.target.value)}
-              placeholder="e.g. Apex Institute of Technology"
-              style={{ width: "350px", marginLeft: "10px" }}
-              required
-            />
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", marginBottom: "10px" }}>
+            <div>
+              <label><strong>Proposed Institution Name: </strong></label><br />
+              <input
+                type="text"
+                value={institutionName}
+                onChange={(e) => setInstitutionName(e.target.value)}
+                placeholder="e.g. Apex Institute of Technology"
+                style={{ width: "95%", padding: "6px" }}
+                required
+              />
+            </div>
+            <div>
+              <label><strong>AICTE Application Number: </strong></label><br />
+              <input
+                type="text"
+                value={applicationNumber}
+                onChange={(e) => setApplicationNumber(e.target.value)}
+                placeholder="e.g. AICTE-2026-NEW-901"
+                style={{ width: "95%", padding: "6px" }}
+                required
+              />
+            </div>
+          </div>
+
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", marginBottom: "15px" }}>
+            <div>
+              <label><strong>Programme Category: </strong></label><br />
+              <select
+                value={programCategory}
+                onChange={(e) => setProgramCategory(e.target.value)}
+                style={{ width: "95%", padding: "6px" }}
+              >
+                <option value="ENGINEERING_AND_TECHNOLOGY">Engineering & Technology (Min ₹100L funds, 750m² admin)</option>
+                <option value="OTHER_TECHNICAL_PROGRAMMES">Other Technical Programmes (Min ₹50L funds)</option>
+              </select>
+            </div>
+            <div>
+              <label><strong>Proposed Total Intake: </strong></label><br />
+              <input
+                type="number"
+                value={proposedIntake}
+                onChange={(e) => setProposedIntake(e.target.value)}
+                placeholder="300"
+                style={{ width: "95%", padding: "6px" }}
+              />
+            </div>
           </div>
 
           <div style={{ marginBottom: "10px" }}>
-            <label><strong>AICTE Application Number: </strong></label>
-            <input
-              type="text"
-              value={applicationNumber}
-              onChange={(e) => setApplicationNumber(e.target.value)}
-              placeholder="e.g. AICTE-2026-NEW-901"
-              style={{ width: "350px", marginLeft: "10px" }}
-              required
-            />
-          </div>
-
-          <div style={{ marginBottom: "10px" }}>
-            <label><strong>Select Documents (PDF, JPG, PNG): </strong></label>
+            <label><strong>Select Supporting Documents (PDF, JPG, PNG): </strong></label>
             <input
               type="file"
               multiple
@@ -269,13 +399,12 @@ export default function App() {
           {selectedFiles.length > 0 && (
             <div style={{ marginBottom: "15px" }}>
               <h4>Selected Files:</h4>
-              <table border={1} cellPadding={6} style={{ borderCollapse: "collapse", width: "100%" }}>
+              <table border={1} cellPadding={6} style={{ borderCollapse: "collapse", width: "100%", fontSize: "13px" }}>
                 <thead>
                   <tr>
                     <th>File Name</th>
                     <th>Size (KB)</th>
-                    <th>MIME Type</th>
-                    <th>Claimed Type</th>
+                    <th>Claimed Category</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -283,7 +412,6 @@ export default function App() {
                     <tr key={idx}>
                       <td>{file.name}</td>
                       <td>{(file.size / 1024).toFixed(1)} KB</td>
-                      <td>{file.type || "unknown"}</td>
                       <td>
                         <select
                           value={fileDocTypes[idx] || "UNRECOGNIZED"}
@@ -304,8 +432,8 @@ export default function App() {
           )}
 
           <div>
-            <button type="submit" disabled={loading} style={{ padding: "8px 18px", fontWeight: "bold" }}>
-              {loading ? "Uploading & Running VLM Extraction..." : "Upload & Run Automated Extraction"}
+            <button type="submit" disabled={loading} style={{ padding: "8px 20px", fontWeight: "bold" }}>
+              {loading ? "Processing Intake & Automated Scrutiny..." : "Submit & Run Automated Scrutiny"}
             </button>
           </div>
         </form>
@@ -315,17 +443,36 @@ export default function App() {
       {message && <div style={{ color: "green", marginBottom: "15px" }}><strong>{message}</strong></div>}
       {errorMessage && <div style={{ color: "red", marginBottom: "15px" }}><strong>{errorMessage}</strong></div>}
 
-      {/* Active Application Inspector */}
+      {/* Active Application Scrutiny Dashboard */}
       {activeApplication && (
-        <fieldset style={{ marginBottom: "25px", padding: "15px" }}>
-          <legend><strong>Inspected Application: {activeApplication.applicationNumber}</strong></legend>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <fieldset style={{ marginBottom: "25px", padding: "18px", border: "2px solid #3f51b5" }}>
+          <legend>
+            <strong style={{ fontSize: "16px", color: "#3f51b5" }}>
+              Scrutiny Workspace: {activeApplication.applicationNumber} ({activeApplication.institutionName})
+            </strong>
+          </legend>
+
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "15px" }}>
             <div>
-              <p><strong>Institution:</strong> {activeApplication.institutionName}</p>
-              <p><strong>Application Status:</strong> <code>{activeApplication.status}</code></p>
-              <p><strong>Documents Count:</strong> {activeApplication.documents.length}</p>
+              <p style={{ margin: "3px 0" }}>
+                <strong>Programme:</strong> {activeApplication.programCategory || "Not specified"} |{" "}
+                <strong>Proposed Intake:</strong> {activeApplication.proposedIntake ?? "Not specified"}
+              </p>
+              <p style={{ margin: "3px 0" }}>
+                <strong>Application Status: </strong>
+                <span style={{ fontWeight: "bold", padding: "2px 8px", backgroundColor: "#e0e0e0", borderRadius: "3px" }}>
+                  {activeApplication.status}
+                </span>
+              </p>
             </div>
             <div>
+              <button
+                onClick={() => handleRunScrutiny(activeApplication.id)}
+                disabled={evaluatingScrutiny}
+                style={{ padding: "8px 16px", marginRight: "10px", fontWeight: "bold" }}
+              >
+                {evaluatingScrutiny ? "Evaluating..." : "Re-run Deterministic Scrutiny"}
+              </button>
               <button
                 onClick={() => handleReExtract(activeApplication.id)}
                 disabled={extracting}
@@ -336,189 +483,250 @@ export default function App() {
             </div>
           </div>
 
-          <h3>Ingested Documents & Extraction Results</h3>
-
-          {activeApplication.documents.map((doc, docIdx) => {
-            const envelope = doc.extractedData as DocumentEnvelope | undefined;
-            const hasError = (doc.extractedData as any)?.error || (doc.extractedData as any)?.batchError;
-            const fieldsObj = envelope ? getDocSpecificFields(envelope) : null;
-
-            return (
-              <div
-                key={doc.id}
-                style={{
-                  border: "1px solid #ccc",
-                  borderRadius: "4px",
-                  padding: "15px",
-                  marginBottom: "20px",
-                  backgroundColor: doc.extractionStatus === "SUCCESS" ? "#fbfdff" : "#fffbfa",
-                }}
-              >
-                <div style={{ display: "flex", justifyContent: "space-between" }}>
-                  <div>
-                    <h4>
-                      Doc #{docIdx + 1}: {doc.originalName}{" "}
-                      <span style={{ fontSize: "12px", color: "#666" }}>
-                        ({(doc.fileSize / 1024).toFixed(1)} KB, {doc.mimeType})
-                      </span>
-                    </h4>
-                    <p style={{ margin: "4px 0" }}>
-                      <strong>Recognized Type: </strong>
-                      <code>{envelope?.classifiedType || doc.documentType}</code>
-                      {envelope?.classificationConfidence && (
-                        <span style={{ marginLeft: "10px", fontSize: "13px" }}>
-                          (Confidence: <strong>{envelope.classificationConfidence}</strong>)
-                        </span>
-                      )}
-                    </p>
-                    {envelope?.classificationReasoning && (
-                      <p style={{ margin: "4px 0", fontSize: "13px", color: "#555" }}>
-                        <em>Reasoning:</em> {envelope.classificationReasoning}
-                      </p>
-                    )}
-                  </div>
-                  <div>
+          {/* Scrutiny Report Executive Card */}
+          {activeScrutinyReport ? (
+            <div style={{ border: "1px solid #bbb", borderRadius: "6px", padding: "15px", marginBottom: "20px", backgroundColor: "#fafafa" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid #ddd", paddingBottom: "10px" }}>
+                <div>
+                  <h3 style={{ margin: "0 0 5px 0" }}>
+                    Scrutiny Decision-Support Summary:{" "}
                     <span
                       style={{
                         padding: "4px 10px",
                         borderRadius: "4px",
-                        backgroundColor:
-                          doc.extractionStatus === "SUCCESS"
-                            ? "#e8f5e9"
-                            : doc.extractionStatus === "PENDING"
-                            ? "#fff8e1"
-                            : "#ffebee",
                         color:
-                          doc.extractionStatus === "SUCCESS"
+                          activeScrutinyReport.overallStatus === "COMPLIANT"
                             ? "#2e7d32"
-                            : doc.extractionStatus === "PENDING"
-                            ? "#f57f17"
-                            : "#c62828",
-                        fontWeight: "bold",
+                            : activeScrutinyReport.overallStatus === "DEFICIENCIES_DETECTED"
+                            ? "#c62828"
+                            : "#e65100",
+                        backgroundColor:
+                          activeScrutinyReport.overallStatus === "COMPLIANT"
+                            ? "#e8f5e9"
+                            : activeScrutinyReport.overallStatus === "DEFICIENCIES_DETECTED"
+                            ? "#ffebee"
+                            : "#fff3e0",
                       }}
                     >
-                      {doc.extractionStatus}
+                      {activeScrutinyReport.overallStatus}
                     </span>
-                    <div style={{ marginTop: "6px", textAlign: "right" }}>
-                      <a href={`${API_BASE_URL}/uploads/${doc.fileName}`} target="_blank" rel="noreferrer">
-                        View Stored File
-                      </a>
-                    </div>
+                  </h3>
+                  <span style={{ fontSize: "12px", color: "#666" }}>
+                    Evaluation Date: <strong>{new Date(activeScrutinyReport.evaluationDate).toLocaleString()}</strong> (Reproducible Baseline)
+                  </span>
+                </div>
+                <div style={{ display: "flex", gap: "12px", textAlign: "center" }}>
+                  <div style={{ padding: "6px 12px", backgroundColor: "#e8f5e9", borderRadius: "4px" }}>
+                    <div style={{ fontSize: "18px", fontWeight: "bold", color: "#2e7d32" }}>{activeScrutinyReport.passedCount}</div>
+                    <div style={{ fontSize: "11px", color: "#555" }}>Passed</div>
+                  </div>
+                  <div style={{ padding: "6px 12px", backgroundColor: "#ffebee", borderRadius: "4px" }}>
+                    <div style={{ fontSize: "18px", fontWeight: "bold", color: "#c62828" }}>{activeScrutinyReport.deficiencyCount}</div>
+                    <div style={{ fontSize: "11px", color: "#555" }}>Deficiencies</div>
+                  </div>
+                  <div style={{ padding: "6px 12px", backgroundColor: "#ede7f6", borderRadius: "4px" }}>
+                    <div style={{ fontSize: "18px", fontWeight: "bold", color: "#4527a0" }}>{activeScrutinyReport.reviewCount}</div>
+                    <div style={{ fontSize: "11px", color: "#555" }}>Reviews</div>
+                  </div>
+                  <div style={{ padding: "6px 12px", backgroundColor: "#f5f5f5", borderRadius: "4px" }}>
+                    <div style={{ fontSize: "18px", fontWeight: "bold", color: "#616161" }}>{activeScrutinyReport.missingCount}</div>
+                    <div style={{ fontSize: "11px", color: "#555" }}>Missing</div>
                   </div>
                 </div>
-
-                {/* Error Banner */}
-                {hasError && (
-                  <div style={{ color: "#d32f2f", marginTop: "10px", padding: "8px", backgroundColor: "#ffebee" }}>
-                    <strong>Extraction Error:</strong> {hasError}
-                  </div>
-                )}
-
-                {/* General Remarks */}
-                {envelope?.generalRemarks && (
-                  <p style={{ fontSize: "13px", color: "#666", marginTop: "8px" }}>
-                    <strong>Remarks:</strong> {envelope.generalRemarks}
-                  </p>
-                )}
-
-                {/* Extracted Fields Table */}
-                {fieldsObj ? (
-                  <div style={{ marginTop: "15px" }}>
-                    <h5>Extracted Field Data & Evidence:</h5>
-                    <table border={1} cellPadding={6} style={{ borderCollapse: "collapse", width: "100%", fontSize: "13px" }}>
-                      <thead>
-                        <tr style={{ backgroundColor: "#f0f0f0" }}>
-                          <th style={{ width: "20%" }}>Field Name</th>
-                          <th style={{ width: "12%" }}>State</th>
-                          <th style={{ width: "22%" }}>Extracted Value</th>
-                          <th style={{ width: "22%" }}>Verbatim Raw Text</th>
-                          <th style={{ width: "6%" }}>Page</th>
-                          <th style={{ width: "18%" }}>Provenance / Uncertainty</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {Object.entries(fieldsObj).map(([fieldName, fieldData]) => {
-                          const f = fieldData as ExtractedFieldData;
-                          const displayValue =
-                            f.value === null || f.value === undefined
-                              ? "—"
-                              : typeof f.value === "object"
-                              ? JSON.stringify(f.value)
-                              : String(f.value);
-
-                          return (
-                            <tr key={fieldName}>
-                              <td><code>{fieldName}</code></td>
-                              <td>
-                                <strong style={{ color: getStateColor(f.state) }}>{f.state}</strong>
-                              </td>
-                              <td><strong>{displayValue}</strong></td>
-                              <td>{f.rawText || "—"}</td>
-                              <td>{f.pageNumber ?? "—"}</td>
-                              <td>
-                                {f.excerpt && (
-                                  <div style={{ fontSize: "11px", color: "#444", marginBottom: "4px" }}>
-                                    <em>Excerpt:</em> "{f.excerpt}"
-                                  </div>
-                                )}
-                                {f.uncertaintyReason && (
-                                  <div style={{ fontSize: "11px", color: "#d32f2f" }}>
-                                    <em>Note:</em> {f.uncertaintyReason}
-                                  </div>
-                                )}
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                ) : (
-                  doc.extractionStatus === "SUCCESS" && (
-                    <p style={{ color: "#777", fontSize: "13px", marginTop: "10px" }}>
-                      No type-specific block populated (classified as {envelope?.classifiedType}).
-                    </p>
-                  )
-                )}
               </div>
-            );
-          })}
+
+              {/* Scrutiny Findings Table */}
+              <h4 style={{ marginTop: "15px", marginBottom: "10px" }}>Detailed Statutory Rule Scrutiny Findings ({activeScrutinyReport.findings.length} Rules Executed):</h4>
+              <table border={1} cellPadding={8} style={{ borderCollapse: "collapse", width: "100%", fontSize: "13px" }}>
+                <thead>
+                  <tr style={{ backgroundColor: "#eaeaea" }}>
+                    <th style={{ width: "22%" }}>Rule & Statutory Clause</th>
+                    <th style={{ width: "16%" }}>Outcome</th>
+                    <th style={{ width: "34%" }}>Summary & Evaluation Findings</th>
+                    <th style={{ width: "28%" }}>Evidence Links & Remediation</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {activeScrutinyReport.findings.map((f, fIdx) => {
+                    const badge = getOutcomeBadgeStyle(f.outcome);
+                    return (
+                      <tr key={fIdx} style={{ backgroundColor: fIdx % 2 === 0 ? "#ffffff" : "#fcfcfc" }}>
+                        <td>
+                          <strong>{f.ruleName}</strong>
+                          <div style={{ fontSize: "11px", color: "#666", marginTop: "3px" }}>
+                            <em>{f.aphClause}</em>
+                          </div>
+                          <div style={{ fontSize: "10px", color: "#999", marginTop: "2px" }}>
+                            <code>{f.ruleId}</code>
+                          </div>
+                        </td>
+                        <td>
+                          <span
+                            style={{
+                              display: "inline-block",
+                              padding: "4px 8px",
+                              borderRadius: "4px",
+                              fontSize: "11px",
+                              fontWeight: "bold",
+                              ...badge,
+                            }}
+                          >
+                            {f.outcome}
+                          </span>
+                          <div style={{ fontSize: "10px", color: "#777", marginTop: "4px" }}>
+                            Severity: <strong>{f.severity}</strong>
+                          </div>
+                        </td>
+                        <td>
+                          <strong>{f.summary}</strong>
+                          <p style={{ margin: "4px 0 0 0", color: "#444", fontSize: "12px" }}>{f.details}</p>
+                        </td>
+                        <td>
+                          {f.remediationNote && (
+                            <div style={{ fontSize: "11px", color: "#c62828", marginBottom: "6px" }}>
+                              <strong>Action Required:</strong> {f.remediationNote}
+                            </div>
+                          )}
+                          {f.evidence && f.evidence.length > 0 ? (
+                            <details style={{ fontSize: "11px", color: "#333" }}>
+                              <summary style={{ cursor: "pointer", color: "#1976d2", fontWeight: "bold" }}>
+                                View Evidence ({f.evidence.length})
+                              </summary>
+                              <div style={{ marginTop: "4px", padding: "4px", backgroundColor: "#f5f5f5", borderRadius: "3px" }}>
+                                {f.evidence.map((ev, evIdx) => (
+                                  <div key={evIdx} style={{ marginBottom: "4px", borderBottom: "1px dashed #ccc", paddingBottom: "2px" }}>
+                                    <div>
+                                      <code>{ev.documentType}</code> &rarr; <code>{ev.fieldName}</code>: <strong>{String(ev.extractedValue ?? 'null')}</strong>
+                                      {ev.pageNumber ? ` (p. ${ev.pageNumber})` : ''}
+                                    </div>
+                                    {ev.excerpt && <div style={{ color: "#555", fontStyle: "italic" }}>"{ev.excerpt}"</div>}
+                                  </div>
+                                ))}
+                              </div>
+                            </details>
+                          ) : (
+                            <span style={{ fontSize: "11px", color: "#999" }}>No document evidence</span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <p style={{ color: "#777", fontStyle: "italic" }}>No scrutiny report evaluated yet for this application.</p>
+          )}
+
+          {/* Collapsible Document Extractions Inspection */}
+          <details style={{ marginTop: "15px" }}>
+            <summary style={{ cursor: "pointer", fontWeight: "bold", color: "#3f51b5" }}>
+              Inspect Extracted Document Records ({activeApplication.documents.length})
+            </summary>
+            <div style={{ marginTop: "10px" }}>
+              {activeApplication.documents.map((doc, docIdx) => {
+                const envelope = doc.extractedData as DocumentEnvelope | undefined;
+                const fieldsObj = envelope ? getDocSpecificFields(envelope) : null;
+
+                return (
+                  <div
+                    key={doc.id}
+                    style={{
+                      border: "1px solid #ccc",
+                      borderRadius: "4px",
+                      padding: "10px",
+                      marginBottom: "15px",
+                      backgroundColor: "#fff",
+                    }}
+                  >
+                    <div style={{ display: "flex", justifyContent: "space-between" }}>
+                      <div>
+                        <strong>Doc #{docIdx + 1}: {doc.originalName}</strong> ({doc.mimeType})
+                        <div>Recognized: <code>{envelope?.classifiedType || doc.documentType}</code></div>
+                      </div>
+                      <div>
+                        <span style={{ fontWeight: "bold" }}>{doc.extractionStatus}</span>
+                      </div>
+                    </div>
+
+                    {fieldsObj && (
+                      <table border={1} cellPadding={4} style={{ borderCollapse: "collapse", width: "100%", fontSize: "12px", marginTop: "8px" }}>
+                        <thead>
+                          <tr style={{ backgroundColor: "#f0f0f0" }}>
+                            <th>Field</th>
+                            <th>State</th>
+                            <th>Extracted Value</th>
+                            <th>Verbatim Raw Text</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {Object.entries(fieldsObj).map(([key, val]) => (
+                            <tr key={key}>
+                              <td><code>{key}</code></td>
+                              <td><strong>{val.state}</strong></td>
+                              <td>{val.value === null ? "—" : typeof val.value === "object" ? JSON.stringify(val.value) : String(val.value)}</td>
+                              <td>{val.rawText || "—"}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </details>
         </fieldset>
       )}
 
-      {/* All Applications Directory */}
+      {/* Database Application Directory */}
       <fieldset style={{ padding: "15px" }}>
         <legend>
-          <strong>Database Application Directory ({applications.length})</strong>
+          <strong>All Applications Directory ({applications.length})</strong>
           <button onClick={fetchApplications} style={{ marginLeft: "10px" }}>Refresh</button>
         </legend>
         {applications.length === 0 ? (
           <p>No applications stored yet.</p>
         ) : (
-          <table border={1} cellPadding={6} style={{ borderCollapse: "collapse", width: "100%" }}>
+          <table border={1} cellPadding={6} style={{ borderCollapse: "collapse", width: "100%", fontSize: "13px" }}>
             <thead>
-              <tr>
+              <tr style={{ backgroundColor: "#f0f0f0" }}>
                 <th>App Number</th>
                 <th>Institution</th>
+                <th>Category</th>
                 <th>Status</th>
                 <th>Docs</th>
+                <th>Scrutiny Findings</th>
                 <th>Created</th>
                 <th>Action</th>
               </tr>
             </thead>
             <tbody>
-              {applications.map((app) => (
-                <tr key={app.id}>
-                  <td><strong>{app.applicationNumber}</strong></td>
-                  <td>{app.institutionName}</td>
-                  <td><code>{app.status}</code></td>
-                  <td>{app.documents?.length || 0}</td>
-                  <td>{new Date(app.createdAt).toLocaleString()}</td>
-                  <td>
-                    <button onClick={() => setActiveApplication(app)}>Inspect Results</button>
-                  </td>
-                </tr>
-              ))}
+              {applications.map((app) => {
+                const latestScrutiny = app.scrutinyReports?.[0];
+                return (
+                  <tr key={app.id}>
+                    <td><strong>{app.applicationNumber}</strong></td>
+                    <td>{app.institutionName}</td>
+                    <td>{app.programCategory || "—"}</td>
+                    <td><code>{app.status}</code></td>
+                    <td>{app.documents?.length || 0}</td>
+                    <td>
+                      {latestScrutiny ? (
+                        <span style={{ fontSize: "11px" }}>
+                          Passed: <strong>{latestScrutiny.passedCount}</strong> | Deficiencies: <strong>{latestScrutiny.deficiencyCount}</strong> | Reviews: <strong>{latestScrutiny.reviewCount}</strong>
+                        </span>
+                      ) : (
+                        <span style={{ fontSize: "11px", color: "#888" }}>Not evaluated</span>
+                      )}
+                    </td>
+                    <td>{new Date(app.createdAt).toLocaleDateString()}</td>
+                    <td>
+                      <button onClick={() => loadApplicationDetails(app.id)}>Open Scrutiny</button>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         )}

@@ -147,7 +147,8 @@ export class VLMService {
             // Call Gemini API with timeout protection (120 seconds)
             const timeoutMs = 120000;
             const apiCallPromise = client.models.generateContent({
-                model: "gemini-2.5-flash",
+                model: "gemini-3.6-flash",
+                // model: "gemini-2.0-flash",
                 contents: contentsParts,
                 config: {
                     systemInstruction,
