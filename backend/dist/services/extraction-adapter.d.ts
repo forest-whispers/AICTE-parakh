@@ -27,6 +27,9 @@ export interface NormalizedDoc02Resolution {
     locationAddress: NormalizedField<string>;
     authorizedSignatories: NormalizedField<string>;
     proposedCoursesIntake: NormalizedField<string>;
+    proposedIntake: NormalizedField<number>;
+    hasResourceCommitment: NormalizedField<boolean>;
+    resourceCommitmentText: NormalizedField<string>;
 }
 export interface NormalizedDoc03LandDeed {
     documentType: NormalizedField<string>;
@@ -50,6 +53,7 @@ export interface NormalizedDoc04LeaseAffidavit {
     placeOfExecution: NormalizedField<string>;
     trustSocietyName: NormalizedField<string>;
     hasIrrevocableCommitment: NormalizedField<boolean>;
+    landOwnershipStatus: NormalizedField<string>;
 }
 export interface NormalizedDoc05LandUse {
     issueDate: NormalizedField<string>;
@@ -103,6 +107,7 @@ export interface NormalizedDoc09FireSafety {
     institutionName: NormalizedField<string>;
     issuingAuthority: NormalizedField<string>;
     certificateNumber: NormalizedField<string>;
+    isCompliant: NormalizedField<boolean>;
 }
 export interface NormalizedDoc10BankFunds {
     bankName: NormalizedField<string>;

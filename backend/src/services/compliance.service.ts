@@ -162,7 +162,20 @@ export class ComplianceService {
       if (list && list.length > 0) {
         const item = list[0];
         if (item && item.rawData) {
-          const container = item.rawData[blockName] || item.rawData;
+          let container = item.rawData[blockName];
+          if (!container) {
+            const rawKeys = Object.keys(item.rawData);
+            const foundKey = rawKeys.find(
+              (k) =>
+                k.toLowerCase() === blockName.toLowerCase() ||
+                k.toLowerCase().startsWith("doc0") ||
+                k.toLowerCase().startsWith("doc1")
+            );
+            if (foundKey && typeof item.rawData[foundKey] === "object") {
+              container = item.rawData[foundKey];
+            }
+          }
+          container = container || item.rawData;
           return { id: item.id, container, rawData: item.rawData };
         }
       }
@@ -757,20 +770,34 @@ export class ComplianceService {
           outcome: "FAIL_DEFICIENCY",
           severity: "HIGH",
           summary: `Site comprises ${parcelCount} plots (maximum 3 plots permitted).`,
-          details: `AICTE Clause 6.17(d) permits a maximum of 3 land parcels. Identified plots (${parcelCount}): ${parcelTokens.join(", ")}`,
+          details: `AICTE Clause 6.17(d) permits a maximum of 3 land parcels. Identified plots (${parcelCount}): ${parcelTokens.join(", ")}. Parcel count exceeds statutory threshold.`,
           evidence: ev,
           remediationNote: "Consolidate land parcels so campus does not exceed 3 separate plots.",
         });
-      } else {
+      } else if (parcelCount === 1) {
         findings.push({
           ruleId,
           ruleName,
           aphClause,
           outcome: "PASS",
           severity: "ADVISORY",
-          summary: `Campus site comprises ${parcelCount} plot(s) (within statutory $\\le 3$ plots limit).`,
-          details: `Identified survey/khasra parcels: ${parcelTokens.join(", ")}. Complies with AICTE land contiguity and parcel limitations.`,
+          summary: "Campus site is situated on a single unified contiguous parcel.",
+          details: `Single registered land parcel (${parcelTokens[0] || '1'}) satisfies AICTE land contiguity and unified campus requirements.`,
           evidence: ev,
+        });
+      } else {
+        // Multi-parcel: 2 or 3 parcels.
+        // Parcel count alone cannot prove physical contiguity or inter-plot distance <= 2km.
+        findings.push({
+          ruleId,
+          ruleName,
+          aphClause,
+          outcome: "MANUAL_REVIEW_REQUIRED",
+          severity: "MEDIUM",
+          summary: `Campus site comprises ${parcelCount} plots (within limit <= 3); physical contiguity requires verification.`,
+          details: `Identified survey/khasra parcels (${parcelCount}): ${parcelTokens.join(", ")}. While the plot count satisfies APH Clause 6.17(d) (maximum 3 plots), physical contiguity (sharing common boundaries or distance <= 2 km with right-of-way) cannot be established from parcel numbers alone.`,
+          evidence: ev,
+          remediationNote: "Scrutiny committee must verify physical contiguity or inter-plot distance (<= 2 km) against certified revenue village map and demarcated site plan (DOC-14).",
         });
       }
     })();
@@ -1166,19 +1193,47 @@ export class ComplianceService {
         makeEvidence(doc02Item.id, "DOC_02_RESOLUTION", "trustSocietyName", doc02.trustSocietyName),
       ];
 
-      const hasInstitution = Boolean(doc02.proposedInstitutionName.value);
-      const hasCourses = Boolean(doc02.proposedCoursesIntake.value);
-      const hasSignatories = Boolean(doc02.authorizedSignatories.value);
+      const satisfiedClauses: string[] = [];
+      const missingClauses: string[] = [];
 
-      if (hasInstitution && (hasCourses || hasSignatories)) {
+      // Clause 1: Decision to establish institution
+      const hasInstitution = Boolean(doc02.proposedInstitutionName.value);
+      if (hasInstitution) {
+        satisfiedClauses.push(`Establishment decision ("${doc02.proposedInstitutionName.value}")`);
+      } else {
+        missingClauses.push("Decision to establish proposed institution");
+      }
+
+      // Clause 2: Programme / Intake commitment
+      const coursesStr = doc02.proposedCoursesIntake.value;
+      const intakeVal = doc02.proposedIntake?.value;
+      const hasCourses = Boolean(coursesStr && String(coursesStr).trim().length > 5);
+
+      if (hasCourses) {
+        satisfiedClauses.push(`Programmes & intake commitment ("${coursesStr}")`);
+      } else if (intakeVal && !isNaN(intakeVal)) {
+        missingClauses.push(`Course commitments (intake of ${intakeVal} stated, but specific programmes/courses missing)`);
+      } else {
+        missingClauses.push("Proposed programmes and intake commitment");
+      }
+
+      // Clause 3: Authorised Signatories
+      const hasSignatories = Boolean(doc02.authorizedSignatories.value);
+      if (hasSignatories) {
+        satisfiedClauses.push(`Authorised signatories designated ("${doc02.authorizedSignatories.value}")`);
+      } else {
+        missingClauses.push("Designated authorised signatories");
+      }
+
+      if (missingClauses.length === 0) {
         findings.push({
           ruleId,
           ruleName,
           aphClause,
           outcome: "PASS",
           severity: "ADVISORY",
-          summary: "Resolution records explicit decision to establish institution and commitment of resources.",
-          details: `DOC-02 (Ref: ${doc02.resolutionNumber.value || 'N/A'}, Date: ${doc02.resolutionDate.value || 'N/A'}) confirms establishment of "${doc02.proposedInstitutionName.value}" by ${doc02.trustSocietyName.value || 'sponsoring body'}. Authorised signatories: ${doc02.authorizedSignatories.value || 'Chairperson/Secretary'}.`,
+          summary: "Resolution records all mandatory Format 3 statutory commitment clauses.",
+          details: `DOC-02 (Ref: ${doc02.resolutionNumber.value || 'N/A'}, Date: ${doc02.resolutionDate.value || 'N/A'}) satisfies mandatory clauses: ${satisfiedClauses.join("; ")}.`,
           evidence: ev,
         });
       } else {
@@ -1188,10 +1243,10 @@ export class ComplianceService {
           aphClause,
           outcome: "FAIL_DEFICIENCY",
           severity: "HIGH",
-          summary: "Resolution missing statutory commitment to establish institution or allocate required resources.",
-          details: `Establishment decision stated: ${hasInstitution}; Proposed courses/intake: ${hasCourses}; Authorised signatories: ${hasSignatories}.`,
+          summary: `Resolution missing statutory commitment clauses (${missingClauses.join("; ")}).`,
+          details: `AICTE Format 3 mandates explicit statutory commitments. Satisfied: [${satisfiedClauses.join("; ")}]. Missing/Deficient: [${missingClauses.join("; ")}].`,
           evidence: ev,
-          remediationNote: "Adopt a formal resolution incorporating full AICTE Format 3 commitment clauses.",
+          remediationNote: "Adopt a formal Governing Body resolution strictly adhering to AICTE Format 3 incorporating all required commitment clauses.",
         });
       }
     })();

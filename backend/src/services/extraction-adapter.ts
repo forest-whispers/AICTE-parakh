@@ -31,25 +31,61 @@ export function extractField<T>(
     return makeEmptyField(candidateKeys[0] || "unknown");
   }
 
-  for (const key of candidateKeys) {
-    // Check nested or flat
-    const fieldObj = container[key];
-    if (fieldObj && typeof fieldObj === "object" && "state" in fieldObj) {
-      const rawVal = fieldObj.value;
-      const transformedVal =
-        transform && rawVal !== null && rawVal !== undefined
-          ? transform(rawVal)
-          : (rawVal as T ?? null);
+  const containerKeys = Object.keys(container);
+  const cleanKey = (s: string) => s.replace(/[-_\s]/g, "").toLowerCase();
 
-      return {
-        state: fieldObj.state || (rawVal !== null && rawVal !== undefined ? "PRESENT" : "NOT_FOUND"),
-        value: transformedVal,
-        rawText: fieldObj.rawText ?? null,
-        pageNumber: fieldObj.pageNumber ?? null,
-        excerpt: fieldObj.excerpt ?? null,
-        uncertaintyReason: fieldObj.uncertaintyReason ?? null,
-        sourceKey: key,
-      };
+  for (const targetKey of candidateKeys) {
+    let resolvedKey: string | undefined = undefined;
+
+    // 1. Exact match
+    if (targetKey in container) {
+      resolvedKey = targetKey;
+    } else {
+      // 2. Case-insensitive match
+      const targetLower = targetKey.toLowerCase();
+      resolvedKey = containerKeys.find((k) => k.toLowerCase() === targetLower);
+
+      // 3. Cleaned match (no underscores/hyphens/spaces)
+      if (!resolvedKey) {
+        const targetClean = cleanKey(targetKey);
+        resolvedKey = containerKeys.find((k) => cleanKey(k) === targetClean);
+      }
+    }
+
+    if (resolvedKey) {
+      const fieldObj = container[resolvedKey];
+      if (fieldObj !== undefined && fieldObj !== null) {
+        // Case A: ExtractedField envelope { state, value, rawText, ... }
+        if (typeof fieldObj === "object" && "state" in fieldObj) {
+          const rawVal = fieldObj.value;
+          const transformedVal =
+            transform && rawVal !== null && rawVal !== undefined
+              ? transform(rawVal)
+              : ((rawVal as T) ?? null);
+
+          return {
+            state: fieldObj.state || (rawVal !== null && rawVal !== undefined ? "PRESENT" : "NOT_FOUND"),
+            value: transformedVal,
+            rawText: fieldObj.rawText ?? (rawVal !== null ? String(rawVal) : null),
+            pageNumber: fieldObj.pageNumber ?? null,
+            excerpt: fieldObj.excerpt ?? null,
+            uncertaintyReason: fieldObj.uncertaintyReason ?? null,
+            sourceKey: resolvedKey,
+          };
+        }
+
+        // Case B: Direct primitive value
+        const transformedVal = transform ? transform(fieldObj) : ((fieldObj as T) ?? null);
+        return {
+          state: "PRESENT",
+          value: transformedVal,
+          rawText: String(fieldObj),
+          pageNumber: null,
+          excerpt: String(fieldObj),
+          uncertaintyReason: null,
+          sourceKey: resolvedKey,
+        };
+      }
     }
   }
 
@@ -76,6 +112,9 @@ export interface NormalizedDoc02Resolution {
   locationAddress: NormalizedField<string>;
   authorizedSignatories: NormalizedField<string>;
   proposedCoursesIntake: NormalizedField<string>;
+  proposedIntake: NormalizedField<number>;
+  hasResourceCommitment: NormalizedField<boolean>;
+  resourceCommitmentText: NormalizedField<string>;
 }
 
 export interface NormalizedDoc03LandDeed {
@@ -101,6 +140,7 @@ export interface NormalizedDoc04LeaseAffidavit {
   placeOfExecution: NormalizedField<string>;
   trustSocietyName: NormalizedField<string>;
   hasIrrevocableCommitment: NormalizedField<boolean>;
+  landOwnershipStatus: NormalizedField<string>;
 }
 
 export interface NormalizedDoc05LandUse {
@@ -159,6 +199,7 @@ export interface NormalizedDoc09FireSafety {
   institutionName: NormalizedField<string>;
   issuingAuthority: NormalizedField<string>;
   certificateNumber: NormalizedField<string>;
+  isCompliant: NormalizedField<boolean>;
 }
 
 export interface NormalizedDoc10BankFunds {
@@ -194,148 +235,205 @@ export interface NormalizedDoc14SiteMap {
 // Adapters to construct normalized models from VLM output containers
 export function adaptDoc01(container: any): NormalizedDoc01Registration {
   return {
-    entityType: extractField(container, ["entityType"]),
-    trustSocietyName: extractField(container, ["trustSocietyName", "applicantLegalName", "applicantName"]),
-    registrationNumber: extractField(container, ["registrationNumber"]),
-    registrationDate: extractField(container, ["registrationDate"]),
-    registeringAuthority: extractField(container, ["registeringAuthority"]),
-    registeredAddress: extractField(container, ["registeredAddress"]),
-    hasNonProfitClause: extractField(container, ["hasNonProfitClause"]),
+    entityType: extractField(container, ["applicantType", "entityType", "constitutionType", "trustType", "entityLegalType"]),
+    trustSocietyName: extractField(container, ["applicantName", "trustSocietyName", "applicantLegalName", "societyName", "trustName"]),
+    registrationNumber: extractField(container, ["registrationNumber", "registrationReferenceNumber", "regNumber", "societyRegistrationNumber"]),
+    registrationDate: extractField(container, ["registrationDate", "dateOfRegistration", "registeredDate"]),
+    registeringAuthority: extractField(container, ["issuingAuthority", "registeringAuthority", "registrationAuthority", "registrarAuthority"]),
+    registeredAddress: extractField(container, ["registeredAddress", "registeredOfficeAddress", "address"]),
+    hasNonProfitClause: extractField(container, ["hasNonProfitClause", "isNonProfit"]),
   };
 }
 
 export function adaptDoc02(container: any): NormalizedDoc02Resolution {
   return {
-    trustSocietyName: extractField(container, ["trustSocietyName", "sponsoringBodyName", "applicantName"]),
-    proposedInstitutionName: extractField(container, ["proposedInstitutionName"]),
-    resolutionDate: extractField(container, ["resolutionDate"]),
-    resolutionNumber: extractField(container, ["resolutionNumber", "resolutionReferenceNumber"]),
-    locationAddress: extractField(container, ["locationAddress", "siteAddress"]),
-    authorizedSignatories: extractField(container, ["authorizedSignatories"]),
-    proposedCoursesIntake: extractField(container, ["proposedCoursesIntake", "programmesStated"]),
+    trustSocietyName: extractField(container, ["applicantName", "trustSocietyName", "sponsoringBodyName", "societyName"]),
+    proposedInstitutionName: extractField(container, ["proposedInstitutionName", "institutionName"]),
+    resolutionDate: extractField(container, ["resolutionDate", "dateOfMeeting"]),
+    resolutionNumber: extractField(container, ["resolutionReferenceNumber", "resolutionNumber", "resolutionRefNumber"]),
+    locationAddress: extractField(container, ["meetingLocation", "locationAddress", "siteAddress", "institutionAddress"]),
+    authorizedSignatories: extractField(container, ["authorizedSignatories", "authorisedSignatories", "signatories"]),
+    proposedCoursesIntake: extractField(container, ["proposedCoursesIntake", "programmesStated", "coursesAndIntake"]),
+    proposedIntake: extractField(container, ["proposedIntake", "intake"], (v) => Number(v)),
+    hasResourceCommitment: extractField(container, ["hasResourceCommitment", "resourceCommitment"]),
+    resourceCommitmentText: extractField(container, ["resourceCommitmentText", "committedResources"]),
   };
 }
 
 export function adaptDoc03(container: any): NormalizedDoc03LandDeed {
   return {
-    documentType: extractField(container, ["documentType", "deedType"]),
-    landLocation: extractField(container, ["landLocation", "landRevenueLocation", "siteAddress"]),
-    khasraNumbers: extractField(container, ["khasraNumbers", "khasraSurveyPlotNumbers"]),
-    landAreaAcres: extractField(container, ["landAreaAcres", "parcelArea"]),
-    buyerTransferee: extractField(container, ["buyerTransferee", "transfereeLesseeName"]),
-    sellerTransferor: extractField(container, ["sellerTransferor", "transferorLessorName"]),
-    registrationNumber: extractField(container, ["registrationNumber", "deedRegistrationNumber"]),
-    registrationDate: extractField(container, ["registrationDate"]),
-    registrarOffice: extractField(container, ["registrarOffice"]),
-    leaseTenureYears: extractField(container, ["leaseTenureYears", "leasePeriodYears", "leaseDurationYears"]),
-    leaseExpiryDate: extractField(container, ["leaseExpiryDate"]),
-    leaseCommencementDate: extractField(container, ["leaseCommencementDate"]),
+    documentType: extractField(container, ["deedType", "documentType", "natureOfDeed"]),
+    landLocation: extractField(container, ["landLocation", "landRevenueLocation", "siteAddress", "locationOfLand"]),
+    khasraNumbers: extractField(container, ["khasraNumbers", "khasraSurveyPlotNumbers", "surveyNumbers", "plotNumbers"]),
+    landAreaAcres: extractField(container, ["totalAreaAcres", "landAreaAcres", "parcelArea", "areaAcres"], (val) => Number(val)),
+    buyerTransferee: extractField(container, ["transfereeName", "buyerTransferee", "transfereeLesseeName", "purchaser"]),
+    sellerTransferor: extractField(container, ["transferorName", "sellerTransferor", "transferorLessorName", "vendor"]),
+    registrationNumber: extractField(container, ["registrationReferenceNumber", "registrationNumber", "deedRegistrationNumber"]),
+    registrationDate: extractField(container, ["registrationDate", "deedDate"]),
+    registrarOffice: extractField(container, ["registrationOffice", "registrarOffice", "subRegistrarOffice"]),
+    leaseTenureYears: extractField(container, ["leaseTenureYears", "leasePeriodYears", "leaseDurationYears"], (val) => Number(val)),
+    leaseExpiryDate: extractField(container, ["leaseExpiryDate", "leaseValidUntilDate"]),
+    leaseCommencementDate: extractField(container, ["leaseCommencementDate", "leaseStartDate"]),
   };
 }
 
 export function adaptDoc04(container: any): NormalizedDoc04LeaseAffidavit {
   return {
-    deponentName: extractField(container, ["deponentName"]),
-    isApplicable: extractField(container, ["isApplicable"]),
-    executionDate: extractField(container, ["executionDate"]),
-    khasraNumbers: extractField(container, ["khasraNumbers"]),
-    placeOfExecution: extractField(container, ["placeOfExecution"]),
-    trustSocietyName: extractField(container, ["trustSocietyName", "sponsoringBodyName"]),
-    hasIrrevocableCommitment: extractField(container, ["hasIrrevocableCommitment"]),
+    deponentName: extractField(container, ["deponentName", "executantName"]),
+    isApplicable: extractField(container, ["isLeaseApplicable", "isApplicable"]),
+    executionDate: extractField(container, ["executionDate", "dateOfExecution"]),
+    khasraNumbers: extractField(container, ["khasraNumbers", "khasraSurveyPlotNumbers"]),
+    placeOfExecution: extractField(container, ["executionLocation", "placeOfExecution"]),
+    trustSocietyName: extractField(container, ["applicantName", "trustSocietyName", "sponsoringBodyName"]),
+    hasIrrevocableCommitment: extractField(container, ["hasIrrevocableCommitment", "isIrrevocable"]),
+    landOwnershipStatus: extractField(container, ["landOwnershipStatus"]),
   };
 }
 
 export function adaptDoc05(container: any): NormalizedDoc05LandUse {
   return {
     issueDate: extractField(container, ["issueDate", "orderDate"]),
-    orderNumber: extractField(container, ["orderNumber", "orderReferenceNumber"]),
-    landLocation: extractField(container, ["landLocation", "siteAddress"]),
-    permittedUse: extractField(container, ["permittedUse", "permittedLandUse"]),
-    applicantName: extractField(container, ["applicantName", "landownerApplicantName"]),
+    orderNumber: extractField(container, ["orderReferenceNumber", "orderNumber", "orderRefNumber"]),
+    landLocation: extractField(container, ["landLocation", "siteAddress", "locationOfLand"]),
+    permittedUse: extractField(container, ["permittedUse", "permittedLandUse", "purposeAllowed"]),
+    applicantName: extractField(container, ["applicantName", "landownerApplicantName", "trustSocietyName"]),
     khasraNumbers: extractField(container, ["khasraNumbers", "khasraSurveyPlotNumbers"]),
-    landAreaAcres: extractField(container, ["landAreaAcres"]),
-    issuingAuthority: extractField(container, ["issuingAuthority"]),
+    landAreaAcres: extractField(container, ["landAreaAcres", "totalAreaAcres"], (val) => Number(val)),
+    issuingAuthority: extractField(container, ["issuingAuthority", "authorityName"]),
   };
 }
 
 export function adaptDoc06(container: any): NormalizedDoc06BuildingPlan {
-  // Support nested carpetAreaSummary or flat fields
-  const adminCarpet = extractField(container, ["adminCarpetAreaSqm"], (val) => Number(val));
-  const amenitiesCarpet = extractField(container, ["amenitiesCarpetAreaSqm"], (val) => Number(val));
-  const totalArea = extractField(container, ["totalBuiltUpAreaSqm", "totalSanctionedBuiltUpArea"], (val) => Number(val));
+  // Support flat fields with various casing/abbreviations or nested carpetAreaSummary
+  const adminCarpet = extractField(
+    container,
+    [
+      "administrativeCarpetAreaSqM",
+      "administrativeCarpetAreaSqm",
+      "adminCarpetAreaSqM",
+      "adminCarpetAreaSqm",
+      "administrativeAreaSqm",
+      "adminAreaSqm",
+    ],
+    (val) => Number(val)
+  );
+
+  const amenitiesCarpet = extractField(
+    container,
+    [
+      "amenitiesCarpetAreaSqM",
+      "amenitiesCarpetAreaSqm",
+      "amenityCarpetAreaSqM",
+      "amenityCarpetAreaSqm",
+      "amenitiesAreaSqm",
+      "amenityAreaSqm",
+    ],
+    (val) => Number(val)
+  );
+
+  const totalArea = extractField(
+    container,
+    ["totalSanctionedBuiltUpAreaSqm", "totalBuiltUpAreaSqm", "totalSanctionedBuiltUpArea", "totalBuiltUpArea"],
+    (val) => Number(val)
+  );
 
   // If nested carpetAreaSummary was populated instead of flat fields
   if (adminCarpet.state !== "PRESENT" && container?.carpetAreaSummary?.value?.administrativeSqM) {
     adminCarpet.state = "PRESENT";
-    adminCarpet.value = container.carpetAreaSummary.value.administrativeSqM;
+    adminCarpet.value = Number(container.carpetAreaSummary.value.administrativeSqM);
     adminCarpet.rawText = String(container.carpetAreaSummary.value.administrativeSqM);
   }
   if (amenitiesCarpet.state !== "PRESENT" && container?.carpetAreaSummary?.value?.amenitiesSqM) {
     amenitiesCarpet.state = "PRESENT";
-    amenitiesCarpet.value = container.carpetAreaSummary.value.amenitiesSqM;
+    amenitiesCarpet.value = Number(container.carpetAreaSummary.value.amenitiesSqM);
     amenitiesCarpet.rawText = String(container.carpetAreaSummary.value.amenitiesSqM);
   }
 
   return {
-    farFsi: extractField(container, ["farFsi", "statedFarFsi"], (val) => Number(val)),
-    siteAddress: extractField(container, ["siteAddress", "institutionSiteAddress"]),
-    sanctionDate: extractField(container, ["sanctionDate"]),
+    farFsi: extractField(container, ["fsiFarRatio", "farFsi", "statedFarFsi"], (val) => Number(val)),
+    siteAddress: extractField(container, ["siteAddress", "institutionSiteAddress", "campusAddress"]),
+    sanctionDate: extractField(container, ["sanctionDate", "approvalDate"]),
     architectName: extractField(container, ["architectName"]),
-    sanctionNumber: extractField(container, ["sanctionNumber", "sanctionOrderReference"]),
-    institutionName: extractField(container, ["institutionName"]),
+    sanctionNumber: extractField(container, ["sanctionReferenceNumber", "sanctionNumber", "sanctionOrderReference"]),
+    institutionName: extractField(container, ["institutionName", "proposedInstitutionName"]),
     adminCarpetAreaSqm: adminCarpet,
     amenitiesCarpetAreaSqm: amenitiesCarpet,
     totalBuiltUpAreaSqm: totalArea,
-    sanctioningAuthority: extractField(container, ["sanctioningAuthority", "approvingAuthority"]),
-    architectCoaRegistration: extractField(container, ["architectCoaRegistration", "architectCoaRegistrationNumber"]),
+    sanctioningAuthority: extractField(container, ["sanctionAuthority", "sanctioningAuthority", "approvingAuthority"]),
+    architectCoaRegistration: extractField(container, [
+      "architectRegistrationNumber",
+      "architectCoaRegistration",
+      "architectCoaRegistrationNumber",
+      "coaRegistrationNumber",
+    ]),
   };
 }
 
 export function adaptDoc07(container: any): NormalizedDoc07Occupancy {
   return {
-    issueDate: extractField(container, ["issueDate"]),
+    issueDate: extractField(container, ["issueDate", "dateOfIssue"]),
     siteAddress: extractField(container, ["siteAddress", "campusPhysicalSiteAddress"]),
-    occupancyType: extractField(container, ["occupancyType", "occupancyStatus"]),
+    occupancyType: extractField(container, ["occupancyStatus", "occupancyType", "completionType"]),
     buildingDetails: extractField(container, ["buildingDetails", "coveredBuildingsFloors"]),
     institutionName: extractField(container, ["institutionName", "institutionNameReferenced"]),
-    issuingAuthority: extractField(container, ["issuingAuthority"]),
-    certificateNumber: extractField(container, ["certificateNumber", "referenceNumber"]),
-    expiryDate: extractField(container, ["expiryDate"]),
+    issuingAuthority: extractField(container, ["issuingAuthority", "competentAuthority"]),
+    certificateNumber: extractField(container, ["certificateReferenceNumber", "certificateNumber", "referenceNumber"]),
+    expiryDate: extractField(container, ["expiryDate", "validUntilDate"]),
   };
 }
 
 export function adaptDoc08(container: any): NormalizedDoc08StructuralStability {
   return {
-    reviewDate: extractField(container, ["reviewDate", "expiryDate"]),
+    reviewDate: extractField(container, ["validUntilDate", "reviewDate", "expiryDate"]),
     siteAddress: extractField(container, ["siteAddress"]),
     engineerName: extractField(container, ["engineerName", "issuingEngineerName"]),
     inspectionDate: extractField(container, ["inspectionDate", "issueDate"]),
-    stabilityStatus: extractField(container, ["stabilityStatus", "structuralFitnessConclusion"]),
+    stabilityStatus: extractField(container, ["isStructurallyStable", "stabilityStatus", "structuralFitnessConclusion"], (val) =>
+      typeof val === "boolean" ? (val ? "structurally stable" : "unstable") : String(val)
+    ),
     buildingAgeYears: extractField(container, ["buildingAgeYears"], (val) => Number(val)),
-    certificateNumber: extractField(container, ["certificateNumber", "certificateReferenceNumber"]),
-    engineerQualifications: extractField(container, ["engineerQualifications", "engineerQualification"]),
-    expiryDate: extractField(container, ["expiryDate", "reviewDate"]),
+    certificateNumber: extractField(container, ["certificateReferenceNumber", "certificateNumber"]),
+    engineerQualifications: extractField(container, ["engineerQualification", "engineerQualifications"]),
+    expiryDate: extractField(container, ["validUntilDate", "expiryDate", "reviewDate"]),
   };
 }
 
 export function adaptDoc09(container: any): NormalizedDoc09FireSafety {
   return {
     issueDate: extractField(container, ["issueDate"]),
-    expiryDate: extractField(container, ["expiryDate"]),
+    expiryDate: extractField(container, ["validUntilDate", "expiryDate", "validTillDate"]),
     siteAddress: extractField(container, ["siteAddress", "campusPhysicalSiteAddress"]),
     buildingDetails: extractField(container, ["buildingDetails", "coveredBuildingsFloors"]),
     institutionName: extractField(container, ["institutionName", "institutionNameReferenced"]),
     issuingAuthority: extractField(container, ["issuingAuthority"]),
-    certificateNumber: extractField(container, ["certificateNumber", "certificateReferenceNumber"]),
+    certificateNumber: extractField(container, ["certificateReferenceNumber", "certificateNumber"]),
+    isCompliant: extractField(container, ["isCompliant"]),
   };
 }
 
 export function adaptDoc10(container: any): NormalizedDoc10BankFunds {
-  const inrField = extractField(container, ["amountInInr"], (val) => Number(val));
-  const lakhsField = extractField(container, ["amountInLakhsINR"], (val) => Number(val));
+  const inrField = extractField(
+    container,
+    [
+      "principalAmountRupees",
+      "amountInInr",
+      "principalAmount",
+      "amountInRupees",
+      "fdrAmount",
+      "depositAmount",
+      "totalAmountInr",
+      "balanceInInr",
+    ],
+    (val) => Number(val)
+  );
+  const lakhsField = extractField(
+    container,
+    ["amountInLakhsINR", "amountInLakhs", "amountLakhs", "principalAmountLakhs"],
+    (val) => Number(val)
+  );
 
   // Cross-compute: if amountInInr is present (e.g. 12500000), compute amountInLakhsINR = 125
-  if (inrField.state === "PRESENT" && inrField.value !== null) {
+  if (inrField.state === "PRESENT" && inrField.value !== null && !isNaN(inrField.value)) {
     if (lakhsField.state !== "PRESENT" || lakhsField.value === null) {
       lakhsField.state = "PRESENT";
       lakhsField.value = inrField.value / 100000;
@@ -343,7 +441,7 @@ export function adaptDoc10(container: any): NormalizedDoc10BankFunds {
       lakhsField.pageNumber = inrField.pageNumber;
       lakhsField.excerpt = inrField.excerpt;
     }
-  } else if (lakhsField.state === "PRESENT" && lakhsField.value !== null) {
+  } else if (lakhsField.state === "PRESENT" && lakhsField.value !== null && !isNaN(lakhsField.value)) {
     if (inrField.state !== "PRESENT" || inrField.value === null) {
       inrField.state = "PRESENT";
       inrField.value = lakhsField.value * 100000;
@@ -352,13 +450,13 @@ export function adaptDoc10(container: any): NormalizedDoc10BankFunds {
   }
 
   return {
-    bankName: extractField(container, ["bankName"]),
+    bankName: extractField(container, ["bankName", "issuingBank"]),
     branchName: extractField(container, ["branchName"]),
     ifscCode: extractField(container, ["ifscCode"]),
-    accountHolderName: extractField(container, ["accountHolderName"]),
+    accountHolderName: extractField(container, ["accountHolderName", "applicantName", "depositorName"]),
     amountInInr: inrField,
     amountInLakhsINR: lakhsField,
-    fdrNumber: extractField(container, ["fdrNumber", "accountOrFdrNumber"]),
+    fdrNumber: extractField(container, ["fdrNumber", "accountOrFdrNumber", "fixedDepositNumber"]),
     maturityDate: extractField(container, ["maturityDate", "fdrMaturityDate"]),
     certificateDate: extractField(container, ["certificateDate", "issueDate"]),
     isUnencumbered: extractField(container, ["isUnencumbered", "isStatedUnencumbered"]),
@@ -368,20 +466,20 @@ export function adaptDoc10(container: any): NormalizedDoc10BankFunds {
 
 export function adaptDoc11(container: any): NormalizedDoc11Affidavit2 {
   return {
-    deponentName: extractField(container, ["deponentName"]),
-    executionDate: extractField(container, ["executionDate"]),
-    placeOfExecution: extractField(container, ["placeOfExecution"]),
-    trustSocietyName: extractField(container, ["trustSocietyName", "sponsoringBodyName"]),
-    proposedInstitutionName: extractField(container, ["proposedInstitutionName"]),
+    deponentName: extractField(container, ["deponentName", "executantName"]),
+    executionDate: extractField(container, ["executionDate", "dateOfExecution"]),
+    placeOfExecution: extractField(container, ["executionLocation", "placeOfExecution"]),
+    trustSocietyName: extractField(container, ["applicantName", "trustSocietyName", "sponsoringBodyName"]),
+    proposedInstitutionName: extractField(container, ["proposedInstitutionName", "institutionName"]),
   };
 }
 
 export function adaptDoc14(container: any): NormalizedDoc14SiteMap {
   return {
-    latitude: extractField(container, ["latitude"], (val) => Number(val)),
-    longitude: extractField(container, ["longitude"], (val) => Number(val)),
-    siteAddress: extractField(container, ["siteAddress"]),
-    khasraNumbers: extractField(container, ["khasraNumbers"]),
-    proposedInstitutionName: extractField(container, ["proposedInstitutionName"]),
+    latitude: extractField(container, ["latitude", "gpsLatitude"], (val) => Number(val)),
+    longitude: extractField(container, ["longitude", "gpsLongitude"], (val) => Number(val)),
+    siteAddress: extractField(container, ["siteAddress", "locationAddress"]),
+    khasraNumbers: extractField(container, ["khasraNumbers", "surveyNumbers"]),
+    proposedInstitutionName: extractField(container, ["institutionName", "proposedInstitutionName"]),
   };
 }

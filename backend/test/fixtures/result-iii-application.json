@@ -1,0 +1,214 @@
+{
+  "id": "cmvqhsikz00000nocxubvq7i4",
+  "applicationNumber": "AICTE-NEW-27-10-2026",
+  "institutionName": "Sahyog Institute of Engineering and Technology",
+  "programCategory": "ENGINEERING_AND_TECHNOLOGY",
+  "proposedIntake": 180,
+  "status": "DEFICIENCIES_DETECTED",
+  "documents": [
+    {
+      "id": "doc-01",
+      "documentType": "DOC_01_REGISTRATION",
+      "originalName": "DOC_01_REGISTRATION.pdf",
+      "extractedData": {
+        "classifiedType": "DOC_01_REGISTRATION",
+        "doc01Registration": {
+          "applicantName": { "state": "PRESENT", "value": "Sahyog Technical Education Trust", "rawText": "Sahyog Technical Education Trust" },
+          "applicantType": { "state": "PRESENT", "value": "Public Charitable Trust", "rawText": "public charitable trust" },
+          "issuingAuthority": { "state": "PRESENT", "value": "Office of the Registrar of Public Trusts, Bhopal", "rawText": "Office of the Registrar of Public Trusts, Bhopal" },
+          "registrationDate": { "state": "PRESENT", "value": "2014-06-18", "rawText": "18 June 2014" },
+          "registeredAddress": { "state": "PRESENT", "value": "24 Shanti Vihar, Bhopal, Madhya Pradesh", "rawText": "24 Shanti Vihar, Bhopal, Madhya Pradesh" },
+          "registrationNumber": { "state": "PRESENT", "value": "TR/MP/2014/00871", "rawText": "TR/MP/2014/00871" }
+        }
+      }
+    },
+    {
+      "id": "doc-02",
+      "documentType": "DOC_02_RESOLUTION",
+      "originalName": "DOC_02_RESOLUTION.pdf",
+      "extractedData": {
+        "classifiedType": "DOC_02_RESOLUTION",
+        "doc02Resolution": {
+          "applicantName": { "state": "PRESENT", "value": "Sahyog Technical Education Trust", "rawText": "Sahyog Technical Education Trust" },
+          "proposedIntake": { "state": "PRESENT", "value": 180, "rawText": "180" },
+          "resolutionDate": { "state": "PRESENT", "value": "2026-09-18", "rawText": "18 September 2026" },
+          "meetingLocation": { "state": "PRESENT", "value": "Bhopal", "rawText": "Bhopal" },
+          "proposedInstitutionName": { "state": "PRESENT", "value": "Sahyog Institute of Engineering and Technology", "rawText": "Sahyog Institute of Engineering and Technology" },
+          "resolutionReferenceNumber": { "state": "PRESENT", "value": "STET/GB/2026/09/18-03", "rawText": "STET/GB/2026/09/18-03" }
+        }
+      }
+    },
+    {
+      "id": "doc-03",
+      "documentType": "DOC_03_LAND_DEED",
+      "originalName": "DOC_03_LAND_DEED.pdf",
+      "extractedData": {
+        "classifiedType": "DOC_03_LAND_DEED",
+        "doc03LandDeed": {
+          "deedType": { "state": "PRESENT", "value": "Sale Deed", "rawText": "sale deed" },
+          "khasraNumbers": { "state": "PRESENT", "value": "114/2, 115/1 and 116/3", "rawText": "114/2, 115/1 and 116/3" },
+          "totalAreaAcres": { "state": "PRESENT", "value": 12.4, "rawText": "12.40" },
+          "transfereeName": { "state": "PRESENT", "value": "Sahyog Technical Education Trust", "rawText": "Sahyog Technical Education Trust" },
+          "transferorName": { "state": "PRESENT", "value": "Raghavendra Land Holdings Private Limited", "rawText": "Raghavendra Land Holdings Private Limited" },
+          "registrationDate": { "state": "PRESENT", "value": "2020-11-12", "rawText": "12 November 2020" },
+          "registrationOffice": { "state": "PRESENT", "value": "Sub-Registrar, Nandipur", "rawText": "Sub-Registrar, Nandipur" },
+          "registrationReferenceNumber": { "state": "PRESENT", "value": "SDR/2020/4418", "rawText": "SDR/2020/4418" }
+        }
+      }
+    },
+    {
+      "id": "doc-04",
+      "documentType": "DOC_04_LEASE_AFFIDAVIT",
+      "originalName": "DOC_04_LEASE_AFFIDAVIT.pdf",
+      "extractedData": {
+        "classifiedType": "DOC_04_LEASE_AFFIDAVIT",
+        "doc04LeaseAffidavit": {
+          "deponentName": { "state": "PRESENT", "value": "Dr. Meera Kulkarni", "rawText": "Dr. Meera Kulkarni" },
+          "applicantName": { "state": "PRESENT", "value": "Sahyog Technical Education Trust", "rawText": "Sahyog Technical Education Trust" },
+          "executionDate": { "state": "PRESENT", "value": "2026-09-18", "rawText": "18 September 2026" },
+          "executionLocation": { "state": "PRESENT", "value": "Bhopal", "rawText": "Bhopal" },
+          "isLeaseApplicable": { "state": "PRESENT", "value": false, "rawText": "not applicable" },
+          "landOwnershipStatus": { "state": "PRESENT", "value": "Owned", "rawText": "ownership" }
+        }
+      }
+    },
+    {
+      "id": "doc-05",
+      "documentType": "DOC_05_LAND_USE",
+      "originalName": "DOC_05_LAND_USE.pdf",
+      "extractedData": {
+        "classifiedType": "DOC_05_LAND_USE",
+        "doc05LandUse": {
+          "issueDate": { "state": "PRESENT", "value": "2021-03-22", "rawText": "22 March 2021" },
+          "permittedUse": { "state": "PRESENT", "value": "educational and institutional purposes", "rawText": "educational and institutional purposes" },
+          "applicantName": { "state": "PRESENT", "value": "Sahyog Technical Education Trust", "rawText": "Sahyog Technical Education Trust" },
+          "khasraNumbers": { "state": "PRESENT", "value": "114/2, 115/1 and 116/3", "rawText": "114/2, 115/1 and 116/3" },
+          "landAreaAcres": { "state": "PRESENT", "value": 12.4, "rawText": "12.40" },
+          "issuingAuthority": { "state": "PRESENT", "value": "Office of the District Town and Country Planning Officer, Sehore", "rawText": "Office of the District Town and Country Planning Officer, Sehore" },
+          "orderReferenceNumber": { "state": "PRESENT", "value": "LUC/SEH/2021/0196", "rawText": "LUC/SEH/2021/0196" }
+        }
+      }
+    },
+    {
+      "id": "doc-06",
+      "documentType": "DOC_06_BUILDING_PLAN",
+      "originalName": "DOC_06_BUILDING_PLAN.pdf",
+      "extractedData": {
+        "classifiedType": "DOC_06_BUILDING_PLAN",
+        "doc06BuildingPlan": {
+          "fsiFarRatio": { "state": "PRESENT", "value": 1.2, "rawText": "1.20" },
+          "siteAddress": { "state": "PRESENT", "value": "Plot 18, Knowledge Park Road, Village Rampur Kalan, Tehsil Nandipur, District Sehore, Madhya Pradesh", "rawText": "Plot 18, Knowledge Park Road, Village Rampur Kalan, Tehsil Nandipur, District Sehore, Madhya Pradesh" },
+          "sanctionDate": { "state": "PRESENT", "value": "2022-08-09", "rawText": "9 August 2022" },
+          "architectName": { "state": "PRESENT", "value": "Ar. Kavita Rao", "rawText": "Ar. Kavita Rao" },
+          "institutionName": { "state": "PRESENT", "value": "Sahyog Institute of Engineering and Technology", "rawText": "Sahyog Institute of Engineering and Technology" },
+          "sanctionAuthority": { "state": "PRESENT", "value": "Municipal Council of Nandipur", "rawText": "Municipal Council of Nandipur" },
+          "amenitiesCarpetAreaSqM": { "state": "PRESENT", "value": 560, "rawText": "560" },
+          "sanctionReferenceNumber": { "state": "PRESENT", "value": "BNP/2022/0671", "rawText": "BNP/2022/0671" },
+          "administrativeCarpetAreaSqM": { "state": "PRESENT", "value": 820, "rawText": "820" },
+          "architectRegistrationNumber": { "state": "PRESENT", "value": "CA/2010/24681", "rawText": "CA/2010/24681" },
+          "totalSanctionedBuiltUpAreaSqm": { "state": "PRESENT", "value": 8450, "rawText": "8,450" }
+        }
+      }
+    },
+    {
+      "id": "doc-07",
+      "documentType": "DOC_07_OCCUPANCY",
+      "originalName": "DOC_07_OCCUPANCY.pdf",
+      "extractedData": {
+        "classifiedType": "DOC_07_OCCUPANCY",
+        "doc07Occupancy": {
+          "issueDate": { "state": "PRESENT", "value": "2023-12-15", "rawText": "15 December 2023" },
+          "expiryDate": { "state": "NOT_APPLICABLE", "value": null, "rawText": null },
+          "siteAddress": { "state": "PRESENT", "value": "Plot 18, Knowledge Park Road, Village Rampur Kalan, Tehsil Nandipur, District Sehore, Madhya Pradesh", "rawText": "Plot 18, Knowledge Park Road, Village Rampur Kalan, Tehsil Nandipur, District Sehore, Madhya Pradesh" },
+          "institutionName": { "state": "PRESENT", "value": "Sahyog Institute of Engineering and Technology", "rawText": "Sahyog Institute of Engineering and Technology" },
+          "occupancyStatus": { "state": "PRESENT", "value": "permanent", "rawText": "permanent" },
+          "issuingAuthority": { "state": "PRESENT", "value": "Municipal Council of Nandipur", "rawText": "Municipal Council of Nandipur" },
+          "certificateReferenceNumber": { "state": "PRESENT", "value": "OCC/SEH/2023/0314", "rawText": "OCC/SEH/2023/0314" }
+        }
+      }
+    },
+    {
+      "id": "doc-08",
+      "documentType": "DOC_08_STRUCTURAL_STABILITY",
+      "originalName": "DOC_08_STRUCTURAL_STABILITY.pdf",
+      "extractedData": {
+        "classifiedType": "DOC_08_STRUCTURAL_STABILITY",
+        "doc08StructuralStability": {
+          "siteAddress": { "state": "PRESENT", "value": "Plot 18, Knowledge Park Road, Village Rampur Kalan, Tehsil Nandipur, District Sehore, Madhya Pradesh", "rawText": "Plot 18, Knowledge Park Road, Village Rampur Kalan, Tehsil Nandipur, District Sehore, Madhya Pradesh" },
+          "engineerName": { "state": "PRESENT", "value": "Er. Nitin Deshmukh", "rawText": "Er. Nitin Deshmukh" },
+          "inspectionDate": { "state": "PRESENT", "value": "2025-04-10", "rawText": "10 April 2025" },
+          "validUntilDate": { "state": "PRESENT", "value": "2030-04-09", "rawText": "9 April 2030" },
+          "buildingAgeYears": { "state": "PRESENT", "value": 8, "rawText": "8" },
+          "isStructurallyStable": { "state": "PRESENT", "value": true, "rawText": "structurally stable" },
+          "engineerQualification": { "state": "PRESENT", "value": "M.E. (Structural Engineering)", "rawText": "M.E. (Structural Engineering)" },
+          "certificateReferenceNumber": { "state": "PRESENT", "value": "SSC/MP/2025/088", "rawText": "SSC/MP/2025/088" }
+        }
+      }
+    },
+    {
+      "id": "doc-09",
+      "documentType": "DOC_09_FIRE_SAFETY",
+      "originalName": "DOC_09_FIRE_SAFETY.pdf",
+      "extractedData": {
+        "classifiedType": "DOC_09_FIRE_SAFETY",
+        "doc09FireSafety": {
+          "issueDate": { "state": "PRESENT", "value": "2026-02-02", "rawText": "2 February 2026" },
+          "isCompliant": { "state": "PRESENT", "value": true, "rawText": "compliant" },
+          "siteAddress": { "state": "PRESENT", "value": "Plot 18, Knowledge Park Road, Village Rampur Kalan, Tehsil Nandipur, District Sehore, Madhya Pradesh", "rawText": "Plot 18, Knowledge Park Road, Village Rampur Kalan, Tehsil Nandipur, District Sehore, Madhya Pradesh" },
+          "validUntilDate": { "state": "PRESENT", "value": "2027-02-01", "rawText": "1 February 2027" },
+          "institutionName": { "state": "PRESENT", "value": "Sahyog Institute of Engineering and Technology", "rawText": "Sahyog Institute of Engineering and Technology" },
+          "issuingAuthority": { "state": "PRESENT", "value": "Office of the Chief Municipal Fire Officer, Sehore", "rawText": "Office of the Chief Municipal Fire Officer, Sehore" },
+          "certificateReferenceNumber": { "state": "PRESENT", "value": "FSC/SEH/2026/0142", "rawText": "FSC/SEH/2026/0142" }
+        }
+      }
+    },
+    {
+      "id": "doc-10",
+      "documentType": "DOC_10_BANK_FUNDS",
+      "originalName": "DOC_10_BANK_FUNDS.pdf",
+      "extractedData": {
+        "classifiedType": "DOC_10_BANK_FUNDS",
+        "doc10BankFunds": {
+          "bankName": { "state": "PRESENT", "value": "Narmada Cooperative Bank", "rawText": "Narmada Cooperative Bank" },
+          "ifscCode": { "state": "PRESENT", "value": "NCBK0000417", "rawText": "NCBK0000417" },
+          "fdrNumber": { "state": "PRESENT", "value": "FDR-771204-09", "rawText": "FDR-771204-09" },
+          "branchName": { "state": "PRESENT", "value": "Sehore Institutional Branch", "rawText": "Sehore Institutional Branch" },
+          "maturityDate": { "state": "PRESENT", "value": "2027-09-18", "rawText": "18 September 2027" },
+          "isUnencumbered": { "state": "PRESENT", "value": true, "rawText": "unencumbered" },
+          "certificateDate": { "state": "PRESENT", "value": "2026-09-18", "rawText": "18 September 2026" },
+          "accountHolderName": { "state": "PRESENT", "value": "Sahyog Technical Education Trust", "rawText": "Sahyog Technical Education Trust" },
+          "principalAmountRupees": { "state": "PRESENT", "value": 12500000, "rawText": "125,00,000" }
+        }
+      }
+    },
+    {
+      "id": "doc-11",
+      "documentType": "DOC_11_AFFIDAVIT_2",
+      "originalName": "DOC_11_AFFIDAVIT_2.pdf",
+      "extractedData": {
+        "classifiedType": "DOC_11_AFFIDAVIT_2",
+        "doc11Affidavit2": {
+          "deponentName": { "state": "PRESENT", "value": "Dr. Meera Kulkarni", "rawText": "Dr. Meera Kulkarni" },
+          "applicantName": { "state": "PRESENT", "value": "Sahyog Technical Education Trust", "rawText": "Sahyog Technical Education Trust" },
+          "executionDate": { "state": "PRESENT", "value": "2026-09-18", "rawText": "18 September 2026" },
+          "executionLocation": { "state": "PRESENT", "value": "Bhopal, Madhya Pradesh", "rawText": "Bhopal, Madhya Pradesh" }
+        }
+      }
+    },
+    {
+      "id": "doc-14",
+      "documentType": "DOC_14_SITE_MAP",
+      "originalName": "DOC_14_SITE_MAP.pdf",
+      "extractedData": {
+        "classifiedType": "DOC_14_SITE_MAP",
+        "doc14SiteMap": {
+          "latitude": { "state": "PRESENT", "value": 23.2031, "rawText": "23.2031" },
+          "longitude": { "state": "PRESENT", "value": 77.0846, "rawText": "77.0846" },
+          "siteAddress": { "state": "PRESENT", "value": "Plot 18, Knowledge Park Road, Village Rampur Kalan, Tehsil Nandipur, District Sehore, Madhya Pradesh", "rawText": "Plot 18, Knowledge Park Road, Village Rampur Kalan, Tehsil Nandipur, District Sehore, Madhya Pradesh" },
+          "khasraNumbers": { "state": "PRESENT", "value": "114/2, 115/1 and 116/3", "rawText": "114/2, 115/1 and 116/3" },
+          "institutionName": { "state": "PRESENT", "value": "Sahyog Institute of Engineering and Technology", "rawText": "Sahyog Institute of Engineering and Technology" }
+        }
+      }
+    }
+  ]
+}
