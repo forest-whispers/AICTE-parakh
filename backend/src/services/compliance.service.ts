@@ -570,7 +570,7 @@ export class ComplianceService {
         landDoc?.envelope.doc03LandDeed?.khasraSurveyPlotNumbers?.value ||
         siteMapDoc?.envelope.doc14SiteMap?.khasraSurveyNumbersShown?.value;
 
-      if (!plotNumbers || plotNumbers.length === 0) {
+      if (!Array.isArray(plotNumbers) || plotNumbers.length === 0) {
         findings.push({
           ruleId,
           ruleName,
@@ -1303,7 +1303,7 @@ export class ComplianceService {
         ev.push(makeEvidence(landDoc.docId, "DOC_03_LAND_DEED", "landRevenueLocation", landDoc.envelope.doc03LandDeed.landRevenueLocation));
         addresses.push({ docType: "DOC-03", val: landDoc.envelope.doc03LandDeed.landRevenueLocation.value });
       }
-      if (lucDoc?.envelope.doc05LandUse?.khasraSurveyPlotNumbers?.value) {
+      if (Array.isArray(lucDoc?.envelope.doc05LandUse?.khasraSurveyPlotNumbers?.value)) {
         ev.push(makeEvidence(lucDoc.docId, "DOC_05_LAND_USE", "khasraSurveyPlotNumbers", lucDoc.envelope.doc05LandUse.khasraSurveyPlotNumbers));
         addresses.push({ docType: "DOC-05", val: lucDoc.envelope.doc05LandUse.khasraSurveyPlotNumbers.value.join(", ") });
       }

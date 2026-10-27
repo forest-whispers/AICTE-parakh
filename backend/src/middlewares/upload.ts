@@ -39,6 +39,6 @@ export const uploadMiddleware = multer({
   fileFilter,
   limits: {
     fileSize: 25 * 1024 * 1024, // 25 MB max per file
-    files: 10, // up to 10 documents per submission
+    files: 14, // up to 10 documents per submission
   },
 });
