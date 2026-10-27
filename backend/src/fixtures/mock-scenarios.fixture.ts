@@ -1354,6 +1354,8 @@ export const scenario8CompoundIssues: SyntheticScenario = {
           bankName: makeField("Bank of Baroda"),
           branchName: makeField("Bhopal Main"),
           accountHolderName: makeField("National Engineering Research Trust"),
+          accountOrFdrNumber: makeField("FDR/38119028472"),
+          fdrNumber: makeField("FDR/38119028472"),
           amountInLakhsINR: makeField(35), // ₹35 Lakhs < ₹100 Lakhs required!
           amountInInr: makeField(3500000),
           isUnencumbered: makeField(false), // Encumbered!

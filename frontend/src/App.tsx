@@ -74,6 +74,63 @@ interface ScrutinyReportData {
   findings: RuleFinding[];
 }
 
+interface FieldDiscrepancyData {
+  field: string;
+  label: string;
+  submitted: any;
+  authoritative: any;
+  observation: string;
+}
+
+interface AuthorityVerificationItem {
+  id: string;
+  applicationId: string;
+  documentId: string | null;
+  batchId: string;
+  authorityCategory: string;
+  authorityName: string;
+  verificationMode: string;
+  sourceName: string;
+  queryReference: string | null;
+  status:
+    | "VERIFIED_SIMULATED"
+    | "FORMAT_VALID_UNVERIFIED"
+    | "FORMAT_INVALID"
+    | "MISMATCH_DETECTED"
+    | "EXPIRED_AT_SOURCE"
+    | "RECORD_NOT_FOUND"
+    | "CONFIRMATION_PENDING"
+    | "CONFIRMATION_RECORDED"
+    | "SOURCE_UNAVAILABLE";
+  submittedFields: Record<string, any>;
+  authoritativeFields: Record<string, any> | null;
+  discrepancies?: FieldDiscrepancyData[];
+  summary: string;
+  scrutinyActionPrompt: string;
+  verifiedAt: string;
+  document?: {
+    id: string;
+    documentType: string;
+    fileName: string;
+    originalName: string;
+  };
+}
+
+interface VerificationBatchSummaryData {
+  batchId: string;
+  applicationId: string;
+  verifiedAt: string;
+  totalRun: number;
+  verifiedSimulatedCount: number;
+  mismatchCount: number;
+  formatOnlyCount: number;
+  expiredCount: number;
+  notFoundCount: number;
+  pendingCount: number;
+  recordedCount: number;
+  verifications: AuthorityVerificationItem[];
+}
+
 interface ApplicationData {
   id: string;
   institutionName: string;
@@ -120,6 +177,18 @@ export default function App() {
   const [activeApplication, setActiveApplication] = useState<ApplicationData | null>(null);
   const [activeScrutinyReport, setActiveScrutinyReport] = useState<ScrutinyReportData | null>(null);
 
+  // Slice 4B: Authority Verification State
+  const [authorityVerifications, setAuthorityVerifications] = useState<VerificationBatchSummaryData | null>(null);
+  const [verifyingAuthorities, setVerifyingAuthorities] = useState(false);
+  const [showOfficerBankModal, setShowOfficerBankModal] = useState(false);
+  const [officerLetterRef, setOfficerLetterRef] = useState("");
+  const [officerLetterDate, setOfficerLetterDate] = useState("");
+  const [officerName, setOfficerName] = useState("");
+  const [officerBranchManager, setOfficerBranchManager] = useState("");
+  const [officerAmountLakhs, setOfficerAmountLakhs] = useState("150");
+  const [officerIsUnencumbered, setOfficerIsUnencumbered] = useState(true);
+  const [officerRemarks, setOfficerRemarks] = useState("");
+
   const fetchApplications = async () => {
     try {
       const res = await fetch(`${API_BASE_URL}/api/applications`);
@@ -136,6 +205,74 @@ export default function App() {
     fetchApplications();
   }, []);
 
+  const loadAuthorityVerifications = async (appId: string) => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/applications/${appId}/verifications`);
+      const json = await res.json();
+      if (json.success && json.data) {
+        setAuthorityVerifications(json.data);
+      } else {
+        setAuthorityVerifications(null);
+      }
+    } catch (err) {
+      console.error("Failed to load authority verifications:", err);
+      setAuthorityVerifications(null);
+    }
+  };
+
+  const handleRunAuthorityVerification = async (appId: string) => {
+    setVerifyingAuthorities(true);
+    setMessage(null);
+    setErrorMessage(null);
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/applications/${appId}/verify`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+      const json = await res.json();
+      if (json.success) {
+        setAuthorityVerifications(json.data);
+        setMessage("Statutory authority verification completed successfully across all relevant documents.");
+      } else {
+        setErrorMessage(json.error || "Authority verification failed.");
+      }
+    } catch (err: any) {
+      setErrorMessage(err.message || "Failed to trigger authority verification.");
+    } finally {
+      setVerifyingAuthorities(false);
+    }
+  };
+
+  const handleRecordOfficerBankConfirmation = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!activeApplication) return;
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/applications/${activeApplication.id}/verify/bank-confirmation`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          letterReference: officerLetterRef,
+          letterDate: officerLetterDate || new Date().toISOString().split("T")[0],
+          recordingOfficer: officerName,
+          branchManagerName: officerBranchManager,
+          confirmedAmountLakhs: Number(officerAmountLakhs),
+          isUnencumbered: officerIsUnencumbered,
+          remarks: officerRemarks,
+        }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        setMessage("Official bank branch confirmation letter recorded on file successfully.");
+        setShowOfficerBankModal(false);
+        loadAuthorityVerifications(activeApplication.id);
+      } else {
+        setErrorMessage(json.error || "Failed to record confirmation letter.");
+      }
+    } catch (err: any) {
+      setErrorMessage(err.message || "Failed to record confirmation letter.");
+    }
+  };
+
   const loadApplicationDetails = async (appId: string) => {
     try {
       const res = await fetch(`${API_BASE_URL}/api/applications/${appId}`);
@@ -147,6 +284,7 @@ export default function App() {
         } else {
           setActiveScrutinyReport(null);
         }
+        loadAuthorityVerifications(appId);
       }
     } catch (err) {
       console.error("Failed to load application details:", err);
@@ -299,6 +437,29 @@ export default function App() {
         return { backgroundColor: "#fafafa", color: "#9e9e9e", border: "1px solid #e0e0e0" };
       default:
         return { backgroundColor: "#eee", color: "#333", border: "1px solid #ccc" };
+    }
+  };
+
+  const getAuthorityStatusBadgeStyle = (status: string) => {
+    switch (status) {
+      case "VERIFIED_SIMULATED":
+        return { backgroundColor: "#e8f5e9", color: "#2e7d32", border: "1px solid #a5d6a7" };
+      case "CONFIRMATION_RECORDED":
+        return { backgroundColor: "#e0f2f1", color: "#00695c", border: "1px solid #80cbc4" };
+      case "MISMATCH_DETECTED":
+        return { backgroundColor: "#ffebee", color: "#c62828", border: "1px solid #ef9a9a" };
+      case "EXPIRED_AT_SOURCE":
+        return { backgroundColor: "#fbe9e7", color: "#bf360c", border: "1px solid #ffab91" };
+      case "FORMAT_VALID_UNVERIFIED":
+        return { backgroundColor: "#ede7f6", color: "#4527a0", border: "1px solid #d1c4e9" };
+      case "FORMAT_INVALID":
+        return { backgroundColor: "#fff8e1", color: "#e65100", border: "1px solid #ffe082" };
+      case "RECORD_NOT_FOUND":
+        return { backgroundColor: "#f5f5f5", color: "#616161", border: "1px solid #e0e0e0" };
+      case "CONFIRMATION_PENDING":
+        return { backgroundColor: "#fff3e0", color: "#ef6c00", border: "1px solid #ffb74d" };
+      default:
+        return { backgroundColor: "#eceff1", color: "#37474f", border: "1px solid #cfd8dc" };
     }
   };
 
@@ -617,6 +778,341 @@ export default function App() {
           ) : (
             <p style={{ color: "#777", fontStyle: "italic" }}>No scrutiny report evaluated yet for this application.</p>
           )}
+
+          {/* Slice 4B: Issuing Authority Verification & Reconciliation Workspace */}
+          <div
+            style={{
+              border: "2px solid #00695c",
+              borderRadius: "6px",
+              padding: "16px",
+              marginBottom: "20px",
+              backgroundColor: "#fcfdfd",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                borderBottom: "2px solid #80cbc4",
+                paddingBottom: "10px",
+                marginBottom: "12px",
+              }}
+            >
+              <div>
+                <h3 style={{ margin: "0 0 4px 0", color: "#004d40" }}>
+                  🏛️ Statutory Issuing Authority Verification & External Reconciliation
+                </h3>
+                <span style={{ fontSize: "12px", color: "#555" }}>
+                  Independent on-demand cross-check against simulated state/national statutory registries and bank inquiry channels (APH Ch I).
+                </span>
+              </div>
+              <div style={{ display: "flex", gap: "10px" }}>
+                <button
+                  onClick={() => handleRunAuthorityVerification(activeApplication.id)}
+                  disabled={verifyingAuthorities}
+                  style={{
+                    padding: "8px 18px",
+                    fontWeight: "bold",
+                    backgroundColor: "#00695c",
+                    color: "#fff",
+                    border: "none",
+                    borderRadius: "4px",
+                    cursor: "pointer",
+                  }}
+                >
+                  {verifyingAuthorities ? "Verifying Authorities..." : "Verify with Issuing Authorities"}
+                </button>
+                <button
+                  onClick={() => setShowOfficerBankModal((prev) => !prev)}
+                  style={{
+                    padding: "8px 14px",
+                    backgroundColor: "#e0f2f1",
+                    color: "#00695c",
+                    border: "1px solid #80cbc4",
+                    borderRadius: "4px",
+                    fontWeight: "bold",
+                    cursor: "pointer",
+                  }}
+                >
+                  {showOfficerBankModal ? "Close Confirmation Form" : "+ Record Officer Bank Confirmation"}
+                </button>
+              </div>
+            </div>
+
+            {/* Prototype Provenance & Transparency Banner */}
+            <div
+              style={{
+                padding: "8px 12px",
+                backgroundColor: "#fffde7",
+                border: "1px solid #fff59d",
+                borderRadius: "4px",
+                fontSize: "12px",
+                color: "#795548",
+                marginBottom: "14px",
+                lineHeight: "1.4",
+              }}
+            >
+              <strong>⚠️ Simulated Prototype Environment Notice:</strong> Authority cross-checks query simulated statutory records
+              (State Registrar of Public Trusts, Bhulekh Land Records, Fire Services e-NOC Portal, CoA National Roll, and Simulated Bank Responses).
+              Matches are explicitly designated <code>SIMULATED</code>. Algorithmic syntax checks alone do not grant verified legal standing,
+              and pending confirmations remain strictly pending. No live government or core-banking APIs are accessed.
+            </div>
+
+            {/* Officer Confirmation Letter Filing Form Modal */}
+            {showOfficerBankModal && (
+              <form
+                onSubmit={handleRecordOfficerBankConfirmation}
+                style={{
+                  border: "1px solid #00897b",
+                  borderRadius: "6px",
+                  padding: "14px",
+                  backgroundColor: "#e0f2f1",
+                  marginBottom: "16px",
+                }}
+              >
+                <h4 style={{ margin: "0 0 10px 0", color: "#004d40" }}>
+                  Record Officer-Verified Bank Confirmation Letter (APH Part B Dossier)
+                </h4>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "10px", marginBottom: "10px" }}>
+                  <div>
+                    <label style={{ fontSize: "12px", fontWeight: "bold" }}>Letter Reference Number *</label>
+                    <input
+                      type="text"
+                      required
+                      value={officerLetterRef}
+                      onChange={(e) => setOfficerLetterRef(e.target.value)}
+                      placeholder="e.g. SBI/SEH/CONF/2026/0412"
+                      style={{ width: "95%", padding: "6px", marginTop: "3px" }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: "12px", fontWeight: "bold" }}>Letter Receipt Date</label>
+                    <input
+                      type="date"
+                      value={officerLetterDate}
+                      onChange={(e) => setOfficerLetterDate(e.target.value)}
+                      style={{ width: "95%", padding: "6px", marginTop: "3px" }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: "12px", fontWeight: "bold" }}>Recording Officer Name & Designation *</label>
+                    <input
+                      type="text"
+                      required
+                      value={officerName}
+                      onChange={(e) => setOfficerName(e.target.value)}
+                      placeholder="e.g. Dr. A. K. Verma, Scrutiny Officer"
+                      style={{ width: "95%", padding: "6px", marginTop: "3px" }}
+                    />
+                  </div>
+                </div>
+
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "10px", marginBottom: "10px" }}>
+                  <div>
+                    <label style={{ fontSize: "12px", fontWeight: "bold" }}>Branch Manager Name & Branch</label>
+                    <input
+                      type="text"
+                      value={officerBranchManager}
+                      onChange={(e) => setOfficerBranchManager(e.target.value)}
+                      placeholder="e.g. Shri Manoj Sharma, AGM, SBI Sehore"
+                      style={{ width: "95%", padding: "6px", marginTop: "3px" }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: "12px", fontWeight: "bold" }}>Confirmed Amount (₹ in Lakhs) *</label>
+                    <input
+                      type="number"
+                      required
+                      value={officerAmountLakhs}
+                      onChange={(e) => setOfficerAmountLakhs(e.target.value)}
+                      style={{ width: "95%", padding: "6px", marginTop: "3px" }}
+                    />
+                  </div>
+                  <div style={{ paddingTop: "20px" }}>
+                    <label style={{ fontSize: "12px", fontWeight: "bold", cursor: "pointer" }}>
+                      <input
+                        type="checkbox"
+                        checked={officerIsUnencumbered}
+                        onChange={(e) => setOfficerIsUnencumbered(e.target.checked)}
+                        style={{ marginRight: "6px" }}
+                      />
+                      Confirmed Free from Lien / Encumbrance
+                    </label>
+                  </div>
+                </div>
+
+                <div style={{ marginBottom: "10px" }}>
+                  <label style={{ fontSize: "12px", fontWeight: "bold" }}>Filing Dossier Remarks</label>
+                  <input
+                    type="text"
+                    value={officerRemarks}
+                    onChange={(e) => setOfficerRemarks(e.target.value)}
+                    placeholder="e.g. Original ink-signed letter examined on bank letterhead and filed in Part B dossier."
+                    style={{ width: "98%", padding: "6px", marginTop: "3px" }}
+                  />
+                </div>
+
+                <div style={{ display: "flex", gap: "8px" }}>
+                  <button
+                    type="submit"
+                    style={{
+                      padding: "6px 16px",
+                      backgroundColor: "#00695c",
+                      color: "#fff",
+                      border: "none",
+                      borderRadius: "4px",
+                      fontWeight: "bold",
+                      cursor: "pointer",
+                    }}
+                  >
+                    Save & Record Confirmation Letter
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowOfficerBankModal(false)}
+                    style={{ padding: "6px 12px", backgroundColor: "#fff", border: "1px solid #ccc", borderRadius: "4px" }}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            )}
+
+            {/* Verification Stats & Batch Meta */}
+            {authorityVerifications ? (
+              <div>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
+                  <span style={{ fontSize: "12px", color: "#444" }}>
+                    Batch Execution: <code>{authorityVerifications.batchId}</code> | Verified At:{" "}
+                    <strong>{new Date(authorityVerifications.verifiedAt).toLocaleString()}</strong>
+                  </span>
+                  <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+                    <span style={{ padding: "3px 8px", backgroundColor: "#e8f5e9", color: "#2e7d32", borderRadius: "3px", fontSize: "11px", fontWeight: "bold" }}>
+                      Verified (Simulated): {authorityVerifications.verifiedSimulatedCount}
+                    </span>
+                    <span style={{ padding: "3px 8px", backgroundColor: "#ffebee", color: "#c62828", borderRadius: "3px", fontSize: "11px", fontWeight: "bold" }}>
+                      Discrepancies: {authorityVerifications.mismatchCount}
+                    </span>
+                    <span style={{ padding: "3px 8px", backgroundColor: "#fbe9e7", color: "#bf360c", borderRadius: "3px", fontSize: "11px", fontWeight: "bold" }}>
+                      Expired at Source: {authorityVerifications.expiredCount}
+                    </span>
+                    <span style={{ padding: "3px 8px", backgroundColor: "#ede7f6", color: "#4527a0", borderRadius: "3px", fontSize: "11px", fontWeight: "bold" }}>
+                      Format Only / Unverified: {authorityVerifications.formatOnlyCount}
+                    </span>
+                    <span style={{ padding: "3px 8px", backgroundColor: "#fff3e0", color: "#ef6c00", borderRadius: "3px", fontSize: "11px", fontWeight: "bold" }}>
+                      Confirmation Pending: {authorityVerifications.pendingCount}
+                    </span>
+                    {authorityVerifications.recordedCount > 0 && (
+                      <span style={{ padding: "3px 8px", backgroundColor: "#e0f2f1", color: "#00695c", borderRadius: "3px", fontSize: "11px", fontWeight: "bold" }}>
+                        Officer Recorded: {authorityVerifications.recordedCount}
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Detailed Statutory Reconciliation Table */}
+                <table border={1} cellPadding={8} style={{ borderCollapse: "collapse", width: "100%", fontSize: "13px" }}>
+                  <thead>
+                    <tr style={{ backgroundColor: "#e0f2f1" }}>
+                      <th style={{ width: "20%" }}>Category & Document</th>
+                      <th style={{ width: "18%" }}>Queried Statutory Reference</th>
+                      <th style={{ width: "16%" }}>Verification Mode & Source</th>
+                      <th style={{ width: "14%" }}>Status</th>
+                      <th style={{ width: "32%" }}>Reconciliation & Guidance</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {authorityVerifications.verifications.map((item) => {
+                      const badgeStyle = getAuthorityStatusBadgeStyle(item.status);
+                      return (
+                        <tr key={item.id} style={{ verticalAlign: "top" }}>
+                          <td>
+                            <strong>{item.authorityCategory.replace(/_/g, " ")}</strong>
+                            <div style={{ fontSize: "11px", color: "#555", marginTop: "2px" }}>
+                              {item.authorityName}
+                            </div>
+                            {item.document && (
+                              <div style={{ fontSize: "11px", color: "#1976d2", marginTop: "4px" }}>
+                                📄 {item.document.originalName}
+                              </div>
+                            )}
+                          </td>
+                          <td>
+                            <code>{item.queryReference || "Not Extracted / None"}</code>
+                            <div style={{ fontSize: "11px", color: "#666", marginTop: "2px" }}>
+                              Submitted Record
+                            </div>
+                          </td>
+                          <td>
+                            <div style={{ fontWeight: "bold", fontSize: "11px" }}>{item.verificationMode}</div>
+                            <div style={{ fontSize: "11px", color: "#555", marginTop: "2px" }}>
+                              {item.sourceName}
+                            </div>
+                          </td>
+                          <td>
+                            <span
+                              style={{
+                                display: "inline-block",
+                                padding: "3px 8px",
+                                borderRadius: "3px",
+                                fontSize: "11px",
+                                fontWeight: "bold",
+                                ...badgeStyle,
+                              }}
+                            >
+                              {item.status}
+                            </span>
+                          </td>
+                          <td>
+                            <div><strong>{item.summary}</strong></div>
+                            <div style={{ fontSize: "11px", color: "#004d40", marginTop: "4px" }}>
+                              <strong>Action:</strong> {item.scrutinyActionPrompt}
+                            </div>
+
+                            {/* Discrepancies Details */}
+                            {item.discrepancies && item.discrepancies.length > 0 && (
+                              <details style={{ marginTop: "6px", fontSize: "11px" }}>
+                                <summary style={{ cursor: "pointer", color: "#c62828", fontWeight: "bold" }}>
+                                  View Field Discrepancies ({item.discrepancies.length})
+                                </summary>
+                                <div style={{ marginTop: "4px", padding: "6px", backgroundColor: "#ffebee", borderRadius: "4px" }}>
+                                  {item.discrepancies.map((disc, dIdx) => (
+                                    <div key={dIdx} style={{ marginBottom: "4px", borderBottom: "1px dashed #ef9a9a", paddingBottom: "3px" }}>
+                                      <div><strong>{disc.label} ({disc.field}):</strong></div>
+                                      <div style={{ color: "#c62828" }}>• Submitted: <code>{String(disc.submitted ?? "null")}</code></div>
+                                      <div style={{ color: "#2e7d32" }}>• Authoritative: <code>{String(disc.authoritative ?? "null")}</code></div>
+                                      <div style={{ fontStyle: "italic", color: "#555" }}>{disc.observation}</div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </details>
+                            )}
+
+                            {/* Authoritative Fields Comparison */}
+                            {item.authoritativeFields && (
+                              <details style={{ marginTop: "4px", fontSize: "11px" }}>
+                                <summary style={{ cursor: "pointer", color: "#00695c" }}>
+                                  View Authoritative Record Snapshot
+                                </summary>
+                                <pre style={{ margin: "4px 0 0 0", padding: "4px", backgroundColor: "#f5f5f5", borderRadius: "3px", fontSize: "10px", maxHeight: "120px", overflow: "auto" }}>
+                                  {JSON.stringify(item.authoritativeFields, null, 2)}
+                                </pre>
+                              </details>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <p style={{ color: "#555", fontStyle: "italic", margin: "10px 0 0 0" }}>
+                No authority verification run yet for this application. Click "Verify with Issuing Authorities" above to trigger on-demand cross-checks.
+              </p>
+            )}
+          </div>
 
           {/* Collapsible Document Extractions Inspection */}
           <details style={{ marginTop: "15px" }}>

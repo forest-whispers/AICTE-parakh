@@ -16,24 +16,26 @@ model Application {
   status            String           @default("SUBMITTED")
   createdAt         DateTime         @default(now())
   updatedAt         DateTime         @updatedAt
-  documents         Document[]
-  scrutinyReports   ScrutinyReport[]
+  documents              Document[]
+  scrutinyReports        ScrutinyReport[]
+  authorityVerifications AuthorityVerification[]
 }
 
 model Document {
-  id               String      @id @default(cuid())
-  applicationId    String
-  application      Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
-  fileName         String
-  originalName     String
-  filePath         String
-  fileHash         String?     // SHA-256 file content hash
-  mimeType         String
-  fileSize         Int
-  documentType     String
-  extractionStatus String      @default("PENDING")
-  extractedData    Json?
-  createdAt        DateTime    @default(now())
+  id                     String                  @id @default(cuid())
+  applicationId          String
+  application            Application             @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  fileName               String
+  originalName           String
+  filePath               String
+  fileHash               String?                 // SHA-256 file content hash
+  mimeType               String
+  fileSize               Int
+  documentType           String
+  extractionStatus       String                  @default("PENDING")
+  extractedData          Json?
+  createdAt              DateTime                @default(now())
+  authorityVerifications AuthorityVerification[]
 }
 
 model ScrutinyReport {
@@ -49,4 +51,29 @@ model ScrutinyReport {
   missingCount    Int
   findings        Json        // Detailed array of RuleFinding objects
   createdAt       DateTime    @default(now())
+}
+
+model AuthorityVerification {
+  id                    String      @id @default(cuid())
+  applicationId         String
+  application           Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  documentId            String?
+  document              Document?   @relation(fields: [documentId], references: [id], onDelete: SetNull)
+  batchId               String      // Unique execution ID grouping a verification run
+  authorityCategory     String      // "SOCIETY_REGISTRAR" | "REVENUE_DEPARTMENT" | "FIRE_SERVICES" | "COUNCIL_OF_ARCHITECTURE" | "BANK_BRANCH"
+  authorityName         String      // e.g. "State Registrar of Public Trusts (Simulated)", "Council of Architecture Roll"
+  verificationMode      String      // "SIMULATED_REGISTRY" | "FORMAT_REGISTRY_CHECK" | "MANUAL_CONFIRMATION_ROUTED"
+  sourceName            String      // e.g. "Simulated M.P. Registrar Database", "National Roll of Architects", "Official Bank Branch Inquiry"
+  queryReference        String?     // The registration/certificate reference queried
+  status                String      // "VERIFIED_SIMULATED" | "FORMAT_VALID_UNVERIFIED" | "MISMATCH_DETECTED" | "EXPIRED_AT_SOURCE" | "RECORD_NOT_FOUND" | "CONFIRMATION_PENDING" | "CONFIRMATION_RECORDED" | "SOURCE_UNAVAILABLE"
+  submittedFields       Json        // Snapshot of extracted values tested
+  authoritativeFields   Json?       // Record returned by simulated authority (or null)
+  discrepancies         Json?       // Array of field-level differences [{field, submitted, authoritative, observation}]
+  summary               String      // Concise observation summary
+  scrutinyActionPrompt  String      // Guidance prompt for the scrutiny committee
+  verifiedAt            DateTime    @default(now())
+  createdAt             DateTime    @default(now())
+
+  @@index([applicationId, batchId])
+  @@index([applicationId, createdAt])
 }
