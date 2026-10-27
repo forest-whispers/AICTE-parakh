@@ -1,3 +1,7 @@
+/**
+ * Safely parses ISO YYYY-MM-DD or common date string into Date object.
+ */
+export declare function parseIsoDate(val: any): Date | null;
 export type RuleOutcome = "PASS" | "FAIL_DEFICIENCY" | "EXPIRED" | "MISMATCH_DETECTED" | "EVIDENCE_MISSING" | "EXTRACTION_UNCERTAIN" | "MANUAL_REVIEW_REQUIRED" | "INSUFFICIENT_INPUT" | "NOT_APPLICABLE";
 export interface FindingEvidence {
     documentId: string;

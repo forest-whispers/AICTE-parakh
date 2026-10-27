@@ -1,7 +1,27 @@
 import crypto from "node:crypto";
 import fs from "node:fs/promises";
 import { prisma } from "../lib/prisma.js";
-import { adaptDoc01, adaptDoc02, adaptDoc03, adaptDoc04, adaptDoc05, adaptDoc06, adaptDoc07, adaptDoc08, adaptDoc09, adaptDoc10, adaptDoc11, adaptDoc14, } from "./extraction-adapter.js";
+import { adaptDoc01, adaptDoc02, adaptDoc03, adaptDoc04, adaptDoc05, adaptDoc06, adaptDoc07, adaptDoc08, adaptDoc09, adaptDoc10, adaptDoc11, adaptDoc14, makeEmptyField, } from "./extraction-adapter.js";
+/**
+ * Safely parses ISO YYYY-MM-DD or common date string into Date object.
+ */
+export function parseIsoDate(val) {
+    if (!val || typeof val !== "string")
+        return null;
+    const trimmed = val.trim();
+    const isoMatch = trimmed.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+    if (isoMatch) {
+        const d = new Date(trimmed);
+        return isNaN(d.getTime()) ? null : d;
+    }
+    const dmyMatch = trimmed.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})/);
+    if (dmyMatch && dmyMatch[1] && dmyMatch[2] && dmyMatch[3]) {
+        const d = new Date(`${dmyMatch[3]}-${dmyMatch[2].padStart(2, "0")}-${dmyMatch[1].padStart(2, "0")}`);
+        return isNaN(d.getTime()) ? null : d;
+    }
+    const fallback = new Date(trimmed);
+    return isNaN(fallback.getTime()) ? null : fallback;
+}
 export class ComplianceService {
     /**
      * Evaluates deterministic APH compliance rules for an application stored in database.
@@ -949,6 +969,39 @@ export class ComplianceService {
                     });
                     return;
                 }
+                // Check FAR/FSI capacity if farFsi, totalBuiltUpArea, and registered land area are all confirmed
+                if (doc03Item &&
+                    doc03 &&
+                    doc06.farFsi.value !== null &&
+                    doc06.totalBuiltUpAreaSqm.value !== null &&
+                    doc03.landAreaAcres.value !== null &&
+                    !isNaN(doc06.farFsi.value) &&
+                    !isNaN(doc06.totalBuiltUpAreaSqm.value) &&
+                    !isNaN(doc03.landAreaAcres.value) &&
+                    doc06.farFsi.value > 0 &&
+                    doc03.landAreaAcres.value > 0) {
+                    const landAreaSqm = doc03.landAreaAcres.value * 4046.86;
+                    const maxPermissibleBuiltUp = landAreaSqm * doc06.farFsi.value;
+                    const actualBuiltUp = doc06.totalBuiltUpAreaSqm.value;
+                    if (actualBuiltUp > maxPermissibleBuiltUp * 1.05) {
+                        findings.push({
+                            ruleId,
+                            ruleName,
+                            aphClause,
+                            outcome: "FAIL_DEFICIENCY",
+                            severity: "HIGH",
+                            summary: `Sanctioned built-up area (${actualBuiltUp} m²) exceeds permissible FSI/FAR capacity (${Math.round(maxPermissibleBuiltUp)} m²).`,
+                            details: `With registered land of ${doc03.landAreaAcres.value} acres (${Math.round(landAreaSqm)} m²) and approved FAR of ${doc06.farFsi.value}, maximum permissible built-up area is ${Math.round(maxPermissibleBuiltUp)} m². Declared built-up area (${actualBuiltUp} m²) exceeds development capacity.`,
+                            evidence: [
+                                ...summaryEvidence,
+                                makeEvidence(doc06Item.id, "DOC_06_BUILDING_PLAN", "farFsi", doc06.farFsi),
+                                makeEvidence(doc03Item.id, "DOC_03_LAND_DEED", "landAreaAcres", doc03.landAreaAcres),
+                            ],
+                            remediationNote: "Ensure built-up area conforms to approved municipal FAR/FSI limits.",
+                        });
+                        return;
+                    }
+                }
                 findings.push({
                     ruleId,
                     ruleName,
@@ -956,7 +1009,7 @@ export class ComplianceService {
                     outcome: "PASS",
                     severity: "ADVISORY",
                     summary: `Administrative (${adminSqM ?? 'N/A'} m²) and amenities (${amenitiesSqM ?? 'N/A'} m²) areas satisfy statutory minima.`,
-                    details: `Meets AICTE standards (min ${minAdmin} m² admin, ${minAmenities} m² amenities) for intake ${application.proposedIntake} in ${application.programCategory}. Total built-up: ${doc06.totalBuiltUpAreaSqm.value ?? 'N/A'} m². Certified by Architect (${doc06.architectCoaRegistration.value || 'CoA'}).`,
+                    details: `Meets AICTE standards (min ${minAdmin} m² admin, ${minAmenities} m² amenities) for intake ${application.proposedIntake} in ${application.programCategory}. Total built-up: ${doc06.totalBuiltUpAreaSqm.value ?? 'N/A'} m². Certified by Architect (${doc06.architectCoaRegistration.value || 'CoA'}). Note: Granular instructional space counts (classrooms, tutorial rooms, laboratories per APH Annexure 3.2) are subject to scrutiny committee inspection of architectural blueprints.`,
                     evidence: summaryEvidence,
                 });
             }
@@ -1486,6 +1539,399 @@ export class ComplianceService {
                     summary: "All uploaded document files possess distinct binary hashes.",
                     details: "No duplicate document payload collisions detected.",
                     evidence: fileEv,
+                });
+            }
+        })();
+        // --- RULE 17: Minimum Statutory Land Area Threshold (APH Table 1.1) ---
+        (() => {
+            const ruleId = "RULE_LAND_ACREAGE_THRESHOLD";
+            const ruleName = "Minimum Statutory Land Acreage";
+            const aphClause = "Clause 6.17(b); Table 1.1 (Land Requirement for Technical Institutions, PDF p. 14 / Annexure 3.1)";
+            if (!doc03Item || !doc03) {
+                findings.push({
+                    ruleId,
+                    ruleName,
+                    aphClause,
+                    outcome: "EVIDENCE_MISSING",
+                    severity: "CRITICAL",
+                    summary: "Registered Land Deed (DOC-03) was not submitted.",
+                    details: "Land deed is mandatory to verify institutional land acreage.",
+                    evidence: [],
+                    remediationNote: "Upload registered Land Title Deed.",
+                });
+                return;
+            }
+            const landArea = doc03.landAreaAcres.value;
+            const ev = [
+                makeEvidence(doc03Item.id, "DOC_03_LAND_DEED", "landAreaAcres", doc03.landAreaAcres),
+                makeEvidence(doc03Item.id, "DOC_03_LAND_DEED", "khasraNumbers", doc03.khasraNumbers),
+                makeEvidence(doc03Item.id, "DOC_03_LAND_DEED", "landLocation", doc03.landLocation),
+            ];
+            if (landArea === null || isNaN(landArea) || landArea <= 0) {
+                findings.push({
+                    ruleId,
+                    ruleName,
+                    aphClause,
+                    outcome: "EXTRACTION_UNCERTAIN",
+                    severity: "HIGH",
+                    summary: "Land area acreage could not be extracted from Land Deed.",
+                    details: "Could not locate valid numeric land area in acres from DOC-03.",
+                    evidence: ev,
+                });
+                return;
+            }
+            // Grounded strictly in APH Table 1.1:
+            // Rural: 7.5 acres; Urban: 4.0 acres; Mega/Metro: 2.5 acres (minimum baseline 1.5 acres).
+            // Land >= 7.5 acres satisfies all categories.
+            if (landArea >= 7.5) {
+                findings.push({
+                    ruleId,
+                    ruleName,
+                    aphClause,
+                    outcome: "PASS",
+                    severity: "ADVISORY",
+                    summary: `Land area of ${landArea} acres satisfies the maximum AICTE requirement across all location categories.`,
+                    details: `Meets Table 1.1 statutory requirement for Technical Institutions (prescribes 7.5 acres for Rural, 4.0 acres for Urban, and 2.5 acres for Metro). Total registered area: ${landArea} acres.`,
+                    evidence: ev,
+                });
+            }
+            else if (landArea < 1.5) {
+                findings.push({
+                    ruleId,
+                    ruleName,
+                    aphClause,
+                    outcome: "FAIL_DEFICIENCY",
+                    severity: "CRITICAL",
+                    summary: `Land area of ${landArea} acres is below the absolute minimum statutory requirement (1.5 acres).`,
+                    details: `APH Table 1.1 prescribes minimum 1.5 acres in Mega/Metro or 4.0/7.5 acres in Urban/Rural for Technical Institutions. Stated land area (${landArea} acres) is deficient.`,
+                    evidence: ev,
+                    remediationNote: "Ensure the institution has the minimum statutory land area prescribed in APH Table 1.1.",
+                });
+            }
+            else {
+                // Between 1.5 and 7.5 acres, location classification (Rural vs Urban vs Metro) must be verified by scrutiny officer
+                findings.push({
+                    ruleId,
+                    ruleName,
+                    aphClause,
+                    outcome: "MANUAL_REVIEW_REQUIRED",
+                    severity: "MEDIUM",
+                    summary: `Land area of ${landArea} acres requires location classification verification against APH Table 1.1.`,
+                    details: `Under APH Table 1.1, minimum land requirement is 7.5 acres for Rural, 4.0 acres for Urban, and 2.5 acres for Metro. Scrutiny officer must verify official municipal/revenue notification to confirm location classification.`,
+                    evidence: ev,
+                    remediationNote: "Verify local revenue/municipal notification to confirm whether the site is classified as Rural (requires 7.5 ac), Urban (requires 4.0 ac), or Metro (requires 2.5 ac).",
+                });
+            }
+        })();
+        // --- RULE 18: Cross-Document Land Area Alignment (DOC-03 vs DOC-05) ---
+        (() => {
+            const ruleId = "RULE_CROSS_LAND_AREA";
+            const ruleName = "Cross-Document Land Area Consistency";
+            const aphClause = "Section 6; Clause 6.17(b, e); Annexure 1.1 (PDF pp. 6, 56, 78)";
+            if (!doc03Item || !doc03 || !doc05Item || !doc05) {
+                findings.push({
+                    ruleId,
+                    ruleName,
+                    aphClause,
+                    outcome: "EVIDENCE_MISSING",
+                    severity: "MEDIUM",
+                    summary: "Both Land Deed (DOC-03) and Land Use Certificate (DOC-05) are required for land area comparison.",
+                    details: `Missing: ${!doc03Item ? "DOC-03 " : ""}${!doc05Item ? "DOC-05" : ""}`.trim(),
+                    evidence: [],
+                    remediationNote: "Upload both Land Deed and Land Use Certificate.",
+                });
+                return;
+            }
+            const deedAcres = doc03.landAreaAcres.value;
+            const convAcres = doc05.landAreaAcres.value;
+            const ev = [
+                makeEvidence(doc03Item.id, "DOC_03_LAND_DEED", "landAreaAcres", doc03.landAreaAcres),
+                makeEvidence(doc05Item.id, "DOC_05_LAND_USE", "landAreaAcres", doc05.landAreaAcres),
+            ];
+            if (deedAcres === null || convAcres === null) {
+                findings.push({
+                    ruleId,
+                    ruleName,
+                    aphClause,
+                    outcome: "EXTRACTION_UNCERTAIN",
+                    severity: "MEDIUM",
+                    summary: "Land area acreage could not be extracted from one or both documents for cross-comparison.",
+                    details: `Deed area: ${deedAcres ?? "unextracted"}, Conversion order area: ${convAcres ?? "unextracted"}.`,
+                    evidence: ev,
+                });
+                return;
+            }
+            const diff = Math.abs(deedAcres - convAcres);
+            const tolerance = Math.max(0.1, deedAcres * 0.02); // 2% tolerance or 0.1 acre
+            if (diff <= tolerance) {
+                findings.push({
+                    ruleId,
+                    ruleName,
+                    aphClause,
+                    outcome: "PASS",
+                    severity: "ADVISORY",
+                    summary: `Land area is consistent between Land Deed (${deedAcres} acres) and Conversion Order (${convAcres} acres).`,
+                    details: `The registered title deed area matches the area permitted for institutional use under conversion order (${convAcres} acres).`,
+                    evidence: ev,
+                });
+            }
+            else if (convAcres < deedAcres * 0.8) {
+                findings.push({
+                    ruleId,
+                    ruleName,
+                    aphClause,
+                    outcome: "MISMATCH_DETECTED",
+                    severity: "HIGH",
+                    summary: `Converted land area (${convAcres} acres) is substantially lower than title deed area (${deedAcres} acres).`,
+                    details: `Only ${convAcres} acres out of ${deedAcres} acres have been converted for educational use. Technical institutions may only utilize land with valid conversion orders.`,
+                    evidence: ev,
+                    remediationNote: "Ensure full institution campus acreage has been officially converted for educational use.",
+                });
+            }
+            else if (convAcres > deedAcres * 1.05) {
+                findings.push({
+                    ruleId,
+                    ruleName,
+                    aphClause,
+                    outcome: "MISMATCH_DETECTED",
+                    severity: "HIGH",
+                    summary: `Converted land area (${convAcres} acres) exceeds registered deed title area (${deedAcres} acres).`,
+                    details: `The land conversion order covers more land (${convAcres} acres) than the sponsoring trust holds title to (${deedAcres} acres).`,
+                    evidence: ev,
+                    remediationNote: "Reconcile title deeds with conversion orders.",
+                });
+            }
+            else {
+                findings.push({
+                    ruleId,
+                    ruleName,
+                    aphClause,
+                    outcome: "MANUAL_REVIEW_REQUIRED",
+                    severity: "MEDIUM",
+                    summary: `Minor discrepancy between deed area (${deedAcres} acres) and conversion area (${convAcres} acres).`,
+                    details: `Discrepancy of ${diff.toFixed(2)} acres requires verification against survey demarcation records.`,
+                    evidence: ev,
+                    remediationNote: "Scrutiny officer to verify survey demarcation and road widening deductions.",
+                });
+            }
+        })();
+        // --- RULE 19: Chronological Sanity & Milestone Sequence ---
+        (() => {
+            const ruleId = "RULE_CHRONOLOGICAL_SANITY";
+            const ruleName = "Document Chronological Sanity & Milestone Sequence";
+            const aphClause = "Section 6 (Cross-Document Chronology & Integrity); Clauses 1.4, 6.17, 6.18";
+            const ev = [];
+            const criticalErrors = [];
+            const warnings = [];
+            // 1. Future date check: Any non-expiry document date > evaluationDate + 1 day (tolerance for timezone)
+            const oneDayAheadMs = evaluationDate.getTime() + 86400000;
+            const checkFutureDate = (item, docType, fieldName, field) => {
+                if (!item || !field?.value)
+                    return;
+                const d = parseIsoDate(field.value);
+                if (d && d.getTime() > oneDayAheadMs) {
+                    criticalErrors.push(`${docType} ${fieldName} is dated in the future (${field.value}).`);
+                    ev.push(makeEvidence(item.id, docType, fieldName, field));
+                }
+            };
+            if (doc01Item && doc01)
+                checkFutureDate(doc01Item, "DOC_01_REGISTRATION", "registrationDate", doc01.registrationDate);
+            if (doc02Item && doc02)
+                checkFutureDate(doc02Item, "DOC_02_RESOLUTION", "resolutionDate", doc02.resolutionDate);
+            if (doc03Item && doc03)
+                checkFutureDate(doc03Item, "DOC_03_LAND_DEED", "registrationDate", doc03.registrationDate);
+            if (doc04Item && doc04)
+                checkFutureDate(doc04Item, "DOC_04_LEASE_AFFIDAVIT", "executionDate", doc04.executionDate);
+            if (doc05Item && doc05)
+                checkFutureDate(doc05Item, "DOC_05_LAND_USE", "issueDate", doc05.issueDate);
+            if (doc06Item && doc06)
+                checkFutureDate(doc06Item, "DOC_06_BUILDING_PLAN", "sanctionDate", doc06.sanctionDate);
+            if (doc07Item && doc07)
+                checkFutureDate(doc07Item, "DOC_07_OCCUPANCY", "issueDate", doc07.issueDate);
+            if (doc08Item && doc08)
+                checkFutureDate(doc08Item, "DOC_08_STRUCTURAL_STABILITY", "inspectionDate", doc08.inspectionDate);
+            if (doc09Item && doc09)
+                checkFutureDate(doc09Item, "DOC_09_FIRE_SAFETY", "issueDate", doc09.issueDate);
+            if (doc10Item && doc10)
+                checkFutureDate(doc10Item, "DOC_10_BANK_FUNDS", "certificateDate", doc10.certificateDate);
+            if (doc11Item && doc11)
+                checkFutureDate(doc11Item, "DOC_11_AFFIDAVIT_2", "executionDate", doc11.executionDate);
+            // 2. Trust registration (DOC-01) must precede or equal land acquisition (DOC-03)
+            if (doc01Item && doc01?.registrationDate?.value && doc03Item && doc03?.registrationDate?.value) {
+                const d1 = parseIsoDate(doc01.registrationDate.value);
+                const d3 = parseIsoDate(doc03.registrationDate.value);
+                if (d1 && d3 && d1.getTime() > d3.getTime()) {
+                    criticalErrors.push(`Chronological inversion: Land Deed registered on ${doc03.registrationDate.value} prior to sponsoring body registration on ${doc01.registrationDate.value}. Entity cannot acquire property prior to legal incorporation.`);
+                    ev.push(makeEvidence(doc01Item.id, "DOC_01_REGISTRATION", "registrationDate", doc01.registrationDate));
+                    ev.push(makeEvidence(doc03Item.id, "DOC_03_LAND_DEED", "registrationDate", doc03.registrationDate));
+                }
+            }
+            // 3. Trust registration (DOC-01) must precede or equal resolution (DOC-02)
+            if (doc01Item && doc01?.registrationDate?.value && doc02Item && doc02?.resolutionDate?.value) {
+                const d1 = parseIsoDate(doc01.registrationDate.value);
+                const d2 = parseIsoDate(doc02.resolutionDate.value);
+                if (d1 && d2 && d1.getTime() > d2.getTime()) {
+                    criticalErrors.push(`Chronological inversion: Sponsoring body resolution passed on ${doc02.resolutionDate.value} prior to legal registration of trust/society on ${doc01.registrationDate.value}.`);
+                    ev.push(makeEvidence(doc01Item.id, "DOC_01_REGISTRATION", "registrationDate", doc01.registrationDate));
+                    ev.push(makeEvidence(doc02Item.id, "DOC_02_RESOLUTION", "resolutionDate", doc02.resolutionDate));
+                }
+            }
+            // 4. Plan Sanction (DOC-06) must precede or equal Occupancy/Completion (DOC-07)
+            if (doc06Item && doc06?.sanctionDate?.value && doc07Item && doc07?.issueDate?.value) {
+                const d6 = parseIsoDate(doc06.sanctionDate.value);
+                const d7 = parseIsoDate(doc07.issueDate.value);
+                if (d6 && d7 && d6.getTime() > d7.getTime()) {
+                    criticalErrors.push(`Chronological inversion: Building Occupancy Certificate issued on ${doc07.issueDate.value} prior to Building Plan Sanction on ${doc06.sanctionDate.value}.`);
+                    ev.push(makeEvidence(doc06Item.id, "DOC_06_BUILDING_PLAN", "sanctionDate", doc06.sanctionDate));
+                    ev.push(makeEvidence(doc07Item.id, "DOC_07_OCCUPANCY", "issueDate", doc07.issueDate));
+                }
+            }
+            // 5. Plan Sanction (DOC-06) must precede or equal Fire Safety Certificate (DOC-09)
+            if (doc06Item && doc06?.sanctionDate?.value && doc09Item && doc09?.issueDate?.value) {
+                const d6 = parseIsoDate(doc06.sanctionDate.value);
+                const d9 = parseIsoDate(doc09.issueDate.value);
+                if (d6 && d9 && d6.getTime() > d9.getTime()) {
+                    criticalErrors.push(`Chronological inversion: Fire Safety NOC issued on ${doc09.issueDate.value} prior to Building Plan Sanction on ${doc06.sanctionDate.value}.`);
+                    ev.push(makeEvidence(doc06Item.id, "DOC_06_BUILDING_PLAN", "sanctionDate", doc06.sanctionDate));
+                    ev.push(makeEvidence(doc09Item.id, "DOC_09_FIRE_SAFETY", "issueDate", doc09.issueDate));
+                }
+            }
+            if (criticalErrors.length > 0) {
+                findings.push({
+                    ruleId,
+                    ruleName,
+                    aphClause,
+                    outcome: "FAIL_DEFICIENCY",
+                    severity: "CRITICAL",
+                    summary: "Chronological sequence contradiction or future-dated documents detected.",
+                    details: criticalErrors.join(" "),
+                    evidence: ev,
+                    remediationNote: "Rectify document date discrepancies and submit authentic sequence records.",
+                });
+            }
+            else if (warnings.length > 0) {
+                findings.push({
+                    ruleId,
+                    ruleName,
+                    aphClause,
+                    outcome: "MANUAL_REVIEW_REQUIRED",
+                    severity: "MEDIUM",
+                    summary: "Chronological sequence anomalies require officer scrutiny.",
+                    details: warnings.join(" "),
+                    evidence: ev,
+                    remediationNote: "Verify sequence of authorizations.",
+                });
+            }
+            else {
+                findings.push({
+                    ruleId,
+                    ruleName,
+                    aphClause,
+                    outcome: "PASS",
+                    severity: "ADVISORY",
+                    summary: "Document execution, registration, and sanction milestones follow a valid chronological sequence.",
+                    details: "No future-dated records or milestone sequence inversions detected across submitted documentation.",
+                    evidence: ev,
+                });
+            }
+        })();
+        // --- RULE 20: Intra-Document & Cross-Page Logical Consistency ---
+        (() => {
+            const ruleId = "RULE_INTRA_DOCUMENT_CONSISTENCY";
+            const ruleName = "Intra-Document Logical & Geometric Consistency";
+            const aphClause = "Section 6; Clause 6.17(f); Annexure 1.1; Annexure 3.2–3.4";
+            const ev = [];
+            const deficiencies = [];
+            const mismatches = [];
+            // 1. Date inversions (Issue/Start date >= Expiry date) within individual documents
+            const checkInvertedDates = (item, docType, startName, startField, endName, endField) => {
+                if (!item || !startField?.value || !endField?.value)
+                    return;
+                const dStart = parseIsoDate(startField.value);
+                const dEnd = parseIsoDate(endField.value);
+                if (dStart && dEnd && dStart.getTime() >= dEnd.getTime()) {
+                    deficiencies.push(`In ${docType}, ${endName} (${endField.value}) is on or before ${startName} (${startField.value}).`);
+                    ev.push(makeEvidence(item.id, docType, startName, startField));
+                    ev.push(makeEvidence(item.id, docType, endName, endField));
+                }
+            };
+            if (doc09Item && doc09) {
+                checkInvertedDates(doc09Item, "DOC_09_FIRE_SAFETY", "issueDate", doc09.issueDate, "expiryDate", doc09.expiryDate);
+            }
+            if (doc10Item && doc10) {
+                checkInvertedDates(doc10Item, "DOC_10_BANK_FUNDS", "certificateDate", doc10.certificateDate, "maturityDate", doc10.maturityDate);
+            }
+            if (doc03Item && doc03) {
+                checkInvertedDates(doc03Item, "DOC_03_LAND_DEED", "leaseCommencementDate", doc03.leaseCommencementDate, "leaseExpiryDate", doc03.leaseExpiryDate);
+            }
+            if (doc08Item && doc08) {
+                checkInvertedDates(doc08Item, "DOC_08_STRUCTURAL_STABILITY", "inspectionDate", doc08.inspectionDate, "expiryDate", doc08.expiryDate);
+            }
+            // 2. Encumbrance contradiction in DOC-10:
+            // If isUnencumbered === true, but lienStatement explicitly declares active pledge/lien
+            if (doc10Item && doc10 && doc10.isUnencumbered?.value === true && doc10.lienStatement?.value) {
+                const rawLien = doc10.lienStatement.value.toLowerCase();
+                const hasLienKeyword = /\b(pledged|lien marked|hypothecated|encumbered|subject to charge|under lien)\b/.test(rawLien);
+                const hasNegation = /\b(no lien|not pledged|free from|unencumbered|zero lien|without any lien)\b/.test(rawLien);
+                if (hasLienKeyword && !hasNegation) {
+                    mismatches.push(`Bank deposit certificate marks FDR as unencumbered, but lien statement contradicts this: "${doc10.lienStatement.value}".`);
+                    ev.push(makeEvidence(doc10Item.id, "DOC_10_BANK_FUNDS", "isUnencumbered", doc10.isUnencumbered));
+                    ev.push(makeEvidence(doc10Item.id, "DOC_10_BANK_FUNDS", "lienStatement", doc10.lienStatement));
+                }
+            }
+            // 3. Geometric Area Inversion in DOC-06:
+            // adminCarpetAreaSqm + amenitiesCarpetAreaSqm cannot physically exceed totalBuiltUpAreaSqm
+            if (doc06Item &&
+                doc06 &&
+                doc06.adminCarpetAreaSqm?.value !== null &&
+                doc06.amenitiesCarpetAreaSqm?.value !== null &&
+                doc06.totalBuiltUpAreaSqm?.value !== null) {
+                const admin = doc06.adminCarpetAreaSqm.value;
+                const amenities = doc06.amenitiesCarpetAreaSqm.value;
+                const totalBuiltUp = doc06.totalBuiltUpAreaSqm.value;
+                if (admin + amenities > totalBuiltUp) {
+                    deficiencies.push(`Sum of administrative (${admin} m²) and amenities (${amenities} m²) carpet areas (${admin + amenities} m²) exceeds total sanctioned built-up area (${totalBuiltUp} m²). Carpet area cannot exceed gross built-up area.`);
+                    ev.push(makeEvidence(doc06Item.id, "DOC_06_BUILDING_PLAN", "adminCarpetAreaSqm", doc06.adminCarpetAreaSqm));
+                    ev.push(makeEvidence(doc06Item.id, "DOC_06_BUILDING_PLAN", "amenitiesCarpetAreaSqm", doc06.amenitiesCarpetAreaSqm));
+                    ev.push(makeEvidence(doc06Item.id, "DOC_06_BUILDING_PLAN", "totalBuiltUpAreaSqm", doc06.totalBuiltUpAreaSqm));
+                }
+            }
+            if (deficiencies.length > 0) {
+                findings.push({
+                    ruleId,
+                    ruleName,
+                    aphClause,
+                    outcome: "FAIL_DEFICIENCY",
+                    severity: "CRITICAL",
+                    summary: "Intra-document contradiction or geometric impossibility detected.",
+                    details: deficiencies.join(" "),
+                    evidence: ev,
+                    remediationNote: "Ensure document data, validity dates, and area schedules are mathematically and logically sound.",
+                });
+            }
+            else if (mismatches.length > 0) {
+                findings.push({
+                    ruleId,
+                    ruleName,
+                    aphClause,
+                    outcome: "MISMATCH_DETECTED",
+                    severity: "CRITICAL",
+                    summary: "Internal contradiction detected between document declaration fields.",
+                    details: mismatches.join(" "),
+                    evidence: ev,
+                    remediationNote: "Clarify unencumbered status with the issuing branch.",
+                });
+            }
+            else {
+                findings.push({
+                    ruleId,
+                    ruleName,
+                    aphClause,
+                    outcome: "PASS",
+                    severity: "ADVISORY",
+                    summary: "Internal fields, geometric areas, validity dates, and encumbrance declarations are logically consistent.",
+                    details: "No intra-document date inversions, area contradictions, or lien declaration conflicts detected.",
+                    evidence: ev,
                 });
             }
         })();

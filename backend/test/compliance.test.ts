@@ -221,11 +221,32 @@ describe("Deterministic Scrutiny Engine - result-III.pdf Baseline Audit", () => 
     assert.ok(govFinding);
     assert.equal(govFinding.outcome, "PASS", "Applicant type Public Charitable Trust satisfies governance");
 
+    // 6. Minimum Land Acreage (12.4 acres >= 7.5 max statutory) -> PASS
+    const landAcreFinding = result.findings.find((f) => f.ruleId === "RULE_LAND_ACREAGE_THRESHOLD");
+    assert.ok(landAcreFinding);
+    assert.equal(landAcreFinding.outcome, "PASS", "Land acreage >= 7.5 acres must pass across all location categories");
+
+    // 7. Cross-Document Land Area (DOC-03 12.4 ac == DOC-05 12.4 ac) -> PASS
+    const crossLandFinding = result.findings.find((f) => f.ruleId === "RULE_CROSS_LAND_AREA");
+    assert.ok(crossLandFinding);
+    assert.equal(crossLandFinding.outcome, "PASS", "Deed area matches conversion order area");
+
+    // 8. Chronological Sanity -> PASS
+    const chronoFinding = result.findings.find((f) => f.ruleId === "RULE_CHRONOLOGICAL_SANITY");
+    assert.ok(chronoFinding);
+    assert.equal(chronoFinding.outcome, "PASS", "All dates must follow valid sequence");
+
+    // 9. Intra-Document Consistency -> PASS
+    const intraFinding = result.findings.find((f) => f.ruleId === "RULE_INTRA_DOCUMENT_CONSISTENCY");
+    assert.ok(intraFinding);
+    assert.equal(intraFinding.outcome, "PASS", "Internal validity and geometric areas are consistent");
+
     // Summary counts
+    assert.equal(result.totalRulesRun, 20, "Total 20 deterministic rules evaluated");
     assert.equal(result.deficiencyCount, 1, "Exactly 1 deficiency (Resolution)");
     assert.equal(result.reviewCount, 1, "Exactly 1 review (Land physical contiguity)");
     assert.equal(result.missingCount, 0, "0 missing documents");
-    assert.equal(result.passedCount, 14, "14 rules passed");
+    assert.equal(result.passedCount, 18, "18 rules passed");
     assert.equal(result.overallStatus, "DEFICIENCIES_DETECTED");
   });
 });
@@ -532,5 +553,348 @@ describe("Deterministic Scrutiny Engine - Negative & Edge Cases", () => {
     const finding = result.findings.find((f) => f.ruleId === "RULE_LAND_DEED_TENURE");
     assert.ok(finding);
     assert.equal(finding.outcome, "EVIDENCE_MISSING");
+  });
+});
+
+describe("Deterministic Scrutiny Engine - Minimum Statutory Land Acreage (APH Table 1.1)", () => {
+  it("PASSES when land area is >= 7.5 acres across all location categories", async () => {
+    const fixture = getFreshSampleFixture();
+    const doc03 = fixture.documents.find((d: any) => d.documentType === "DOC_03_LAND_DEED");
+    assert.ok(doc03);
+    doc03.extractedData.doc03LandDeed.landAreaAcres.value = 8.5;
+
+    const result = await complianceService.evaluateDocuments(
+      {
+        id: fixture.id,
+        institutionName: fixture.institutionName,
+        programCategory: fixture.programCategory,
+        proposedIntake: fixture.proposedIntake,
+      },
+      fixture.documents,
+      new Date("2026-10-27T00:00:00Z")
+    );
+
+    const finding = result.findings.find((f) => f.ruleId === "RULE_LAND_ACREAGE_THRESHOLD");
+    assert.ok(finding);
+    assert.equal(finding.outcome, "PASS");
+    assert.ok(finding.summary.includes("8.5 acres satisfies the maximum AICTE requirement"));
+  });
+
+  it("fails with FAIL_DEFICIENCY when land area is below absolute statutory minimum (1.5 acres)", async () => {
+    const fixture = getFreshSampleFixture();
+    const doc03 = fixture.documents.find((d: any) => d.documentType === "DOC_03_LAND_DEED");
+    assert.ok(doc03);
+    doc03.extractedData.doc03LandDeed.landAreaAcres.value = 1.2;
+
+    const result = await complianceService.evaluateDocuments(
+      {
+        id: fixture.id,
+        institutionName: fixture.institutionName,
+        programCategory: fixture.programCategory,
+        proposedIntake: fixture.proposedIntake,
+      },
+      fixture.documents,
+      new Date("2026-10-27T00:00:00Z")
+    );
+
+    const finding = result.findings.find((f) => f.ruleId === "RULE_LAND_ACREAGE_THRESHOLD");
+    assert.ok(finding);
+    assert.equal(finding.outcome, "FAIL_DEFICIENCY");
+    assert.ok(finding.summary.includes("below the absolute minimum statutory requirement"));
+  });
+
+  it("returns MANUAL_REVIEW_REQUIRED when land area (3.5 ac) requires location classification check", async () => {
+    const fixture = getFreshSampleFixture();
+    const doc03 = fixture.documents.find((d: any) => d.documentType === "DOC_03_LAND_DEED");
+    assert.ok(doc03);
+    doc03.extractedData.doc03LandDeed.landAreaAcres.value = 3.5;
+
+    const result = await complianceService.evaluateDocuments(
+      {
+        id: fixture.id,
+        institutionName: fixture.institutionName,
+        programCategory: fixture.programCategory,
+        proposedIntake: fixture.proposedIntake,
+      },
+      fixture.documents,
+      new Date("2026-10-27T00:00:00Z")
+    );
+
+    const finding = result.findings.find((f) => f.ruleId === "RULE_LAND_ACREAGE_THRESHOLD");
+    assert.ok(finding);
+    assert.equal(finding.outcome, "MANUAL_REVIEW_REQUIRED");
+    assert.ok(finding.summary.includes("requires location classification verification"));
+  });
+});
+
+describe("Deterministic Scrutiny Engine - Cross-Document Land Area Alignment (DOC-03 vs DOC-05)", () => {
+  it("PASSES when deed area and conversion order area are aligned within tolerance", async () => {
+    const fixture = getFreshSampleFixture();
+    const doc03 = fixture.documents.find((d: any) => d.documentType === "DOC_03_LAND_DEED");
+    const doc05 = fixture.documents.find((d: any) => d.documentType === "DOC_05_LAND_USE");
+    assert.ok(doc03 && doc05);
+    doc03.extractedData.doc03LandDeed.landAreaAcres.value = 12.4;
+    doc05.extractedData.doc05LandUse.landAreaAcres.value = 12.4;
+
+    const result = await complianceService.evaluateDocuments(
+      {
+        id: fixture.id,
+        institutionName: fixture.institutionName,
+        programCategory: fixture.programCategory,
+        proposedIntake: fixture.proposedIntake,
+      },
+      fixture.documents,
+      new Date("2026-10-27T00:00:00Z")
+    );
+
+    const finding = result.findings.find((f) => f.ruleId === "RULE_CROSS_LAND_AREA");
+    assert.ok(finding);
+    assert.equal(finding.outcome, "PASS");
+  });
+
+  it("detects MISMATCH_DETECTED when converted land area is substantially less than deed area", async () => {
+    const fixture = getFreshSampleFixture();
+    const doc03 = fixture.documents.find((d: any) => d.documentType === "DOC_03_LAND_DEED");
+    const doc05 = fixture.documents.find((d: any) => d.documentType === "DOC_05_LAND_USE");
+    assert.ok(doc03 && doc05);
+    doc03.extractedData.doc03LandDeed.landAreaAcres.value = 12.4;
+    doc05.extractedData.doc05LandUse.landAreaAcres.value = 2.0; // only 2 acres converted out of 12.4
+
+    const result = await complianceService.evaluateDocuments(
+      {
+        id: fixture.id,
+        institutionName: fixture.institutionName,
+        programCategory: fixture.programCategory,
+        proposedIntake: fixture.proposedIntake,
+      },
+      fixture.documents,
+      new Date("2026-10-27T00:00:00Z")
+    );
+
+    const finding = result.findings.find((f) => f.ruleId === "RULE_CROSS_LAND_AREA");
+    assert.ok(finding);
+    assert.equal(finding.outcome, "MISMATCH_DETECTED");
+    assert.ok(finding.summary.includes("substantially lower than title deed area"));
+  });
+
+  it("detects MISMATCH_DETECTED when converted land area exceeds registered title deed area", async () => {
+    const fixture = getFreshSampleFixture();
+    const doc03 = fixture.documents.find((d: any) => d.documentType === "DOC_03_LAND_DEED");
+    const doc05 = fixture.documents.find((d: any) => d.documentType === "DOC_05_LAND_USE");
+    assert.ok(doc03 && doc05);
+    doc03.extractedData.doc03LandDeed.landAreaAcres.value = 10.0;
+    doc05.extractedData.doc05LandUse.landAreaAcres.value = 15.0; // 15 acres converted vs 10 deeded
+
+    const result = await complianceService.evaluateDocuments(
+      {
+        id: fixture.id,
+        institutionName: fixture.institutionName,
+        programCategory: fixture.programCategory,
+        proposedIntake: fixture.proposedIntake,
+      },
+      fixture.documents,
+      new Date("2026-10-27T00:00:00Z")
+    );
+
+    const finding = result.findings.find((f) => f.ruleId === "RULE_CROSS_LAND_AREA");
+    assert.ok(finding);
+    assert.equal(finding.outcome, "MISMATCH_DETECTED");
+    assert.ok(finding.summary.includes("exceeds registered deed title area"));
+  });
+});
+
+describe("Deterministic Scrutiny Engine - Chronological Sanity & Milestone Sequence", () => {
+  it("fails with FAIL_DEFICIENCY when document contains a future-dated record", async () => {
+    const fixture = getFreshSampleFixture();
+    const doc09 = fixture.documents.find((d: any) => d.documentType === "DOC_09_FIRE_SAFETY");
+    assert.ok(doc09);
+    doc09.extractedData.doc09FireSafety.issueDate.value = "2029-01-15"; // future date relative to 2026
+
+    const result = await complianceService.evaluateDocuments(
+      {
+        id: fixture.id,
+        institutionName: fixture.institutionName,
+        programCategory: fixture.programCategory,
+        proposedIntake: fixture.proposedIntake,
+      },
+      fixture.documents,
+      new Date("2026-10-27T00:00:00Z")
+    );
+
+    const finding = result.findings.find((f) => f.ruleId === "RULE_CHRONOLOGICAL_SANITY");
+    assert.ok(finding);
+    assert.equal(finding.outcome, "FAIL_DEFICIENCY");
+    assert.ok(finding.details.includes("dated in the future"));
+  });
+
+  it("fails with FAIL_DEFICIENCY when land deed registration predates trust incorporation", async () => {
+    const fixture = getFreshSampleFixture();
+    const doc01 = fixture.documents.find((d: any) => d.documentType === "DOC_01_REGISTRATION");
+    const doc03 = fixture.documents.find((d: any) => d.documentType === "DOC_03_LAND_DEED");
+    assert.ok(doc01 && doc03);
+
+    // Trust formed in 2022, but deed purportedly registered in 2020
+    doc01.extractedData.doc01Registration.registrationDate.value = "2022-05-10";
+    doc03.extractedData.doc03LandDeed.registrationDate.value = "2020-03-15";
+
+    const result = await complianceService.evaluateDocuments(
+      {
+        id: fixture.id,
+        institutionName: fixture.institutionName,
+        programCategory: fixture.programCategory,
+        proposedIntake: fixture.proposedIntake,
+      },
+      fixture.documents,
+      new Date("2026-10-27T00:00:00Z")
+    );
+
+    const finding = result.findings.find((f) => f.ruleId === "RULE_CHRONOLOGICAL_SANITY");
+    assert.ok(finding);
+    assert.equal(finding.outcome, "FAIL_DEFICIENCY");
+    assert.ok(finding.details.includes("prior to sponsoring body registration"));
+  });
+
+  it("fails with FAIL_DEFICIENCY when building occupancy predates building plan sanction", async () => {
+    const fixture = getFreshSampleFixture();
+    const doc06 = fixture.documents.find((d: any) => d.documentType === "DOC_06_BUILDING_PLAN");
+    const doc07 = fixture.documents.find((d: any) => d.documentType === "DOC_07_OCCUPANCY");
+    assert.ok(doc06 && doc07);
+
+    // Occupancy issued in 2022, but plan sanctioned later in 2023
+    doc06.extractedData.doc06BuildingPlan.sanctionDate.value = "2023-08-01";
+    doc07.extractedData.doc07Occupancy.issueDate.value = "2022-04-10";
+
+    const result = await complianceService.evaluateDocuments(
+      {
+        id: fixture.id,
+        institutionName: fixture.institutionName,
+        programCategory: fixture.programCategory,
+        proposedIntake: fixture.proposedIntake,
+      },
+      fixture.documents,
+      new Date("2026-10-27T00:00:00Z")
+    );
+
+    const finding = result.findings.find((f) => f.ruleId === "RULE_CHRONOLOGICAL_SANITY");
+    assert.ok(finding);
+    assert.equal(finding.outcome, "FAIL_DEFICIENCY");
+    assert.ok(finding.details.includes("prior to Building Plan Sanction"));
+  });
+});
+
+describe("Deterministic Scrutiny Engine - Intra-Document & Cross-Page Logical Consistency", () => {
+  it("fails with FAIL_DEFICIENCY when document expiry date is before issue date", async () => {
+    const fixture = getFreshSampleFixture();
+    const doc09 = fixture.documents.find((d: any) => d.documentType === "DOC_09_FIRE_SAFETY");
+    assert.ok(doc09);
+
+    // Issue date 2026-06-01 but valid until 2025-06-01
+    doc09.extractedData.doc09FireSafety.issueDate.value = "2026-06-01";
+    doc09.extractedData.doc09FireSafety.expiryDate = { state: "PRESENT", value: "2025-06-01", rawText: "2025-06-01" };
+    doc09.extractedData.doc09FireSafety.validUntilDate = { state: "PRESENT", value: "2025-06-01", rawText: "2025-06-01" };
+
+    const result = await complianceService.evaluateDocuments(
+      {
+        id: fixture.id,
+        institutionName: fixture.institutionName,
+        programCategory: fixture.programCategory,
+        proposedIntake: fixture.proposedIntake,
+      },
+      fixture.documents,
+      new Date("2026-10-27T00:00:00Z")
+    );
+
+    const finding = result.findings.find((f) => f.ruleId === "RULE_INTRA_DOCUMENT_CONSISTENCY");
+    assert.ok(finding);
+    assert.equal(finding.outcome, "FAIL_DEFICIENCY");
+    assert.ok(finding.details.includes("is on or before issueDate"));
+  });
+
+  it("detects MISMATCH_DETECTED when bank deposit claims unencumbered but lien statement indicates active pledge", async () => {
+    const fixture = getFreshSampleFixture();
+    const doc10 = fixture.documents.find((d: any) => d.documentType === "DOC_10_BANK_FUNDS");
+    assert.ok(doc10);
+
+    doc10.extractedData.doc10BankFunds.isUnencumbered.value = true;
+    doc10.extractedData.doc10BankFunds.lienStatement = {
+      state: "PRESENT",
+      value: "FDR is pledged under lien to State Construction Corporation",
+      rawText: "pledged under lien",
+    };
+
+    const result = await complianceService.evaluateDocuments(
+      {
+        id: fixture.id,
+        institutionName: fixture.institutionName,
+        programCategory: fixture.programCategory,
+        proposedIntake: fixture.proposedIntake,
+      },
+      fixture.documents,
+      new Date("2026-10-27T00:00:00Z")
+    );
+
+    const finding = result.findings.find((f) => f.ruleId === "RULE_INTRA_DOCUMENT_CONSISTENCY");
+    assert.ok(finding);
+    assert.equal(finding.outcome, "MISMATCH_DETECTED");
+    assert.ok(finding.details.includes("contradicts this"));
+  });
+
+  it("fails with FAIL_DEFICIENCY when carpet area sum exceeds total sanctioned built-up area", async () => {
+    const fixture = getFreshSampleFixture();
+    const doc06 = fixture.documents.find((d: any) => d.documentType === "DOC_06_BUILDING_PLAN");
+    assert.ok(doc06);
+
+    // Admin + Amenities = 6000 + 5000 = 11000 sqm > 10000 sqm total built-up
+    doc06.extractedData.doc06BuildingPlan.adminCarpetAreaSqm.value = 6000;
+    doc06.extractedData.doc06BuildingPlan.amenitiesCarpetAreaSqm.value = 5000;
+    doc06.extractedData.doc06BuildingPlan.totalBuiltUpAreaSqm.value = 10000;
+
+    const result = await complianceService.evaluateDocuments(
+      {
+        id: fixture.id,
+        institutionName: fixture.institutionName,
+        programCategory: fixture.programCategory,
+        proposedIntake: fixture.proposedIntake,
+      },
+      fixture.documents,
+      new Date("2026-10-27T00:00:00Z")
+    );
+
+    const finding = result.findings.find((f) => f.ruleId === "RULE_INTRA_DOCUMENT_CONSISTENCY");
+    assert.ok(finding);
+    assert.equal(finding.outcome, "FAIL_DEFICIENCY");
+    assert.ok(finding.details.includes("Carpet area cannot exceed gross built-up area"));
+  });
+});
+
+describe("Deterministic Scrutiny Engine - FAR / FSI Development Limits Check", () => {
+  it("fails with FAIL_DEFICIENCY when total built-up area exceeds approved FAR capacity on site", async () => {
+    const fixture = getFreshSampleFixture();
+    const doc03 = fixture.documents.find((d: any) => d.documentType === "DOC_03_LAND_DEED");
+    const doc06 = fixture.documents.find((d: any) => d.documentType === "DOC_06_BUILDING_PLAN");
+    assert.ok(doc03 && doc06);
+
+    // 2.0 acres = 8093.72 sqm. At FAR 1.5, max built-up is ~12,140 sqm.
+    // Setting declared built-up area to 25,000 sqm (> 2x permissible FAR capacity)
+    doc03.extractedData.doc03LandDeed.landAreaAcres.value = 2.0;
+    doc06.extractedData.doc06BuildingPlan.fsiFarRatio = { state: "PRESENT", value: 1.5, rawText: "1.5" };
+    doc06.extractedData.doc06BuildingPlan.farFsi = { state: "PRESENT", value: 1.5, rawText: "1.5" };
+    doc06.extractedData.doc06BuildingPlan.totalBuiltUpAreaSqm.value = 25000;
+
+    const result = await complianceService.evaluateDocuments(
+      {
+        id: fixture.id,
+        institutionName: fixture.institutionName,
+        programCategory: fixture.programCategory,
+        proposedIntake: fixture.proposedIntake,
+      },
+      fixture.documents,
+      new Date("2026-10-27T00:00:00Z")
+    );
+
+    const finding = result.findings.find((f) => f.ruleId === "RULE_INFRASTRUCTURE_ADMIN_AMENITIES");
+    assert.ok(finding);
+    assert.equal(finding.outcome, "FAIL_DEFICIENCY");
+    assert.ok(finding.summary.includes("exceeds permissible FSI/FAR capacity"));
   });
 });
