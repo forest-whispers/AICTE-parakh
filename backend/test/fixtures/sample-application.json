@@ -1,0 +1,1446 @@
+{
+  "id": "cmvqebssx00000nuw5fgvgzs1",
+  "institutionName": "Sahyog Institute of Engineering and Technology",
+  "applicationNumber": "AICTE-NEW-27-10-2026",
+  "programCategory": "ENGINEERING_AND_TECHNOLOGY",
+  "proposedIntake": 180,
+  "status": "DEFICIENCIES_DETECTED",
+  "createdAt": "2026-10-27T08:00:48.274Z",
+  "updatedAt": "2026-10-27T08:02:56.199Z",
+  "documents": [
+    {
+      "id": "cmvqebssy00040nuw8n92ug3v",
+      "applicationId": "cmvqebssx00000nuw5fgvgzs1",
+      "fileName": "1793088047981-730926081.pdf",
+      "originalName": "DOC_05_LAND_USE.pdf",
+      "filePath": "C:\\Users\\adity\\OneDrive\\Desktop\\VS code\\Development\\projects\\hackathons\\parakh\\backend\\uploads\\1793088047981-730926081.pdf",
+      "fileHash": "2ccbc9c0ebd28a073be97ab7299847c5996c4935972e51cba98f6760aec3c664",
+      "mimeType": "application/pdf",
+      "fileSize": 2902,
+      "documentType": "DOC_05_LAND_USE",
+      "extractionStatus": "SUCCESS",
+      "extractedData": {
+        "pageCount": 1,
+        "documentId": "cmvqebssy00040nuw8n92ug3v",
+        "doc05LandUse": {
+          "issueDate": {
+            "state": "PRESENT",
+            "value": "2021-03-22",
+            "excerpt": "dated 22 March 2021 in relation to the land",
+            "rawText": "22 March 2021",
+            "pageNumber": 1,
+            "uncertaintyReason": null
+          },
+          "orderNumber": {
+            "state": "PRESENT",
+            "value": "LUC/SEH/2021/0196",
+            "excerpt": "under reference LUC/SEH/2021/0196 dated 22 March 2021",
+            "rawText": "LUC/SEH/2021/0196",
+            "pageNumber": 1,
+            "uncertaintyReason": null
+          },
+          "landLocation": {
+            "state": "PRESENT",
+            "value": "Village Rampur Kalan, Tehsil Nandipur, District Sehore, Madhya Pradesh",
+            "excerpt": "at Village Rampur Kalan, Tehsil Nandipur, District Sehore, Madhya Pradesh",
+            "rawText": "Village Rampur Kalan, Tehsil Nandipur, District Sehore, Madhya Pradesh",
+            "pageNumber": 1,
+            "uncertaintyReason": null
+          },
+          "permittedUse": {
+            "state": "PRESENT",
+            "value": "educational and institutional purposes",
+            "excerpt": "used for educational and institutional purposes, including construction and operation of a technical education campus",
+            "rawText": "educational and institutional purposes",
+            "pageNumber": 1,
+            "uncertaintyReason": null
+          },
+          "applicantName": {
+            "state": "PRESENT",
+            "value": "Sahyog Technical Education Trust",
+            "excerpt": "made by Sahyog Technical Education Trust for land",
+            "rawText": "Sahyog Technical Education Trust",
+            "pageNumber": 1,
+            "uncertaintyReason": null
+          },
+          "khasraNumbers": {
+            "state": "PRESENT",
+            "value": "114/2, 115/1 and 116/3",
+            "excerpt": "comprising Khasra Nos. 114/2, 115/1 and 116/3.",
+            "rawText": "114/2, 115/1 and 116/3",
+            "pageNumber": 1,
+            "uncertaintyReason": null
+          },
+          "landAreaAcres": {
+            "state": "PRESENT",
+            "value": 12.4,
+            "excerpt": "stated in the supporting land record is 12.40 acres.",
+            "rawText": "12.40 acres",
+            "pageNumber": 1,
+            "uncertaintyReason": null
+          },
+          "issuingAuthority": {
+            "state": "PRESENT",
+            "value": "Office of the District Town and Country Planning Officer, Sehore",
+            "excerpt": "The Office of the District Town and Country Planning Officer, Sehore, records conversion approval",
+            "rawText": "Office of the District Town and Country Planning Officer, Sehore",
+            "pageNumber": 1,
+            "uncertaintyReason": null
+          }
+        },
+        "classifiedType": "DOC_05_LAND_USE",
+        "generalRemarks": "Synthetic land use and conversion order.",
+        "extractionStatus": "SUCCESS",
+        "classificationReasoning": "Document titled 'Land Use Certificate and Conversion Order' issued by District Town and Country Planning Officer.",
+        "classificationConfidence": "HIGH"
+      },
+      "createdAt": "2026-10-27T08:00:48.274Z"
+    },
+    {
+      "id": "cmvqebssy00050nuwf1agz9px",
+      "applicationId": "cmvqebssx00000nuw5fgvgzs1",
+      "fileName": "1793088047981-548544321.pdf",
+      "originalName": "DOC_06_BUILDING_PLAN.pdf",
+      "filePath": "C:\\Users\\adity\\OneDrive\\Desktop\\VS code\\Development\\projects\\hackathons\\parakh\\backend\\uploads\\1793088047981-548544321.pdf",
+      "fileHash": "d3764ea30958ba269712152b67bfdbc35b3e39923ef7c7a54f78e178cc7c4c75",
+      "mimeType": "application/pdf",
+      "fileSize": 3222,
+      "documentType": "DOC_06_BUILDING_PLAN",
+      "extractionStatus": "SUCCESS",
+      "extractedData": {
+        "pageCount": 1,
+        "documentId": "cmvqebssy00050nuwf1agz9px",
+        "classifiedType": "DOC_06_BUILDING_PLAN",
+        "generalRemarks": "Synthetic sanctioned building plan narrative.",
+        "extractionStatus": "SUCCESS",
+        "doc06BuildingPlan": {
+          "farFsi": {
+            "state": "PRESENT",
+            "value": 1.2,
+            "excerpt": "floor area ratio (FAR/FSI) is 1.20.",
+            "rawText": "1.20",
+            "pageNumber": 1,
+            "uncertaintyReason": null
+          },
+          "siteAddress": {
+            "state": "PRESENT",
+            "value": "Plot 18, Knowledge Park Road, Village Rampur Kalan, Tehsil Nandipur, District Sehore, Madhya Pradesh",
+            "excerpt": "at Plot 18, Knowledge Park Road, Village Rampur Kalan, Tehsil Nandipur, District Sehore, Madhya Pradesh.",
+            "rawText": "Plot 18, Knowledge Park Road, Village Rampur Kalan, Tehsil Nandipur, District Sehore, Madhya Pradesh",
+            "pageNumber": 1,
+            "uncertaintyReason": null
+          },
+          "sanctionDate": {
+            "state": "PRESENT",
+            "value": "2022-08-09",
+            "excerpt": "dated 9 August 2022 for the proposed campus",
+            "rawText": "9 August 2022",
+            "pageNumber": 1,
+            "uncertaintyReason": null
+          },
+          "architectName": {
+            "state": "PRESENT",
+            "value": "Ar. Kavita Rao",
+            "excerpt": "attributed to architect Ar. Kavita Rao",
+            "rawText": "Ar. Kavita Rao",
+            "pageNumber": 1,
+            "uncertaintyReason": null
+          },
+          "sanctionNumber": {
+            "state": "PRESENT",
+            "value": "BNP/2022/0671",
+            "excerpt": "under sanction reference BNP/2022/0671 dated 9 August 2022",
+            "rawText": "BNP/2022/0671",
+            "pageNumber": 1,
+            "uncertaintyReason": null
+          },
+          "institutionName": {
+            "state": "PRESENT",
+            "value": "Sahyog Institute of Engineering and Technology",
+            "excerpt": "proposed campus of Sahyog Institute of Engineering and Technology",
+            "rawText": "Sahyog Institute of Engineering and Technology",
+            "pageNumber": 1,
+            "uncertaintyReason": null
+          },
+          "adminCarpetAreaSqm": {
+            "state": "PRESENT",
+            "value": 820,
+            "excerpt": "820 square metres of administrative carpet area",
+            "rawText": "820 square metres",
+            "pageNumber": 1,
+            "uncertaintyReason": null
+          },
+          "totalBuiltUpAreaSqm": {
+            "state": "PRESENT",
+            "value": 8450,
+            "excerpt": "total sanctioned built-up area is 8,450 square metres",
+            "rawText": "8,450 square metres",
+            "pageNumber": 1,
+            "uncertaintyReason": null
+          },
+          "sanctioningAuthority": {
+            "state": "PRESENT",
+            "value": "Municipal Council of Nandipur",
+            "excerpt": "The Municipal Council of Nandipur records approval",
+            "rawText": "Municipal Council of Nandipur",
+            "pageNumber": 1,
+            "uncertaintyReason": null
+          },
+          "amenitiesCarpetAreaSqm": {
+            "state": "PRESENT",
+            "value": 560,
+            "excerpt": "560 square metres of amenities carpet area",
+            "rawText": "560 square metres",
+            "pageNumber": 1,
+            "uncertaintyReason": null
+          },
+          "architectCoaRegistration": {
+            "state": "PRESENT",
+            "value": "CA/2010/24681",
+            "excerpt": "Council of Architecture registration number CA/2010/24681.",
+            "rawText": "CA/2010/24681",
+            "pageNumber": 1,
+            "uncertaintyReason": null
+          }
+        },
+        "classificationReasoning": "Document titled 'Sanctioned Building Plan and Room Schedule Narrative' containing building sanction reference and area details.",
+        "classificationConfidence": "HIGH"
+      },
+      "createdAt": "2026-10-27T08:00:48.274Z"
+    },
+    {
+      "id": "cmvqebssy00070nuwzb0agwe6",
+      "applicationId": "cmvqebssx00000nuw5fgvgzs1",
+      "fileName": "1793088047982-108024492.pdf",
+      "originalName": "DOC_08_STRUCTURAL_STABILITY.pdf",
+      "filePath": "C:\\Users\\adity\\OneDrive\\Desktop\\VS code\\Development\\projects\\hackathons\\parakh\\backend\\uploads\\1793088047982-108024492.pdf",
+      "fileHash": "b4af59fc36331bb2147ff3f65cbeedda2f4a46d929be5d04c4b945c95771db3b",
+      "mimeType": "application/pdf",
+      "fileSize": 2933,
+      "documentType": "DOC_08_STRUCTURAL_STABILITY",
+      "extractionStatus": "SUCCESS",
+      "extractedData": {
+        "pageCount": 1,
+        "documentId": "cmvqebssy00070nuwzb0agwe6",
+        "classifiedType": "DOC_08_STRUCTURAL_STABILITY",
+        "generalRemarks": "Synthetic structural stability certificate with 5-year review period.",
+        "extractionStatus": "SUCCESS",
+        "classificationReasoning": "Document titled 'Structural Stability Certificate' issued by a qualified structural engineer.",
+        "classificationConfidence": "HIGH",
+        "doc08StructuralStability": {
+          "reviewDate": {
+            "state": "PRESENT",
+            "value": "2030-04-09",
+            "excerpt": "recommended review date of 9 April 2030",
+            "rawText": "9 April 2030",
+            "pageNumber": 1,
+            "uncertaintyReason": null
+          },
+          "siteAddress": {
+            "state": "PRESENT",
+            "value": "Plot 18, Knowledge Park Road, Village Rampur Kalan, Tehsil Nandipur, District Sehore, Madhya Pradesh",
+            "excerpt": "at Plot 18, Knowledge Park Road, Village Rampur Kalan, Tehsil Nandipur, District Sehore, Madhya Pradesh.",
+            "rawText": "Plot 18, Knowledge Park Road, Village Rampur Kalan, Tehsil Nandipur, District Sehore, Madhya Pradesh",
+            "pageNumber": 1,
+            "uncertaintyReason": null
+          },
+          "engineerName": {
+            "state": "PRESENT",
+            "value": "Er. Nitin Deshmukh",
+            "excerpt": "Structural engineer Er. Nitin Deshmukh, M.E. (Structural Engineering)",
+            "rawText": "Er. Nitin Deshmukh",
+            "pageNumber": 1,
+            "uncertaintyReason": null
+          },
+          "inspectionDate": {
+            "state": "PRESENT",
+            "value": "2025-04-10",
+            "excerpt": "records an inspection dated 10 April 2025",
+            "rawText": "10 April 2025",
+            "pageNumber": 1,
+            "uncertaintyReason": null
+          },
+          "stabilityStatus": {
+            "state": "PRESENT",
+            "value": "structurally stable",
+            "excerpt": "structures appeared structurally stable for their intended occupancy",
+            "rawText": "structurally stable for their intended occupancy",
+            "pageNumber": 1,
+            "uncertaintyReason": null
+          },
+          "buildingAgeYears": {
+            "state": "PRESENT",
+            "value": 8,
+            "excerpt": "reported to be approximately 8 years old at the time of inspection.",
+            "rawText": "8 years old",
+            "pageNumber": 1,
+            "uncertaintyReason": null
+          },
+          "certificateNumber": {
+            "state": "PRESENT",
+            "value": "SSC/MP/2025/088",
+            "excerpt": "certificate reference SSC/MP/2025/088",
+            "rawText": "SSC/MP/2025/088",
+            "pageNumber": 1,
+            "uncertaintyReason": null
+          },
+          "engineerQualifications": {
+            "state": "PRESENT",
+            "value": "M.E. (Structural Engineering)",
+            "excerpt": "Er. Nitin Deshmukh, M.E. (Structural Engineering)",
+            "rawText": "M.E. (Structural Engineering)",
+            "pageNumber": 1,
+            "uncertaintyReason": null
+          }
+        }
+      },
+      "createdAt": "2026-10-27T08:00:48.274Z"
+    },
+    {
+      "id": "cmvqebssy00080nuwr8pbbju8",
+      "applicationId": "cmvqebssx00000nuw5fgvgzs1",
+      "fileName": "1793088047982-796964093.pdf",
+      "originalName": "DOC_09_FIRE_SAFETY.pdf",
+      "filePath": "C:\\Users\\adity\\OneDrive\\Desktop\\VS code\\Development\\projects\\hackathons\\parakh\\backend\\uploads\\1793088047982-796964093.pdf",
+      "fileHash": "d6b7c03357d53662ee41639fd8278b45f54a1e8bf90eefc4535e2b193b168a2b",
+      "mimeType": "application/pdf",
+      "fileSize": 2946,
+      "documentType": "DOC_09_FIRE_SAFETY",
+      "extractionStatus": "SUCCESS",
+      "extractedData": {
+        "pageCount": 1,
+        "documentId": "cmvqebssy00080nuwr8pbbju8",
+        "classifiedType": "DOC_09_FIRE_SAFETY",
+        "generalRemarks": "Synthetic fire safety certificate with full details provided.",
+        "doc09FireSafety": {
+          "issueDate": {
+            "state": "PRESENT",
+            "value": "2026-02-02",
+            "excerpt": "dated 2 February 2026.",
+            "rawText": "2 February 2026",
+            "pageNumber": 1,
+            "uncertaintyReason": null
+          },
+          "expiryDate": {
+            "state": "PRESENT",
+            "value": "2027-02-01",
+            "excerpt": "certificate is valid through 1 February 2027",
+            "rawText": "1 February 2027",
+            "pageNumber": 1,
+            "uncertaintyReason": null
+          },
+          "siteAddress": {
+            "state": "PRESENT",
+            "value": "Plot 18, Knowledge Park Road, Village Rampur Kalan, Tehsil Nandipur, District Sehore, Madhya Pradesh",
+            "excerpt": "Plot 18, Knowledge Park Road, Village Rampur Kalan, Tehsil Nandipur, District Sehore, Madhya Pradesh.",
+            "rawText": "Plot 18, Knowledge Park Road, Village Rampur Kalan, Tehsil Nandipur, District Sehore, Madhya Pradesh",
+            "pageNumber": 1,
+            "uncertaintyReason": null
+          },
+          "buildingDetails": {
+            "state": "PRESENT",
+            "value": "academic block, administration block, library and student amenities block, comprising the ground floor and two upper floors",
+            "excerpt": "includes the academic block, administration block, library and student amenities block, comprising the ground floor and two upper floors.",
+            "rawText": "academic block, administration block, library and student amenities block, comprising the ground floor and two upper floors",
+            "pageNumber": 1,
+            "uncertaintyReason": null
+          },
+          "institutionName": {
+            "state": "PRESENT",
+            "value": "Sahyog Institute of Engineering and Technology",
+            "excerpt": "identified as Sahyog Institute of Engineering and Technology at Plot 18",
+            "rawText": "Sahyog Institute of Engineering and Technology",
+            "pageNumber": 1,
+            "uncertaintyReason": null
+          },
+          "issuingAuthority": {
+            "state": "PRESENT",
+            "value": "Office of the Chief Municipal Fire Officer, Sehore",
+            "excerpt": "attributed to the Office of the Chief Municipal Fire Officer, Sehore, under reference",
+            "rawText": "Office of the Chief Municipal Fire Officer, Sehore",
+            "pageNumber": 1,
+            "uncertaintyReason": null
+          },
+          "certificateNumber": {
+            "state": "PRESENT",
+            "value": "FSC/SEH/2026/0142",
+            "excerpt": "under reference FSC/SEH/2026/0142, dated 2 February 2026.",
+            "rawText": "FSC/SEH/2026/0142",
+            "pageNumber": 1,
+            "uncertaintyReason": null
+          }
+        },
+        "extractionStatus": "SUCCESS",
+        "classificationReasoning": "Document is titled 'Fire Safety Certificate' issued by the Office of the Chief Municipal Fire Officer, Sehore, certifying fire-safety compliance.",
+        "classificationConfidence": "HIGH"
+      },
+      "createdAt": "2026-10-27T08:00:48.274Z"
+    },
+    {
+      "id": "cmvqebssy00010nuwil4dzfnt",
+      "applicationId": "cmvqebssx00000nuw5fgvgzs1",
+      "fileName": "1793088047977-969796568.pdf",
+      "originalName": "DOC_02_RESOLUTION.pdf",
+      "filePath": "C:\\Users\\adity\\OneDrive\\Desktop\\VS code\\Development\\projects\\hackathons\\parakh\\backend\\uploads\\1793088047977-969796568.pdf",
+      "fileHash": "84b23eda6e6cffcc0baebd78fdb72b761b7294339cf63dfd0f06ceba61ae18e0",
+      "mimeType": "application/pdf",
+      "fileSize": 3111,
+      "documentType": "DOC_02_RESOLUTION",
+      "extractionStatus": "SUCCESS",
+      "extractedData": {
+        "pageCount": 1,
+        "documentId": "cmvqebssy00010nuwil4dzfnt",
+        "classifiedType": "DOC_02_RESOLUTION",
+        "generalRemarks": "Synthetic board resolution for establishing a technical institution.",
+        "doc02Resolution": {
+          "resolutionDate": {
+            "state": "PRESENT",
+            "value": "2026-09-18",
+            "excerpt": "held on 18 September 2026 at its registered office in Bhopal",
+            "rawText": "18 September 2026",
+            "pageNumber": 1,
+            "uncertaintyReason": null
+          },
+          "locationAddress": {
+            "state": "PRESENT",
+            "value": "Plot 18, Knowledge Park Road, Village Rampur Kalan, Tehsil Nandipur, District Sehore, Madhya Pradesh",
+            "excerpt": "at Plot 18, Knowledge Park Road, Village Rampur Kalan, Tehsil Nandipur, District Sehore, Madhya Pradesh.",
+            "rawText": "Plot 18, Knowledge Park Road, Village Rampur Kalan, Tehsil Nandipur, District Sehore, Madhya Pradesh",
+            "pageNumber": 1,
+            "uncertaintyReason": null
+          },
+          "resolutionNumber": {
+            "state": "PRESENT",
+            "value": "STET/GB/2026/09/18-03",
+            "excerpt": "under reference STET/GB/2026/09/18-03.",
+            "rawText": "STET/GB/2026/09/18-03",
+            "pageNumber": 1,
+            "uncertaintyReason": null
+          },
+          "trustSocietyName": {
+            "state": "PRESENT",
+            "value": "Sahyog Technical Education Trust",
+            "excerpt": "Board of Trustees of Sahyog Technical Education Trust held on 18",
+            "rawText": "Sahyog Technical Education Trust",
+            "pageNumber": 1,
+            "uncertaintyReason": null
+          },
+          "authorizedSignatories": {
+            "state": "PRESENT",
+            "value": "Chairperson and Secretary",
+            "excerpt": "The Board authorised the Chairperson and Secretary to submit the application and supporting documents.",
+            "rawText": "Chairperson and Secretary",
+            "pageNumber": 1,
+            "uncertaintyReason": null
+          },
+          "proposedCoursesIntake": {
+            "state": "PRESENT",
+            "value": "Bachelor of Technology programme in Computer Science and Engineering, proposed initial intake of 180 students",
+            "excerpt": "proposed academic offering is a Bachelor of Technology programme in Computer Science and Engineering, within the Engineering and Technology category, with a proposed initial intake of 180 students.",
+            "rawText": "Bachelor of Technology programme in Computer Science and Engineering, within the Engineering and Technology category, with a proposed initial intake of 180 students",
+            "pageNumber": 1,
+            "uncertaintyReason": null
+          },
+          "proposedInstitutionName": {
+            "state": "PRESENT",
+            "value": "Sahyog Institute of Engineering and Technology",
+            "excerpt": "under the name Sahyog Institute of Engineering and Technology, subject to applicable approvals.",
+            "rawText": "Sahyog Institute of Engineering and Technology",
+            "pageNumber": 1,
+            "uncertaintyReason": null
+          }
+        },
+        "extractionStatus": "SUCCESS",
+        "classificationReasoning": "Document titled 'Governing Body Resolution for Establishment of Institution' containing board resolution details.",
+        "classificationConfidence": "HIGH"
+      },
+      "createdAt": "2026-10-27T08:00:48.274Z"
+    },
+    {
+      "id": "cmvqebssy00020nuw3v6v0bd0",
+      "applicationId": "cmvqebssx00000nuw5fgvgzs1",
+      "fileName": "1793088047980-604670634.pdf",
+      "originalName": "DOC_03_LAND_DEED.pdf",
+      "filePath": "C:\\Users\\adity\\OneDrive\\Desktop\\VS code\\Development\\projects\\hackathons\\parakh\\backend\\uploads\\1793088047980-604670634.pdf",
+      "fileHash": "651dabe07b24b15bc6c2e41047ec22fafc3fbd895322059d34de63893137347f",
+      "mimeType": "application/pdf",
+      "fileSize": 3061,
+      "documentType": "DOC_03_LAND_DEED",
+      "extractionStatus": "SUCCESS",
+      "extractedData": {
+        "pageCount": 1,
+        "documentId": "cmvqebssy00020nuw3v6v0bd0",
+        "doc03LandDeed": {
+          "documentType": {
+            "state": "PRESENT",
+            "value": "Sale Deed",
+            "excerpt": "This synthetic registered sale deed, recorded as SDR/2020/4418",
+            "rawText": "registered sale deed",
+            "pageNumber": 1,
+            "uncertaintyReason": null
+          },
+          "landLocation": {
+            "state": "PRESENT",
+            "value": "Village Rampur Kalan, Tehsil Nandipur, District Sehore, Madhya Pradesh",
+            "excerpt": "at Village Rampur Kalan, Tehsil Nandipur, District Sehore, Madhya Pradesh",
+            "rawText": "Village Rampur Kalan, Tehsil Nandipur, District Sehore, Madhya Pradesh",
+            "pageNumber": 1,
+            "uncertaintyReason": null
+          },
+          "khasraNumbers": {
+            "state": "PRESENT",
+            "value": "114/2, 115/1 and 116/3",
+            "excerpt": "comprises Khasra Nos. 114/2, 115/1 and 116/3.",
+            "rawText": "114/2, 115/1 and 116/3",
+            "pageNumber": 1,
+            "uncertaintyReason": null
+          },
+          "landAreaAcres": {
+            "state": "PRESENT",
+            "value": 12.4,
+            "excerpt": "combined area conveyed is 12.40 acres.",
+            "rawText": "12.40 acres",
+            "pageNumber": 1,
+            "uncertaintyReason": null
+          },
+          "buyerTransferee": {
+            "state": "PRESENT",
+            "value": "Sahyog Technical Education Trust",
+            "excerpt": "to Sahyog Technical Education Trust, as transferee.",
+            "rawText": "Sahyog Technical Education Trust",
+            "pageNumber": 1,
+            "uncertaintyReason": null
+          },
+          "registrarOffice": {
+            "state": "PRESENT",
+            "value": "Sub-Registrar, Nandipur",
+            "excerpt": "office of the Sub-Registrar, Nandipur",
+            "rawText": "Sub-Registrar, Nandipur",
+            "pageNumber": 1,
+            "uncertaintyReason": null
+          },
+          "registrationDate": {
+            "state": "PRESENT",
+            "value": "2020-11-12",
+            "excerpt": "on 12 November 2020 in the office of the Sub-Registrar, Nandipur",
+            "rawText": "12 November 2020",
+            "pageNumber": 1,
+            "uncertaintyReason": null
+          },
+          "sellerTransferor": {
+            "state": "PRESENT",
+            "value": "Raghavendra Land Holdings Private Limited",
+            "excerpt": "from Raghavendra Land Holdings Private Limited, as transferor",
+            "rawText": "Raghavendra Land Holdings Private Limited",
+            "pageNumber": 1,
+            "uncertaintyReason": null
+          },
+          "registrationNumber": {
+            "state": "PRESENT",
+            "value": "SDR/2020/4418",
+            "excerpt": "recorded as SDR/2020/4418 on 12 November 2020",
+            "rawText": "SDR/2020/4418",
+            "pageNumber": 1,
+            "uncertaintyReason": null
+          }
+        },
+        "classifiedType": "DOC_03_LAND_DEED",
+        "generalRemarks": "Synthetic registered land sale deed.",
+        "extractionStatus": "SUCCESS",
+        "classificationReasoning": "Document titled 'Registered Land Conveyance Deed' representing a sale deed registered in the office of Sub-Registrar.",
+        "classificationConfidence": "HIGH"
+      },
+      "createdAt": "2026-10-27T08:00:48.274Z"
+    },
+    {
+      "id": "cmvqebssy00030nuwmz826ft9",
+      "applicationId": "cmvqebssx00000nuw5fgvgzs1",
+      "fileName": "1793088047980-497700348.pdf",
+      "originalName": "DOC_04_LEASE_AFFIDAVIT.pdf",
+      "filePath": "C:\\Users\\adity\\OneDrive\\Desktop\\VS code\\Development\\projects\\hackathons\\parakh\\backend\\uploads\\1793088047980-497700348.pdf",
+      "fileHash": "ba5a5a633314e47b2e0106dd825e7fa8027c5f6b33ed23e1d0a4513d9eeb63ca",
+      "mimeType": "application/pdf",
+      "fileSize": 2888,
+      "documentType": "DOC_04_LEASE_AFFIDAVIT",
+      "extractionStatus": "SUCCESS",
+      "extractedData": {
+        "pageCount": 1,
+        "documentId": "cmvqebssy00030nuwmz826ft9",
+        "classifiedType": "DOC_04_LEASE_AFFIDAVIT",
+        "generalRemarks": "Synthetic affidavit indicating that land is owned under sale deed and private lease is not applicable.",
+        "extractionStatus": "SUCCESS",
+        "doc04LeaseAffidavit": {
+          "deponentName": {
+            "state": "PRESENT",
+            "value": "Dr. Meera Kulkarni",
+            "excerpt": "Declared by Dr. Meera Kulkarni, Trustee and authorised representative",
+            "rawText": "Dr. Meera Kulkarni",
+            "pageNumber": 1,
+            "uncertaintyReason": null
+          },
+          "isApplicable": {
+            "state": "PRESENT",
+            "value": false,
+            "excerpt": "Accordingly, an irrevocable lease commitment is not applicable to the stated ownership arrangement.",
+            "rawText": "an irrevocable lease commitment is not applicable to the stated ownership arrangement",
+            "pageNumber": 1,
+            "uncertaintyReason": null
+          },
+          "executionDate": {
+            "state": "PRESENT",
+            "value": "2026-09-18",
+            "excerpt": "at Bhopal on 18 September 2026.",
+            "rawText": "18 September 2026",
+            "pageNumber": 1,
+            "uncertaintyReason": null
+          },
+          "khasraNumbers": {
+            "state": "PRESENT",
+            "value": "114/2, 115/1 and 116/3",
+            "excerpt": "land identified as Khasra Nos. 114/2, 115/1 and 116/3.",
+            "rawText": "114/2, 115/1 and 116/3",
+            "pageNumber": 1,
+            "uncertaintyReason": null
+          },
+          "placeOfExecution": {
+            "state": "PRESENT",
+            "value": "Bhopal",
+            "excerpt": "Trust, at Bhopal on 18 September 2026.",
+            "rawText": "Bhopal",
+            "pageNumber": 1,
+            "uncertaintyReason": null
+          },
+          "trustSocietyName": {
+            "state": "PRESENT",
+            "value": "Sahyog Technical Education Trust",
+            "excerpt": "representative of Sahyog Technical Education Trust",
+            "rawText": "Sahyog Technical Education Trust",
+            "pageNumber": 1,
+            "uncertaintyReason": null
+          }
+        },
+        "classificationReasoning": "Document titled 'Irrevocable Lease Joint Affidavit — Affidavit 7' containing a statement on private lease applicability.",
+        "classificationConfidence": "HIGH"
+      },
+      "createdAt": "2026-10-27T08:00:48.274Z"
+    },
+    {
+      "id": "cmvqebssy00060nuwn17gnt8k",
+      "applicationId": "cmvqebssx00000nuw5fgvgzs1",
+      "fileName": "1793088047981-538070887.pdf",
+      "originalName": "DOC_07_OCCUPANCY.pdf",
+      "filePath": "C:\\Users\\adity\\OneDrive\\Desktop\\VS code\\Development\\projects\\hackathons\\parakh\\backend\\uploads\\1793088047981-538070887.pdf",
+      "fileHash": "9fee672686db38a715c60534e884e7595199aee6ad80b63560ddf8b1240dbc4e",
+      "mimeType": "application/pdf",
+      "fileSize": 2946,
+      "documentType": "DOC_07_OCCUPANCY",
+      "extractionStatus": "SUCCESS",
+      "extractedData": {
+        "pageCount": 1,
+        "documentId": "cmvqebssy00060nuwn17gnt8k",
+        "classifiedType": "DOC_07_OCCUPANCY",
+        "doc07Occupancy": {
+          "issueDate": {
+            "state": "PRESENT",
+            "value": "2023-12-15",
+            "excerpt": "issued on 15 December 2023 for the campus",
+            "rawText": "15 December 2023",
+            "pageNumber": 1,
+            "uncertaintyReason": null
+          },
+          "siteAddress": {
+            "state": "PRESENT",
+            "value": "Plot 18, Knowledge Park Road, Village Rampur Kalan, Tehsil Nandipur, District Sehore, Madhya Pradesh",
+            "excerpt": "described as Plot 18, Knowledge Park Road, Village Rampur Kalan, Tehsil Nandipur, District Sehore, Madhya Pradesh.",
+            "rawText": "Plot 18, Knowledge Park Road, Village Rampur Kalan, Tehsil Nandipur, District Sehore, Madhya Pradesh",
+            "pageNumber": 1,
+            "uncertaintyReason": null
+          },
+          "occupancyType": {
+            "state": "PRESENT",
+            "value": "permanent",
+            "excerpt": "recorded occupancy status is permanent",
+            "rawText": "permanent",
+            "pageNumber": 1,
+            "uncertaintyReason": null
+          },
+          "buildingDetails": {
+            "state": "PRESENT",
+            "value": "academic block, administration block, library and student amenities block, comprising the ground floor and two upper floors",
+            "excerpt": "covers the academic block, administration block, library and student amenities block, comprising the ground floor and two upper floors",
+            "rawText": "academic block, administration block, library and student amenities block, comprising the ground floor and two upper floors",
+            "pageNumber": 1,
+            "uncertaintyReason": null
+          },
+          "institutionName": {
+            "state": "PRESENT",
+            "value": "Sahyog Institute of Engineering and Technology",
+            "excerpt": "campus identified as Sahyog Institute of Engineering and Technology.",
+            "rawText": "Sahyog Institute of Engineering and Technology",
+            "pageNumber": 1,
+            "uncertaintyReason": null
+          },
+          "issuingAuthority": {
+            "state": "PRESENT",
+            "value": "Municipal Council of Nandipur",
+            "excerpt": "The Municipal Council of Nandipur records an occupancy and completion certificate",
+            "rawText": "Municipal Council of Nandipur",
+            "pageNumber": 1,
+            "uncertaintyReason": null
+          },
+          "certificateNumber": {
+            "state": "PRESENT",
+            "value": "OCC/SEH/2023/0314",
+            "excerpt": "under reference OCC/SEH/2023/0314 issued on 15 December 2023",
+            "rawText": "OCC/SEH/2023/0314",
+            "pageNumber": 1,
+            "uncertaintyReason": null
+          }
+        },
+        "generalRemarks": "Synthetic occupancy certificate with permanent status.",
+        "extractionStatus": "SUCCESS",
+        "classificationReasoning": "Document titled 'Occupancy and Completion Certificate' issued by Municipal Council of Nandipur.",
+        "classificationConfidence": "HIGH"
+      },
+      "createdAt": "2026-10-27T08:00:48.274Z"
+    },
+    {
+      "id": "cmvqebssy00090nuwp8ehezx0",
+      "applicationId": "cmvqebssx00000nuw5fgvgzs1",
+      "fileName": "1793088047982-678895650.pdf",
+      "originalName": "DOC_01_REGISTRATION.pdf",
+      "filePath": "C:\\Users\\adity\\OneDrive\\Desktop\\VS code\\Development\\projects\\hackathons\\parakh\\backend\\uploads\\1793088047982-678895650.pdf",
+      "fileHash": "12a6c45390072fe0be09b41b2af4ef61a90b7baa184802a92a68cee7f0069572",
+      "mimeType": "application/pdf",
+      "fileSize": 2997,
+      "documentType": "DOC_01_REGISTRATION",
+      "extractionStatus": "SUCCESS",
+      "extractedData": {
+        "pageCount": 1,
+        "documentId": "cmvqebssy00090nuwp8ehezx0",
+        "classifiedType": "DOC_01_REGISTRATION",
+        "generalRemarks": "Synthetic trust registration document.",
+        "extractionStatus": "SUCCESS",
+        "doc01Registration": {
+          "entityType": {
+            "state": "PRESENT",
+            "value": "Public Charitable Trust",
+            "excerpt": "constituted as a public charitable trust under the applicable laws",
+            "rawText": "public charitable trust",
+            "pageNumber": 1,
+            "uncertaintyReason": null
+          },
+          "registrationDate": {
+            "state": "PRESENT",
+            "value": "2014-06-18",
+            "excerpt": "registered on 18 June 2014 by the Office of the Registrar",
+            "rawText": "18 June 2014",
+            "pageNumber": 1,
+            "uncertaintyReason": null
+          },
+          "trustSocietyName": {
+            "state": "PRESENT",
+            "value": "Sahyog Technical Education Trust",
+            "excerpt": "The organisation known as Sahyog Technical Education Trust is constituted",
+            "rawText": "Sahyog Technical Education Trust",
+            "pageNumber": 1,
+            "uncertaintyReason": null
+          },
+          "registeredAddress": {
+            "state": "PRESENT",
+            "value": "24 Shanti Vihar, Bhopal, Madhya Pradesh",
+            "excerpt": "registered office is at 24 Shanti Vihar, Bhopal, Madhya Pradesh.",
+            "rawText": "24 Shanti Vihar, Bhopal, Madhya Pradesh",
+            "pageNumber": 1,
+            "uncertaintyReason": null
+          },
+          "registrationNumber": {
+            "state": "PRESENT",
+            "value": "TR/MP/2014/00871",
+            "excerpt": "trust registration is recorded as TR/MP/2014/00871",
+            "rawText": "TR/MP/2014/00871",
+            "pageNumber": 1,
+            "uncertaintyReason": null
+          },
+          "registeringAuthority": {
+            "state": "PRESENT",
+            "value": "Office of the Registrar of Public Trusts, Bhopal",
+            "excerpt": "Office of the Registrar of Public Trusts, Bhopal.",
+            "rawText": "Office of the Registrar of Public Trusts, Bhopal",
+            "pageNumber": 1,
+            "uncertaintyReason": null
+          }
+        },
+        "classificationReasoning": "Document titled 'Applicant Registration and Memorandum of Association' containing trust registration details.",
+        "classificationConfidence": "HIGH"
+      },
+      "createdAt": "2026-10-27T08:00:48.274Z"
+    },
+    {
+      "id": "cmvqebssy000a0nuw30oi85yo",
+      "applicationId": "cmvqebssx00000nuw5fgvgzs1",
+      "fileName": "1793088047982-815416657.pdf",
+      "originalName": "DOC_10_BANK_FUNDS.pdf",
+      "filePath": "C:\\Users\\adity\\OneDrive\\Desktop\\VS code\\Development\\projects\\hackathons\\parakh\\backend\\uploads\\1793088047982-815416657.pdf",
+      "fileHash": "d73f9348385bd6ab60a03d70a72397cde735220f5e5b42cdaa5216e3564a9292",
+      "mimeType": "application/pdf",
+      "fileSize": 3018,
+      "documentType": "DOC_10_BANK_FUNDS",
+      "extractionStatus": "SUCCESS",
+      "extractedData": {
+        "pageCount": 1,
+        "documentId": "cmvqebssy000a0nuw30oi85yo",
+        "classifiedType": "DOC_10_BANK_FUNDS",
+        "doc10BankFunds": {
+          "bankName": {
+            "state": "PRESENT",
+            "value": "Narmada Cooperative Bank",
+            "excerpt": "Narmada Cooperative Bank, Sehore Institutional Branch",
+            "rawText": "Narmada Cooperative Bank",
+            "pageNumber": 1,
+            "uncertaintyReason": null
+          },
+          "ifscCode": {
+            "state": "PRESENT",
+            "value": "NCBK0000417",
+            "excerpt": "The branch IFSC is NCBK0000417.",
+            "rawText": "NCBK0000417",
+            "pageNumber": 1,
+            "uncertaintyReason": null
+          },
+          "fdrNumber": {
+            "state": "PRESENT",
+            "value": "FDR-771204-09",
+            "excerpt": "fixed deposit receipt FDR-771204-09",
+            "rawText": "FDR-771204-09",
+            "pageNumber": 1,
+            "uncertaintyReason": null
+          },
+          "branchName": {
+            "state": "PRESENT",
+            "value": "Sehore Institutional Branch",
+            "excerpt": "Narmada Cooperative Bank, Sehore Institutional Branch",
+            "rawText": "Sehore Institutional Branch",
+            "pageNumber": 1,
+            "uncertaintyReason": null
+          },
+          "amountInInr": {
+            "state": "PRESENT",
+            "value": 12500000,
+            "excerpt": "principal amount of the fixed deposit is ■125,00,000 (Rupees One Crore Twenty-Five Lakh only)",
+            "rawText": "125,00,000",
+            "pageNumber": 1,
+            "uncertaintyReason": null
+          },
+          "maturityDate": {
+            "state": "PRESENT",
+            "value": "2027-09-18",
+            "excerpt": "stated to mature on 18 September 2027.",
+            "rawText": "18 September 2027",
+            "pageNumber": 1,
+            "uncertaintyReason": null
+          },
+          "isUnencumbered": {
+            "state": "PRESENT",
+            "value": true,
+            "excerpt": "states that the deposit is unencumbered and is not pledged, assigned, or subject to a lien for any borrowing.",
+            "rawText": "deposit is unencumbered and is not pledged, assigned, or subject to a lien for any borrowing",
+            "pageNumber": 1,
+            "uncertaintyReason": null
+          },
+          "certificateDate": {
+            "state": "PRESENT",
+            "value": "2026-09-18",
+            "excerpt": "As of 18 September 2026",
+            "rawText": "18 September 2026",
+            "pageNumber": 1,
+            "uncertaintyReason": null
+          },
+          "accountHolderName": {
+            "state": "PRESENT",
+            "value": "Sahyog Technical Education Trust",
+            "excerpt": "identifies the account holder as Sahyog Technical Education Trust.",
+            "rawText": "Sahyog Technical Education Trust",
+            "pageNumber": 1,
+            "uncertaintyReason": null
+          }
+        },
+        "generalRemarks": "Synthetic bank certificate of funds.",
+        "extractionStatus": "SUCCESS",
+        "classificationReasoning": "Document titled 'Bank Certificate of Funds — Certificate 3' detailing fixed deposit details for AICTE application.",
+        "classificationConfidence": "HIGH"
+      },
+      "createdAt": "2026-10-27T08:00:48.274Z"
+    },
+    {
+      "id": "cmvqebssy000b0nuwi7nrrw6o",
+      "applicationId": "cmvqebssx00000nuw5fgvgzs1",
+      "fileName": "1793088047983-924070545.pdf",
+      "originalName": "DOC_11_AFFIDAVIT_2.pdf",
+      "filePath": "C:\\Users\\adity\\OneDrive\\Desktop\\VS code\\Development\\projects\\hackathons\\parakh\\backend\\uploads\\1793088047983-924070545.pdf",
+      "fileHash": "7483c64e5c08153a8eac35c1a96354ab3a0bb80bbdb2db3c53cb15c7cbf6e2a5",
+      "mimeType": "application/pdf",
+      "fileSize": 2901,
+      "documentType": "DOC_11_AFFIDAVIT_2",
+      "extractionStatus": "SUCCESS",
+      "extractedData": {
+        "pageCount": 1,
+        "documentId": "cmvqebssy000b0nuwi7nrrw6o",
+        "classifiedType": "DOC_11_AFFIDAVIT_2",
+        "generalRemarks": "Synthetic Affidavit 2 document.",
+        "doc11Affidavit2": {
+          "deponentName": {
+            "state": "PRESENT",
+            "value": "Dr. Meera Kulkarni",
+            "excerpt": "I, Dr. Meera Kulkarni, acting as Trustee and authorised representative",
+            "rawText": "Dr. Meera Kulkarni",
+            "pageNumber": 1,
+            "uncertaintyReason": null
+          },
+          "executionDate": {
+            "state": "PRESENT",
+            "value": "2026-09-18",
+            "excerpt": "records an execution date of 18 September 2026 at Bhopal",
+            "rawText": "18 September 2026",
+            "pageNumber": 1,
+            "uncertaintyReason": null
+          },
+          "placeOfExecution": {
+            "state": "PRESENT",
+            "value": "Bhopal, Madhya Pradesh",
+            "excerpt": "18 September 2026 at Bhopal, Madhya Pradesh.",
+            "rawText": "Bhopal, Madhya Pradesh",
+            "pageNumber": 1,
+            "uncertaintyReason": null
+          },
+          "trustSocietyName": {
+            "state": "PRESENT",
+            "value": "Sahyog Technical Education Trust",
+            "excerpt": "authorised representative of Sahyog Technical Education Trust",
+            "rawText": "Sahyog Technical Education Trust",
+            "pageNumber": 1,
+            "uncertaintyReason": null
+          },
+          "proposedInstitutionName": {
+            "state": "PRESENT",
+            "value": "Sahyog Institute of Engineering and Technology",
+            "excerpt": "proposed application of Sahyog Institute of Engineering and Technology.",
+            "rawText": "Sahyog Institute of Engineering and Technology",
+            "pageNumber": 1,
+            "uncertaintyReason": null
+          }
+        },
+        "extractionStatus": "SUCCESS",
+        "classificationReasoning": "Document titled 'Affidavit 2 — General AICTE Undertaking' submitted as standard applicant undertaking.",
+        "classificationConfidence": "HIGH"
+      },
+      "createdAt": "2026-10-27T08:00:48.274Z"
+    },
+    {
+      "id": "cmvqebssy000c0nuwi1bce31i",
+      "applicationId": "cmvqebssx00000nuw5fgvgzs1",
+      "fileName": "1793088047983-604084450.pdf",
+      "originalName": "DOC_14_SITE_MAP.pdf",
+      "filePath": "C:\\Users\\adity\\OneDrive\\Desktop\\VS code\\Development\\projects\\hackathons\\parakh\\backend\\uploads\\1793088047983-604084450.pdf",
+      "fileHash": "1b5b41544a5e82a21e55ac6f6e152c2b871cb0bb660a77db7672f83381ab2a04",
+      "mimeType": "application/pdf",
+      "fileSize": 2956,
+      "documentType": "DOC_14_SITE_MAP",
+      "extractionStatus": "SUCCESS",
+      "extractedData": {
+        "pageCount": 1,
+        "documentId": "cmvqebssy000c0nuwi1bce31i",
+        "doc14SiteMap": {
+          "latitude": {
+            "state": "PRESENT",
+            "value": 23.2031,
+            "excerpt": "centre point shown for test purposes is latitude 23.2031",
+            "rawText": "23.2031",
+            "pageNumber": 1,
+            "uncertaintyReason": null
+          },
+          "longitude": {
+            "state": "PRESENT",
+            "value": 77.0846,
+            "excerpt": "longitude 77.0846.",
+            "rawText": "77.0846",
+            "pageNumber": 1,
+            "uncertaintyReason": null
+          },
+          "siteAddress": {
+            "state": "PRESENT",
+            "value": "Plot 18, Knowledge Park Road, Village Rampur Kalan, Tehsil Nandipur, District Sehore, Madhya Pradesh",
+            "excerpt": "at Plot 18, Knowledge Park Road, Village Rampur Kalan, Tehsil Nandipur, District Sehore, Madhya Pradesh.",
+            "rawText": "Plot 18, Knowledge Park Road, Village Rampur Kalan, Tehsil Nandipur, District Sehore, Madhya Pradesh",
+            "pageNumber": 1,
+            "uncertaintyReason": null
+          },
+          "khasraNumbers": {
+            "state": "PRESENT",
+            "value": "114/2, 115/1 and 116/3",
+            "excerpt": "associates the campus parcel with Khasra Nos. 114/2, 115/1 and 116/3.",
+            "rawText": "114/2, 115/1 and 116/3",
+            "pageNumber": 1,
+            "uncertaintyReason": null
+          },
+          "proposedInstitutionName": {
+            "state": "PRESENT",
+            "value": "Sahyog Institute of Engineering and Technology",
+            "excerpt": "proposed campus of Sahyog Institute of Engineering and Technology",
+            "rawText": "Sahyog Institute of Engineering and Technology",
+            "pageNumber": 1,
+            "uncertaintyReason": null
+          }
+        },
+        "classifiedType": "DOC_14_SITE_MAP",
+        "generalRemarks": "Synthetic site map description with latitude and longitude coordinates.",
+        "extractionStatus": "SUCCESS",
+        "classificationReasoning": "Document titled 'Satellite and Geo-Tagged Site Map Description' containing GPS coordinates and boundary plot description.",
+        "classificationConfidence": "HIGH"
+      },
+      "createdAt": "2026-10-27T08:00:48.274Z"
+    }
+  ],
+  "scrutinyReports": [
+    {
+      "id": "cmvqeej8e000e0nuwr03tbuh1",
+      "applicationId": "cmvqebssx00000nuw5fgvgzs1",
+      "evaluationDate": "2026-10-27T08:02:55.377Z",
+      "overallStatus": "DEFICIENCIES_DETECTED",
+      "totalRulesRun": 16,
+      "passedCount": 7,
+      "deficiencyCount": 1,
+      "reviewCount": 6,
+      "missingCount": 2,
+      "findings": [
+        {
+          "ruleId": "RULE_NAME_PROHIBITED_WORDS",
+          "details": "Screened name \"Sahyog Institute of Engineering and Technology\" against statutory AICTE restricted vocabulary. No prohibited terms found.",
+          "outcome": "PASS",
+          "summary": "Proposed institution name contains no prohibited words or protected acronyms.",
+          "evidence": [
+            {
+              "excerpt": "Proposed name: \"Sahyog Institute of Engineering and Technology\"",
+              "rawText": "Sahyog Institute of Engineering and Technology",
+              "fieldName": "institutionName",
+              "documentId": "cmvqebssx00000nuw5fgvgzs1",
+              "pageNumber": null,
+              "documentType": "APPLICATION_METADATA",
+              "extractedValue": "Sahyog Institute of Engineering and Technology"
+            }
+          ],
+          "ruleName": "Screening of Proposed Institution Name",
+          "severity": "ADVISORY",
+          "aphClause": "Chapter I, Clause 1.5.4 (PDF p. 5)"
+        },
+        {
+          "ruleId": "RULE_FUNDS_LIQUID_THRESHOLD",
+          "details": "Amount in Lakhs was illegible or ambiguous in the submitted bank certificate.",
+          "outcome": "EXTRACTION_UNCERTAIN",
+          "summary": "Deposit/balance amount could not be clearly extracted from Bank Certificate.",
+          "evidence": [
+            {
+              "excerpt": null,
+              "rawText": null,
+              "fieldName": "amountInLakhsINR",
+              "documentId": "cmvqebssy000a0nuw30oi85yo",
+              "pageNumber": null,
+              "documentType": "DOC_10_BANK_FUNDS",
+              "extractedValue": null
+            }
+          ],
+          "ruleName": "Minimum Liquid Operational Funds",
+          "severity": "HIGH",
+          "aphClause": "Chapter I, Clause 1.5.3 & Table 1.2 (PDF pp. 5, 77-78)",
+          "remediationNote": "Ensure the bank certificate clearly states the numeric balance/FDR amount."
+        },
+        {
+          "ruleId": "RULE_LAND_DEED_TENURE",
+          "details": "Could not classify whether document is a sale deed, gift deed, government lease, or private lease.",
+          "outcome": "EXTRACTION_UNCERTAIN",
+          "summary": "Deed type could not be determined from the land document.",
+          "evidence": [
+            {
+              "excerpt": null,
+              "rawText": null,
+              "fieldName": "deedType",
+              "documentId": "cmvqebssy00020nuw3v6v0bd0",
+              "pageNumber": null,
+              "documentType": "DOC_03_LAND_DEED",
+              "extractedValue": null
+            }
+          ],
+          "ruleName": "Land Ownership / Lease Tenure & Remaining Period",
+          "severity": "HIGH",
+          "aphClause": "Clause 1.5.1(a); Clause 6.17(a, b); Annexure 1.1 (PDF pp. 4, 56, 77)"
+        },
+        {
+          "ruleId": "RULE_LEASE_JOINT_AFFIDAVIT",
+          "details": "Irrevocable Lease Joint Affidavit is conditional and only mandated for private lease arrangements.",
+          "outcome": "NOT_APPLICABLE",
+          "summary": "Affidavit 7 is not applicable (site is not held under a private lease).",
+          "evidence": [],
+          "ruleName": "Irrevocable Lease Joint Affidavit (Affidavit 7)",
+          "severity": "ADVISORY",
+          "aphClause": "Annexure 1.1 (PDF p. 78)"
+        },
+        {
+          "ruleId": "RULE_LAND_USE_EDUCATIONAL",
+          "details": "Stated permitted land use: \"Unclear\". Educational permission could not be deterministically confirmed.",
+          "outcome": "MANUAL_REVIEW_REQUIRED",
+          "summary": "Land use permitted classification requires manual officer review.",
+          "evidence": [
+            {
+              "excerpt": null,
+              "rawText": null,
+              "fieldName": "permittedLandUse",
+              "documentId": "cmvqebssy00040nuw8n92ug3v",
+              "pageNumber": null,
+              "documentType": "DOC_05_LAND_USE",
+              "extractedValue": null
+            },
+            {
+              "excerpt": null,
+              "rawText": null,
+              "fieldName": "isEducationalUseExplicitlyAllowed",
+              "documentId": "cmvqebssy00040nuw8n92ug3v",
+              "pageNumber": null,
+              "documentType": "DOC_05_LAND_USE",
+              "extractedValue": null
+            }
+          ],
+          "ruleName": "Land Use Certificate Permitted Purpose",
+          "severity": "MEDIUM",
+          "aphClause": "Clause 6.17(e); Annexure 1.1 (PDF pp. 56, 78)"
+        },
+        {
+          "ruleId": "RULE_LAND_PARCELS_ARRANGEMENT",
+          "details": "Could not enumerate exact parcel count automatically from extracted land records.",
+          "outcome": "MANUAL_REVIEW_REQUIRED",
+          "summary": "Survey / plot identifiers require manual verification.",
+          "evidence": [],
+          "ruleName": "Land Parcels Arrangement (Max 3 Plots)",
+          "severity": "MEDIUM",
+          "aphClause": "Clause 6.17(d); Annexure 3.1(g, h) (PDF pp. 56, 86)"
+        },
+        {
+          "ruleId": "RULE_OCCUPANCY_STATUS",
+          "details": "Extracted status: \"Unknown\". Manual officer inspection required.",
+          "outcome": "MANUAL_REVIEW_REQUIRED",
+          "summary": "Occupancy status unclear from certificate text.",
+          "evidence": [
+            {
+              "excerpt": null,
+              "rawText": null,
+              "fieldName": "occupancyStatus",
+              "documentId": "cmvqebssy00060nuwn17gnt8k",
+              "pageNumber": null,
+              "documentType": "DOC_07_OCCUPANCY",
+              "extractedValue": null
+            }
+          ],
+          "ruleName": "Building Occupancy / Completion Evidence",
+          "severity": "MEDIUM",
+          "aphClause": "Clause 6.17(g); Annexure 1.1(iv) (PDF pp. 56, 77)"
+        },
+        {
+          "ruleId": "RULE_STRUCTURAL_STABILITY",
+          "details": "APH Clause 6.17(h) mandates structural stability certification specifically for structures exceeding 30 years.",
+          "outcome": "NOT_APPLICABLE",
+          "summary": "Structural stability certificate not required (building age is 8 years, $\\le 30$ years).",
+          "evidence": [
+            {
+              "excerpt": "reported to be approximately 8 years old at the time of inspection.",
+              "rawText": "8 years old",
+              "fieldName": "buildingAgeYears",
+              "documentId": "cmvqebssy00070nuwzb0agwe6",
+              "pageNumber": 1,
+              "documentType": "DOC_08_STRUCTURAL_STABILITY",
+              "extractedValue": 8
+            }
+          ],
+          "ruleName": "Structural Stability (Buildings > 30 Years Old)",
+          "severity": "ADVISORY",
+          "aphClause": "Clause 6.17(h); Annexure 3.1(e) (PDF pp. 56, 86)"
+        },
+        {
+          "ruleId": "RULE_FIRE_SAFETY_VALIDITY",
+          "details": "Issued by Office of the Chief Municipal Fire Officer, Sehore. Covers campus buildings.",
+          "outcome": "PASS",
+          "summary": "Fire Safety Certificate is valid and active (expires 2027-02-01).",
+          "evidence": [
+            {
+              "excerpt": "dated 2 February 2026.",
+              "rawText": "2 February 2026",
+              "fieldName": "issueDate",
+              "documentId": "cmvqebssy00080nuwr8pbbju8",
+              "pageNumber": 1,
+              "documentType": "DOC_09_FIRE_SAFETY",
+              "extractedValue": "2026-02-02"
+            },
+            {
+              "excerpt": "certificate is valid through 1 February 2027",
+              "rawText": "1 February 2027",
+              "fieldName": "expiryDate",
+              "documentId": "cmvqebssy00080nuwr8pbbju8",
+              "pageNumber": 1,
+              "documentType": "DOC_09_FIRE_SAFETY",
+              "extractedValue": "2027-02-01"
+            }
+          ],
+          "ruleName": "Fire Safety Certificate Validity",
+          "severity": "ADVISORY",
+          "aphClause": "Clause 6.17(i); Annexure 1.1(v) (PDF pp. 56, 77)"
+        },
+        {
+          "ruleId": "RULE_INFRASTRUCTURE_ADMIN_AMENITIES",
+          "details": "Could not locate the instructional, administrative, and amenities area schedule.",
+          "outcome": "EXTRACTION_UNCERTAIN",
+          "summary": "Carpet area breakdown schedule could not be extracted from building plan.",
+          "evidence": [
+            {
+              "excerpt": null,
+              "rawText": null,
+              "fieldName": "carpetAreaSummary",
+              "documentId": "cmvqebssy00050nuwf1agz9px",
+              "pageNumber": null,
+              "documentType": "DOC_06_BUILDING_PLAN",
+              "extractedValue": null
+            }
+          ],
+          "ruleName": "Minimum Administrative & Amenities Built-Up Areas",
+          "severity": "HIGH",
+          "aphClause": "Clause 1.5.1(c); Clause 6.17–6.18; Annexure 3.2, 3.3, 3.4 (PDF pp. 4, 56–57, 87–91)"
+        },
+        {
+          "ruleId": "RULE_APPLICANT_RESOLUTION_COMMITMENT",
+          "details": "Establishment decision stated: undefined; Resource commitment stated: undefined.",
+          "outcome": "FAIL_DEFICIENCY",
+          "summary": "Resolution missing statutory commitment to establish institution or allocate required funds/land.",
+          "evidence": [
+            {
+              "excerpt": null,
+              "rawText": null,
+              "fieldName": "hasEstablishmentDecision",
+              "documentId": "cmvqebssy00010nuwil4dzfnt",
+              "pageNumber": null,
+              "documentType": "DOC_02_RESOLUTION",
+              "extractedValue": null
+            },
+            {
+              "excerpt": null,
+              "rawText": null,
+              "fieldName": "hasResourceCommitment",
+              "documentId": "cmvqebssy00010nuwil4dzfnt",
+              "pageNumber": null,
+              "documentType": "DOC_02_RESOLUTION",
+              "extractedValue": null
+            }
+          ],
+          "ruleName": "Applicant Organisation Resolution (Format 3)",
+          "severity": "HIGH",
+          "aphClause": "Annexure 1.1(iii) (PDF p. 77)",
+          "remediationNote": "Adopt a formal resolution incorporating full AICTE Format 3 commitment clauses."
+        },
+        {
+          "ruleId": "RULE_NON_PROFIT_GOVERNANCE",
+          "details": "Sponsoring body is a registered Public Charitable Trust with non-profit educational objectives.",
+          "outcome": "PASS",
+          "summary": "Eligible non-profit governance verified (Public Charitable Trust).",
+          "evidence": [
+            {
+              "excerpt": "constituted as a public charitable trust under the applicable laws",
+              "rawText": "public charitable trust",
+              "fieldName": "entityType",
+              "documentId": "cmvqebssy00090nuwp8ehezx0",
+              "pageNumber": 1,
+              "documentType": "DOC_01_REGISTRATION",
+              "extractedValue": "Public Charitable Trust"
+            },
+            {
+              "excerpt": null,
+              "rawText": null,
+              "fieldName": "hasNonProfitClause",
+              "documentId": "cmvqebssy00090nuwp8ehezx0",
+              "pageNumber": null,
+              "documentType": "DOC_01_REGISTRATION",
+              "extractedValue": null
+            }
+          ],
+          "ruleName": "Non-Profit Constitution of Sponsoring Body",
+          "severity": "ADVISORY",
+          "aphClause": "Clause 1.3.4; Annexure 1.1(viii, x) (PDF pp. 2, 77)"
+        },
+        {
+          "ruleId": "RULE_GENERAL_AICTE_UNDERTAKING",
+          "details": "General statutory undertaking is on record.",
+          "outcome": "PASS",
+          "summary": "Affidavit 2 verified (executed by Dr. Meera Kulkarni on 2026-09-18).",
+          "evidence": [
+            {
+              "excerpt": "I, Dr. Meera Kulkarni, acting as Trustee and authorised representative",
+              "rawText": "Dr. Meera Kulkarni",
+              "fieldName": "deponentName",
+              "documentId": "cmvqebssy000b0nuwi7nrrw6o",
+              "pageNumber": 1,
+              "documentType": "DOC_11_AFFIDAVIT_2",
+              "extractedValue": "Dr. Meera Kulkarni"
+            },
+            {
+              "excerpt": "records an execution date of 18 September 2026 at Bhopal",
+              "rawText": "18 September 2026",
+              "fieldName": "executionDate",
+              "documentId": "cmvqebssy000b0nuwi7nrrw6o",
+              "pageNumber": 1,
+              "documentType": "DOC_11_AFFIDAVIT_2",
+              "extractedValue": "2026-09-18"
+            }
+          ],
+          "ruleName": "General AICTE Undertaking (Affidavit 2)",
+          "severity": "ADVISORY",
+          "aphClause": "Clause 1.4.4; Annexure 1.1 (PDF p. 4)"
+        },
+        {
+          "ruleId": "RULE_CROSS_SPONSORING_BODY_NAME",
+          "details": "Cannot run cross-document entity alignment without registered applicant name from DOC-01.",
+          "outcome": "EVIDENCE_MISSING",
+          "summary": "Primary registered applicant name missing from DOC-01.",
+          "evidence": [],
+          "ruleName": "Sponsoring Body Name Consistency Across Documents",
+          "severity": "HIGH",
+          "aphClause": "Section 6 (Cross-Document Consistency, PDF p. 6)"
+        },
+        {
+          "ruleId": "RULE_CROSS_CAMPUS_ADDRESS",
+          "details": "Requires at least two documents containing location or survey details to compare.",
+          "outcome": "EVIDENCE_MISSING",
+          "summary": "Insufficient address evidence extracted to verify cross-document site alignment.",
+          "evidence": [],
+          "ruleName": "Campus Site Location & Address Alignment",
+          "severity": "MEDIUM",
+          "aphClause": "Section 6 (Cross-Document Consistency, PDF p. 6)"
+        },
+        {
+          "ruleId": "RULE_INTEGRITY_DUPLICATE_FILES",
+          "details": "No duplicate document payload collisions detected.",
+          "outcome": "PASS",
+          "summary": "All uploaded document files possess distinct binary hashes.",
+          "evidence": [
+            {
+              "excerpt": "File: DOC_05_LAND_USE.pdf",
+              "rawText": "2ccbc9c0ebd28a073be97ab7299847c5996c4935972e51cba98f6760aec3c664",
+              "fieldName": "fileHash",
+              "documentId": "cmvqebssy00040nuw8n92ug3v",
+              "pageNumber": null,
+              "documentType": "DOC_05_LAND_USE",
+              "extractedValue": "2ccbc9c0ebd28a073be97ab7299847c5996c4935972e51cba98f6760aec3c664"
+            },
+            {
+              "excerpt": "File: DOC_06_BUILDING_PLAN.pdf",
+              "rawText": "d3764ea30958ba269712152b67bfdbc35b3e39923ef7c7a54f78e178cc7c4c75",
+              "fieldName": "fileHash",
+              "documentId": "cmvqebssy00050nuwf1agz9px",
+              "pageNumber": null,
+              "documentType": "DOC_06_BUILDING_PLAN",
+              "extractedValue": "d3764ea30958ba269712152b67bfdbc35b3e39923ef7c7a54f78e178cc7c4c75"
+            },
+            {
+              "excerpt": "File: DOC_08_STRUCTURAL_STABILITY.pdf",
+              "rawText": "b4af59fc36331bb2147ff3f65cbeedda2f4a46d929be5d04c4b945c95771db3b",
+              "fieldName": "fileHash",
+              "documentId": "cmvqebssy00070nuwzb0agwe6",
+              "pageNumber": null,
+              "documentType": "DOC_08_STRUCTURAL_STABILITY",
+              "extractedValue": "b4af59fc36331bb2147ff3f65cbeedda2f4a46d929be5d04c4b945c95771db3b"
+            },
+            {
+              "excerpt": "File: DOC_09_FIRE_SAFETY.pdf",
+              "rawText": "d6b7c03357d53662ee41639fd8278b45f54a1e8bf90eefc4535e2b193b168a2b",
+              "fieldName": "fileHash",
+              "documentId": "cmvqebssy00080nuwr8pbbju8",
+              "pageNumber": null,
+              "documentType": "DOC_09_FIRE_SAFETY",
+              "extractedValue": "d6b7c03357d53662ee41639fd8278b45f54a1e8bf90eefc4535e2b193b168a2b"
+            },
+            {
+              "excerpt": "File: DOC_02_RESOLUTION.pdf",
+              "rawText": "84b23eda6e6cffcc0baebd78fdb72b761b7294339cf63dfd0f06ceba61ae18e0",
+              "fieldName": "fileHash",
+              "documentId": "cmvqebssy00010nuwil4dzfnt",
+              "pageNumber": null,
+              "documentType": "DOC_02_RESOLUTION",
+              "extractedValue": "84b23eda6e6cffcc0baebd78fdb72b761b7294339cf63dfd0f06ceba61ae18e0"
+            },
+            {
+              "excerpt": "File: DOC_03_LAND_DEED.pdf",
+              "rawText": "651dabe07b24b15bc6c2e41047ec22fafc3fbd895322059d34de63893137347f",
+              "fieldName": "fileHash",
+              "documentId": "cmvqebssy00020nuw3v6v0bd0",
+              "pageNumber": null,
+              "documentType": "DOC_03_LAND_DEED",
+              "extractedValue": "651dabe07b24b15bc6c2e41047ec22fafc3fbd895322059d34de63893137347f"
+            },
+            {
+              "excerpt": "File: DOC_04_LEASE_AFFIDAVIT.pdf",
+              "rawText": "ba5a5a633314e47b2e0106dd825e7fa8027c5f6b33ed23e1d0a4513d9eeb63ca",
+              "fieldName": "fileHash",
+              "documentId": "cmvqebssy00030nuwmz826ft9",
+              "pageNumber": null,
+              "documentType": "DOC_04_LEASE_AFFIDAVIT",
+              "extractedValue": "ba5a5a633314e47b2e0106dd825e7fa8027c5f6b33ed23e1d0a4513d9eeb63ca"
+            },
+            {
+              "excerpt": "File: DOC_07_OCCUPANCY.pdf",
+              "rawText": "9fee672686db38a715c60534e884e7595199aee6ad80b63560ddf8b1240dbc4e",
+              "fieldName": "fileHash",
+              "documentId": "cmvqebssy00060nuwn17gnt8k",
+              "pageNumber": null,
+              "documentType": "DOC_07_OCCUPANCY",
+              "extractedValue": "9fee672686db38a715c60534e884e7595199aee6ad80b63560ddf8b1240dbc4e"
+            },
+            {
+              "excerpt": "File: DOC_01_REGISTRATION.pdf",
+              "rawText": "12a6c45390072fe0be09b41b2af4ef61a90b7baa184802a92a68cee7f0069572",
+              "fieldName": "fileHash",
+              "documentId": "cmvqebssy00090nuwp8ehezx0",
+              "pageNumber": null,
+              "documentType": "DOC_01_REGISTRATION",
+              "extractedValue": "12a6c45390072fe0be09b41b2af4ef61a90b7baa184802a92a68cee7f0069572"
+            },
+            {
+              "excerpt": "File: DOC_10_BANK_FUNDS.pdf",
+              "rawText": "d73f9348385bd6ab60a03d70a72397cde735220f5e5b42cdaa5216e3564a9292",
+              "fieldName": "fileHash",
+              "documentId": "cmvqebssy000a0nuw30oi85yo",
+              "pageNumber": null,
+              "documentType": "DOC_10_BANK_FUNDS",
+              "extractedValue": "d73f9348385bd6ab60a03d70a72397cde735220f5e5b42cdaa5216e3564a9292"
+            },
+            {
+              "excerpt": "File: DOC_11_AFFIDAVIT_2.pdf",
+              "rawText": "7483c64e5c08153a8eac35c1a96354ab3a0bb80bbdb2db3c53cb15c7cbf6e2a5",
+              "fieldName": "fileHash",
+              "documentId": "cmvqebssy000b0nuwi7nrrw6o",
+              "pageNumber": null,
+              "documentType": "DOC_11_AFFIDAVIT_2",
+              "extractedValue": "7483c64e5c08153a8eac35c1a96354ab3a0bb80bbdb2db3c53cb15c7cbf6e2a5"
+            },
+            {
+              "excerpt": "File: DOC_14_SITE_MAP.pdf",
+              "rawText": "1b5b41544a5e82a21e55ac6f6e152c2b871cb0bb660a77db7672f83381ab2a04",
+              "fieldName": "fileHash",
+              "documentId": "cmvqebssy000c0nuwi1bce31i",
+              "pageNumber": null,
+              "documentType": "DOC_14_SITE_MAP",
+              "extractedValue": "1b5b41544a5e82a21e55ac6f6e152c2b871cb0bb660a77db7672f83381ab2a04"
+            }
+          ],
+          "ruleName": "Payload Hash Collision & Duplicate Document Slots",
+          "severity": "ADVISORY",
+          "aphClause": "Section 6 (Cross-Document Consistency & Integrity, PDF p. 6)"
+        }
+      ],
+      "createdAt": "2026-10-27T08:02:55.838Z"
+    }
+  ]
+}

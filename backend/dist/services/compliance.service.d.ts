@@ -29,11 +29,29 @@ export interface ScrutinyEvaluationResult {
     missingCount: number;
     findings: RuleFinding[];
 }
+export interface ApplicationScrutinyContext {
+    id?: string;
+    institutionName: string;
+    programCategory?: string | null;
+    proposedIntake?: number | null;
+}
+export interface DocumentScrutinyInput {
+    id: string;
+    documentType: string;
+    originalName?: string;
+    filePath?: string;
+    fileHash?: string | null;
+    extractedData: any;
+}
 export declare class ComplianceService {
     /**
-     * Evaluates deterministic APH compliance rules for an application.
+     * Evaluates deterministic APH compliance rules for an application stored in database.
      */
     evaluateApplication(applicationId: string, customEvaluationDate?: Date): Promise<ScrutinyEvaluationResult>;
+    /**
+     * Core scrutiny engine: pure evaluation over application context and document extractions.
+     */
+    evaluateDocuments(application: ApplicationScrutinyContext, docs: DocumentScrutinyInput[], customEvaluationDate?: Date, persistFileHash?: boolean): Promise<ScrutinyEvaluationResult>;
 }
 export declare const complianceService: ComplianceService;
 //# sourceMappingURL=compliance.service.d.ts.map
