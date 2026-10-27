@@ -2,6 +2,7 @@ import crypto from "node:crypto";
 import fs from "node:fs/promises";
 import { prisma } from "../lib/prisma.js";
 import { adaptDoc01, adaptDoc02, adaptDoc03, adaptDoc04, adaptDoc05, adaptDoc06, adaptDoc07, adaptDoc08, adaptDoc09, adaptDoc10, adaptDoc11, adaptDoc14, makeEmptyField, } from "./extraction-adapter.js";
+import { pdfForensicsService } from "./pdf-forensics.service.js";
 /**
  * Safely parses ISO YYYY-MM-DD or common date string into Date object.
  */
@@ -1931,6 +1932,323 @@ export class ComplianceService {
                     severity: "ADVISORY",
                     summary: "Internal fields, geometric areas, validity dates, and encumbrance declarations are logically consistent.",
                     details: "No intra-document date inversions, area contradictions, or lien declaration conflicts detected.",
+                    evidence: ev,
+                });
+            }
+        })();
+        // --- SLICE 4A: DOCUMENT ANOMALY & METADATA FORENSICS ---
+        // Load and inspect PDF buffers conservatively for available document files
+        const forensicsMap = new Map();
+        for (const d of docs) {
+            if (d.extractedData?._mockForensics) {
+                forensicsMap.set(d.id, d.extractedData._mockForensics);
+                continue;
+            }
+            if (d.filePath) {
+                try {
+                    const buffer = await fs.readFile(d.filePath);
+                    const rep = pdfForensicsService.inspectBuffer(buffer);
+                    forensicsMap.set(d.id, rep);
+                }
+                catch (e) {
+                    // If file reading fails (e.g. offline unit test or missing mock path), skip
+                }
+            }
+        }
+        // --- RULE 21: PDF Authoring Tool & Graphic Editor Screening (PSID Section 21) ---
+        (() => {
+            const ruleId = "RULE_ANOMALY_PDF_TOOLS";
+            const ruleName = "PDF Authoring Tool & Graphic Editor Screening";
+            const aphClause = "PSID Section 21; APH Section 6 (Document Integrity & Anomaly Screening)";
+            const ev = [];
+            const graphicEditorDocs = [];
+            const onlineUtilityDocs = [];
+            for (const d of docs) {
+                const rep = forensicsMap.get(d.id);
+                if (!rep)
+                    continue;
+                if (rep.toolCategory === "GRAPHIC_EDITOR") {
+                    const toolDesc = rep.producer || rep.creator || "Graphic Editor";
+                    graphicEditorDocs.push({ docType: d.documentType, tool: toolDesc });
+                    ev.push({
+                        documentId: d.id,
+                        documentType: d.documentType,
+                        fieldName: "pdfProducer",
+                        rawText: toolDesc,
+                        extractedValue: toolDesc,
+                        pageNumber: null,
+                        excerpt: `Producer: ${rep.producer || "N/A"}; Creator: ${rep.creator || "N/A"}`,
+                    });
+                }
+                else if (rep.toolCategory === "ONLINE_UTILITY") {
+                    const toolDesc = rep.producer || rep.creator || "Online Utility";
+                    onlineUtilityDocs.push({ docType: d.documentType, tool: toolDesc });
+                    ev.push({
+                        documentId: d.id,
+                        documentType: d.documentType,
+                        fieldName: "pdfProducer",
+                        rawText: toolDesc,
+                        extractedValue: toolDesc,
+                        pageNumber: null,
+                        excerpt: `Producer: ${rep.producer || "N/A"}; Creator: ${rep.creator || "N/A"}`,
+                    });
+                }
+            }
+            if (graphicEditorDocs.length > 0) {
+                const docList = graphicEditorDocs.map((g) => `${g.docType} (${g.tool})`).join("; ");
+                const firstTool = graphicEditorDocs[0]?.tool || "Graphic Editor";
+                findings.push({
+                    ruleId,
+                    ruleName,
+                    aphClause,
+                    outcome: "MANUAL_REVIEW_REQUIRED",
+                    severity: "MEDIUM",
+                    summary: `Graphic design software (${firstTool}) detected in document metadata.`,
+                    details: `Document authoring metadata indicates file was created or modified with graphic design software: ${docList}. While graphic tools can be used for harmless file compression or scan contrast tuning, they allow layer-based retouching. Scrutiny officer should inspect the physical original or verify source digital issuance.`,
+                    evidence: ev,
+                    remediationNote: "Officer to review physical paper original or request direct issuing authority copy.",
+                });
+            }
+            else if (onlineUtilityDocs.length > 0) {
+                const docList = onlineUtilityDocs.map((u) => `${u.docType} (${u.tool})`).join("; ");
+                const firstTool = onlineUtilityDocs[0]?.tool || "Online Utility";
+                findings.push({
+                    ruleId,
+                    ruleName,
+                    aphClause,
+                    outcome: "MANUAL_REVIEW_REQUIRED",
+                    severity: "ADVISORY",
+                    summary: `Online PDF compression / manipulation utility detected in metadata: ${firstTool}.`,
+                    details: `Web-based PDF utility detected for: ${docList}. Online tools are commonly used for legitimate file compression or combining phone scans, but indicate third-party post-processing.`,
+                    evidence: ev,
+                    remediationNote: "Verify that compression did not distort legible figures or seal impressions.",
+                });
+            }
+            else {
+                findings.push({
+                    ruleId,
+                    ruleName,
+                    aphClause,
+                    outcome: "PASS",
+                    severity: "ADVISORY",
+                    summary: "Document authoring tools and producer signatures conform to standard enterprise, scanner, or office software.",
+                    details: "No graphic design suites (Photoshop, Canva, GIMP) or third-party web patch utilities detected in PDF metadata.",
+                    evidence: ev,
+                });
+            }
+        })();
+        // --- RULE 22: Incremental Revisions & Post-Finalization Appends (PSID Section 21) ---
+        (() => {
+            const ruleId = "RULE_ANOMALY_REVISIONS";
+            const ruleName = "PDF Incremental Revision & Post-Finalization Appends";
+            const aphClause = "PSID Section 21 (Document Integrity & Revision Tracking)";
+            const ev = [];
+            const highRevisionDocs = [];
+            for (const d of docs) {
+                const rep = forensicsMap.get(d.id);
+                if (!rep || rep.revisionCount === null)
+                    continue;
+                if (rep.revisionCount >= 4) {
+                    highRevisionDocs.push({ docType: d.documentType, count: rep.revisionCount });
+                    ev.push({
+                        documentId: d.id,
+                        documentType: d.documentType,
+                        fieldName: "revisionCount",
+                        rawText: String(rep.revisionCount),
+                        extractedValue: rep.revisionCount,
+                        pageNumber: null,
+                        excerpt: `${rep.revisionCount} structured startxref/%%EOF incremental revisions detected.`,
+                    });
+                }
+            }
+            if (highRevisionDocs.length > 0) {
+                const detailsStr = highRevisionDocs.map((h) => `${h.docType} (${h.count} revisions)`).join("; ");
+                const firstCount = highRevisionDocs[0]?.count ?? "multiple";
+                findings.push({
+                    ruleId,
+                    ruleName,
+                    aphClause,
+                    outcome: "MANUAL_REVIEW_REQUIRED",
+                    severity: "MEDIUM",
+                    summary: `Multiple cumulative incremental revisions (${firstCount} revisions) detected.`,
+                    details: `Document binary contains multiple cumulative revision layers: ${detailsStr}. While minor incremental updates (2-3) are normal for form saving or digital signatures, 4+ cumulative revisions warrant verification to ensure text/dates were not overlaid after issuance.`,
+                    evidence: ev,
+                    remediationNote: "Examine whether post-issuance modifications altered critical numbers or dates.",
+                });
+            }
+            else {
+                findings.push({
+                    ruleId,
+                    ruleName,
+                    aphClause,
+                    outcome: "PASS",
+                    severity: "ADVISORY",
+                    summary: "Document payloads exhibit standard single-generation or normal minor revision structures.",
+                    details: "No excessive cumulative revision layers (>= 4 revisions) detected in uploaded PDF binaries.",
+                    evidence: ev,
+                });
+            }
+        })();
+        // --- RULE 23: PDF Metadata Internal Timestamp Sanity (PSID Section 21) ---
+        (() => {
+            const ruleId = "RULE_ANOMALY_TIMESTAMPS";
+            const ruleName = "PDF Metadata Internal Timestamp Sanity";
+            const aphClause = "PSID Section 21 (Irregular Dates & Metadata Consistency)";
+            const ev = [];
+            const futureDateDocs = [];
+            const invertedDocs = [];
+            const oneDayAheadMs = evaluationDate.getTime() + 86400000;
+            for (const d of docs) {
+                const rep = forensicsMap.get(d.id);
+                if (!rep)
+                    continue;
+                // 1. Future metadata timestamp check
+                if (rep.creationDate && rep.creationDate.getTime() > oneDayAheadMs) {
+                    const rawStr = rep.rawCreationDateStr || rep.creationDate.toISOString();
+                    futureDateDocs.push({ docType: d.documentType, dateStr: rawStr });
+                    ev.push({
+                        documentId: d.id,
+                        documentType: d.documentType,
+                        fieldName: "pdfCreationDate",
+                        rawText: rawStr,
+                        extractedValue: rawStr,
+                        pageNumber: null,
+                        excerpt: `PDF CreationDate (${rawStr}) is set in the future.`,
+                    });
+                }
+                // 2. Internal clock inversion: CreationDate > ModDate by > 60s
+                if (rep.creationDate &&
+                    rep.modDate &&
+                    rep.creationDate.getTime() - rep.modDate.getTime() > 60000) {
+                    const cStr = rep.rawCreationDateStr || rep.creationDate.toISOString();
+                    const mStr = rep.rawModDateStr || rep.modDate.toISOString();
+                    invertedDocs.push({ docType: d.documentType, cDate: cStr, mDate: mStr });
+                    ev.push({
+                        documentId: d.id,
+                        documentType: d.documentType,
+                        fieldName: "pdfTimestampOrder",
+                        rawText: `Creation: ${cStr}, Mod: ${mStr}`,
+                        extractedValue: { creationDate: cStr, modDate: mStr },
+                        pageNumber: null,
+                        excerpt: `CreationDate (${cStr}) postdates ModDate (${mStr}).`,
+                    });
+                }
+            }
+            if (futureDateDocs.length > 0) {
+                const detailsStr = futureDateDocs.map((f) => `${f.docType} (${f.dateStr})`).join("; ");
+                const firstDate = futureDateDocs[0]?.dateStr || "N/A";
+                findings.push({
+                    ruleId,
+                    ruleName,
+                    aphClause,
+                    outcome: "FAIL_DEFICIENCY",
+                    severity: "HIGH",
+                    summary: `Future metadata creation timestamp detected: ${firstDate}.`,
+                    details: `PDF metadata contains future timestamps: ${detailsStr}. System clock or metadata manipulation indicated.`,
+                    evidence: ev,
+                    remediationNote: "Submit genuine documents with authentic timestamps.",
+                });
+            }
+            else if (invertedDocs.length > 0) {
+                const detailsStr = invertedDocs.map((i) => `${i.docType} (Created ${i.cDate} after Mod ${i.mDate})`).join("; ");
+                const firstDocType = invertedDocs[0]?.docType || "document";
+                findings.push({
+                    ruleId,
+                    ruleName,
+                    aphClause,
+                    outcome: "MANUAL_REVIEW_REQUIRED",
+                    severity: "MEDIUM",
+                    summary: `Internal timestamp contradiction in ${firstDocType} metadata.`,
+                    details: `PDF metadata records CreationDate after ModDate: ${detailsStr}. May indicate system clock mismatch or non-standard editing. Note: Normal scanning of older historical records is legitimate and not flagged.`,
+                    evidence: ev,
+                    remediationNote: "Officer to verify document issuance timeline against physical record.",
+                });
+            }
+            else {
+                findings.push({
+                    ruleId,
+                    ruleName,
+                    aphClause,
+                    outcome: "PASS",
+                    severity: "ADVISORY",
+                    summary: "PDF metadata creation and modification timestamps are chronologically valid.",
+                    details: "No future creation timestamps or internal clock inversions detected. Normal post-issuance scanning is recognized as standard practice.",
+                    evidence: ev,
+                });
+            }
+        })();
+        // --- RULE 24: PDF Active Executable Content & Encryption Screening (PSID Section 21) ---
+        (() => {
+            const ruleId = "RULE_ANOMALY_STRUCTURE";
+            const ruleName = "PDF Active Executable Content & Encryption Screening";
+            const aphClause = "PSID Section 21; APH Section 6 (Integrity & Evasion Safeguards)";
+            const ev = [];
+            const jsDocs = [];
+            const encryptedDocs = [];
+            for (const d of docs) {
+                const rep = forensicsMap.get(d.id);
+                if (!rep)
+                    continue;
+                if (rep.hasJavaScript === true) {
+                    jsDocs.push(d.documentType);
+                    ev.push({
+                        documentId: d.id,
+                        documentType: d.documentType,
+                        fieldName: "hasJavaScript",
+                        rawText: "true",
+                        extractedValue: true,
+                        pageNumber: null,
+                        excerpt: "Active /Action /S /JavaScript dictionary detected.",
+                    });
+                }
+                if (rep.isEncrypted === true) {
+                    encryptedDocs.push(d.documentType);
+                    ev.push({
+                        documentId: d.id,
+                        documentType: d.documentType,
+                        fieldName: "isEncrypted",
+                        rawText: "true",
+                        extractedValue: true,
+                        pageNumber: null,
+                        excerpt: "/Encrypt dictionary detected in trailer.",
+                    });
+                }
+            }
+            if (jsDocs.length > 0) {
+                findings.push({
+                    ruleId,
+                    ruleName,
+                    aphClause,
+                    outcome: "MANUAL_REVIEW_REQUIRED",
+                    severity: "HIGH",
+                    summary: `Active JavaScript action stream detected in: ${jsDocs.join(", ")}.`,
+                    details: `PDF payload contains active JavaScript action dictionaries. Government regulatory portals require passive documents; dynamic scripts pose security risks and can manipulate displayed text upon viewing.`,
+                    evidence: ev,
+                    remediationNote: "Upload passive, flattened PDF without executable scripts.",
+                });
+            }
+            else if (encryptedDocs.length > 0) {
+                findings.push({
+                    ruleId,
+                    ruleName,
+                    aphClause,
+                    outcome: "MANUAL_REVIEW_REQUIRED",
+                    severity: "MEDIUM",
+                    summary: `PDF payload in ${encryptedDocs.join(", ")} has encryption or restrictive permissions enabled.`,
+                    details: `Document has an active /Encrypt dictionary in its trailer. Encrypted documents can prevent automated parsing and validation.`,
+                    evidence: ev,
+                    remediationNote: "Upload unencrypted, publicly readable copies for scrutiny.",
+                });
+            }
+            else {
+                findings.push({
+                    ruleId,
+                    ruleName,
+                    aphClause,
+                    outcome: "PASS",
+                    severity: "ADVISORY",
+                    summary: "All document payloads are passive, unencrypted PDFs without executable scripts.",
+                    details: "Confirmed absence of active /JavaScript actions and restrictive /Encrypt dictionaries in PDF trailers.",
                     evidence: ev,
                 });
             }

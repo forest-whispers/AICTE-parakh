@@ -241,12 +241,29 @@ describe("Deterministic Scrutiny Engine - result-III.pdf Baseline Audit", () => 
     assert.ok(intraFinding);
     assert.equal(intraFinding.outcome, "PASS", "Internal validity and geometric areas are consistent");
 
+    // 10. Forensics & Anomaly Screening (Slice 4A) -> PASS
+    const toolFinding = result.findings.find((f) => f.ruleId === "RULE_ANOMALY_PDF_TOOLS");
+    assert.ok(toolFinding);
+    assert.equal(toolFinding.outcome, "PASS", "All documents in baseline use standard tools");
+
+    const revFinding = result.findings.find((f) => f.ruleId === "RULE_ANOMALY_REVISIONS");
+    assert.ok(revFinding);
+    assert.equal(revFinding.outcome, "PASS", "Standard single revision payloads");
+
+    const timeFinding = result.findings.find((f) => f.ruleId === "RULE_ANOMALY_TIMESTAMPS");
+    assert.ok(timeFinding);
+    assert.equal(timeFinding.outcome, "PASS", "Metadata creation and modification timestamps are valid");
+
+    const structFinding = result.findings.find((f) => f.ruleId === "RULE_ANOMALY_STRUCTURE");
+    assert.ok(structFinding);
+    assert.equal(structFinding.outcome, "PASS", "Passive unencrypted documents without executable JS");
+
     // Summary counts
-    assert.equal(result.totalRulesRun, 20, "Total 20 deterministic rules evaluated");
+    assert.equal(result.totalRulesRun, 24, "Total 24 deterministic rules evaluated");
     assert.equal(result.deficiencyCount, 1, "Exactly 1 deficiency (Resolution)");
     assert.equal(result.reviewCount, 1, "Exactly 1 review (Land physical contiguity)");
     assert.equal(result.missingCount, 0, "0 missing documents");
-    assert.equal(result.passedCount, 18, "18 rules passed");
+    assert.equal(result.passedCount, 22, "22 rules passed");
     assert.equal(result.overallStatus, "DEFICIENCIES_DETECTED");
   });
 });
@@ -896,5 +913,319 @@ describe("Deterministic Scrutiny Engine - FAR / FSI Development Limits Check", (
     assert.ok(finding);
     assert.equal(finding.outcome, "FAIL_DEFICIENCY");
     assert.ok(finding.summary.includes("exceeds permissible FSI/FAR capacity"));
+  });
+});
+
+describe("Deterministic Scrutiny Engine - Document Anomaly & Structural Forensics (Slice 4A)", () => {
+  it("flags MANUAL_REVIEW_REQUIRED with MEDIUM severity when graphic design editor (Photoshop) is detected in metadata", async () => {
+    const fixture = getFreshSampleFixture();
+    const doc09 = fixture.documents.find((d: any) => d.documentType === "DOC_09_FIRE_SAFETY");
+    assert.ok(doc09);
+
+    doc09.extractedData._mockForensics = {
+      pdfVersion: "1.6",
+      producer: "Adobe Photoshop 24.1",
+      creator: "Adobe Photoshop",
+      creationDate: new Date("2026-02-01"),
+      modDate: new Date("2026-02-01"),
+      rawCreationDateStr: "2026-02-01",
+      rawModDateStr: "2026-02-01",
+      revisionCount: 1,
+      isEncrypted: false,
+      hasJavaScript: false,
+      toolCategory: "GRAPHIC_EDITOR",
+      confidence: "CONFIRMED",
+      details: [],
+    };
+
+    const result = await complianceService.evaluateDocuments(
+      {
+        id: fixture.id,
+        institutionName: fixture.institutionName,
+        programCategory: fixture.programCategory,
+        proposedIntake: fixture.proposedIntake,
+      },
+      fixture.documents,
+      new Date("2026-10-27T00:00:00Z")
+    );
+
+    const finding = result.findings.find((f) => f.ruleId === "RULE_ANOMALY_PDF_TOOLS");
+    assert.ok(finding);
+    assert.equal(finding.outcome, "MANUAL_REVIEW_REQUIRED");
+    assert.equal(finding.severity, "MEDIUM");
+    assert.ok(finding.summary.includes("Graphic design software (Adobe Photoshop 24.1) detected"));
+    assert.ok(finding.details.includes("allow layer-based retouching"));
+  });
+
+  it("flags MANUAL_REVIEW_REQUIRED with ADVISORY severity when online PDF compression utility (ilovepdf) is detected", async () => {
+    const fixture = getFreshSampleFixture();
+    const doc03 = fixture.documents.find((d: any) => d.documentType === "DOC_03_LAND_DEED");
+    assert.ok(doc03);
+
+    doc03.extractedData._mockForensics = {
+      pdfVersion: "1.5",
+      producer: "ilovepdf.com",
+      creator: "ilovepdf",
+      creationDate: new Date("2026-01-10"),
+      modDate: new Date("2026-01-10"),
+      rawCreationDateStr: "2026-01-10",
+      rawModDateStr: "2026-01-10",
+      revisionCount: 1,
+      isEncrypted: false,
+      hasJavaScript: false,
+      toolCategory: "ONLINE_UTILITY",
+      confidence: "CONFIRMED",
+      details: [],
+    };
+
+    const result = await complianceService.evaluateDocuments(
+      {
+        id: fixture.id,
+        institutionName: fixture.institutionName,
+        programCategory: fixture.programCategory,
+        proposedIntake: fixture.proposedIntake,
+      },
+      fixture.documents,
+      new Date("2026-10-27T00:00:00Z")
+    );
+
+    const finding = result.findings.find((f) => f.ruleId === "RULE_ANOMALY_PDF_TOOLS");
+    assert.ok(finding);
+    assert.equal(finding.outcome, "MANUAL_REVIEW_REQUIRED");
+    assert.equal(finding.severity, "ADVISORY");
+    assert.ok(finding.summary.includes("Online PDF compression / manipulation utility detected"));
+    assert.ok(finding.details.includes("commonly used for legitimate file compression"));
+  });
+
+  it("flags MANUAL_REVIEW_REQUIRED when excessive cumulative incremental revisions (>= 4) are detected", async () => {
+    const fixture = getFreshSampleFixture();
+    const doc07 = fixture.documents.find((d: any) => d.documentType === "DOC_07_OCCUPANCY");
+    assert.ok(doc07);
+
+    doc07.extractedData._mockForensics = {
+      pdfVersion: "1.4",
+      producer: "Acrobat",
+      creator: "Acrobat",
+      creationDate: new Date("2024-01-10"),
+      modDate: new Date("2024-01-15"),
+      rawCreationDateStr: "2024-01-10",
+      rawModDateStr: "2024-01-15",
+      revisionCount: 5, // 5 cumulative incremental revisions
+      isEncrypted: false,
+      hasJavaScript: false,
+      toolCategory: "STANDARD",
+      confidence: "CONFIRMED",
+      details: [],
+    };
+
+    const result = await complianceService.evaluateDocuments(
+      {
+        id: fixture.id,
+        institutionName: fixture.institutionName,
+        programCategory: fixture.programCategory,
+        proposedIntake: fixture.proposedIntake,
+      },
+      fixture.documents,
+      new Date("2026-10-27T00:00:00Z")
+    );
+
+    const finding = result.findings.find((f) => f.ruleId === "RULE_ANOMALY_REVISIONS");
+    assert.ok(finding);
+    assert.equal(finding.outcome, "MANUAL_REVIEW_REQUIRED");
+    assert.ok(finding.summary.includes("Multiple cumulative incremental revisions (5 revisions) detected"));
+  });
+
+  it("fails with FAIL_DEFICIENCY when PDF creation timestamp is set in the future", async () => {
+    const fixture = getFreshSampleFixture();
+    const doc01 = fixture.documents.find((d: any) => d.documentType === "DOC_01_REGISTRATION");
+    assert.ok(doc01);
+
+    doc01.extractedData._mockForensics = {
+      pdfVersion: "1.4",
+      producer: "Canon Scanner",
+      creator: "Canon",
+      creationDate: new Date("2029-06-15T00:00:00Z"), // future date relative to 2026 evaluation
+      modDate: new Date("2029-06-15T00:00:00Z"),
+      rawCreationDateStr: "D:20290615000000Z",
+      rawModDateStr: "D:20290615000000Z",
+      revisionCount: 1,
+      isEncrypted: false,
+      hasJavaScript: false,
+      toolCategory: "STANDARD",
+      confidence: "CONFIRMED",
+      details: [],
+    };
+
+    const result = await complianceService.evaluateDocuments(
+      {
+        id: fixture.id,
+        institutionName: fixture.institutionName,
+        programCategory: fixture.programCategory,
+        proposedIntake: fixture.proposedIntake,
+      },
+      fixture.documents,
+      new Date("2026-10-27T00:00:00Z")
+    );
+
+    const finding = result.findings.find((f) => f.ruleId === "RULE_ANOMALY_TIMESTAMPS");
+    assert.ok(finding);
+    assert.equal(finding.outcome, "FAIL_DEFICIENCY");
+    assert.ok(finding.summary.includes("Future metadata creation timestamp detected"));
+  });
+
+  it("flags MANUAL_REVIEW_REQUIRED when metadata creation timestamp postdates modification timestamp", async () => {
+    const fixture = getFreshSampleFixture();
+    const doc05 = fixture.documents.find((d: any) => d.documentType === "DOC_05_LAND_USE");
+    assert.ok(doc05);
+
+    // Inverted: creationDate in 2026, but modDate in 2024
+    doc05.extractedData._mockForensics = {
+      pdfVersion: "1.4",
+      producer: "Canon Scanner",
+      creator: "Canon",
+      creationDate: new Date("2026-05-10T12:00:00Z"),
+      modDate: new Date("2024-05-10T12:00:00Z"),
+      rawCreationDateStr: "D:20260510120000Z",
+      rawModDateStr: "D:20240510120000Z",
+      revisionCount: 1,
+      isEncrypted: false,
+      hasJavaScript: false,
+      toolCategory: "STANDARD",
+      confidence: "CONFIRMED",
+      details: [],
+    };
+
+    const result = await complianceService.evaluateDocuments(
+      {
+        id: fixture.id,
+        institutionName: fixture.institutionName,
+        programCategory: fixture.programCategory,
+        proposedIntake: fixture.proposedIntake,
+      },
+      fixture.documents,
+      new Date("2026-10-27T00:00:00Z")
+    );
+
+    const finding = result.findings.find((f) => f.ruleId === "RULE_ANOMALY_TIMESTAMPS");
+    assert.ok(finding);
+    assert.equal(finding.outcome, "MANUAL_REVIEW_REQUIRED");
+    assert.ok(finding.summary.includes("Internal timestamp contradiction"));
+  });
+
+  it("conservatively PASSES normal scanning workflows where a 2018 deed has a 2026 PDF creation date", async () => {
+    const fixture = getFreshSampleFixture();
+    const doc03 = fixture.documents.find((d: any) => d.documentType === "DOC_03_LAND_DEED");
+    assert.ok(doc03);
+
+    // Land deed was executed in 2018, scanned into PDF in 2026
+    doc03.extractedData.doc03LandDeed.registrationDate.value = "2018-05-10";
+    doc03.extractedData._mockForensics = {
+      pdfVersion: "1.4",
+      producer: "HP Scanjet Professional",
+      creator: "HP Scan",
+      creationDate: new Date("2026-09-15T10:00:00Z"),
+      modDate: new Date("2026-09-15T10:00:00Z"),
+      rawCreationDateStr: "D:20260915100000Z",
+      rawModDateStr: "D:20260915100000Z",
+      revisionCount: 1,
+      isEncrypted: false,
+      hasJavaScript: false,
+      toolCategory: "STANDARD",
+      confidence: "CONFIRMED",
+      details: [],
+    };
+
+    const result = await complianceService.evaluateDocuments(
+      {
+        id: fixture.id,
+        institutionName: fixture.institutionName,
+        programCategory: fixture.programCategory,
+        proposedIntake: fixture.proposedIntake,
+      },
+      fixture.documents,
+      new Date("2026-10-27T00:00:00Z")
+    );
+
+    const finding = result.findings.find((f) => f.ruleId === "RULE_ANOMALY_TIMESTAMPS");
+    assert.ok(finding);
+    assert.equal(finding.outcome, "PASS", "Normal scanning of historical document must PASS");
+  });
+
+  it("flags MANUAL_REVIEW_REQUIRED with HIGH severity when active JavaScript stream is detected", async () => {
+    const fixture = getFreshSampleFixture();
+    const doc10 = fixture.documents.find((d: any) => d.documentType === "DOC_10_BANK_FUNDS");
+    assert.ok(doc10);
+
+    doc10.extractedData._mockForensics = {
+      pdfVersion: "1.6",
+      producer: "Acrobat",
+      creator: "Acrobat",
+      creationDate: new Date("2026-09-18"),
+      modDate: new Date("2026-09-18"),
+      rawCreationDateStr: "2026-09-18",
+      rawModDateStr: "2026-09-18",
+      revisionCount: 1,
+      isEncrypted: false,
+      hasJavaScript: true, // Active JavaScript action
+      toolCategory: "STANDARD",
+      confidence: "CONFIRMED",
+      details: [],
+    };
+
+    const result = await complianceService.evaluateDocuments(
+      {
+        id: fixture.id,
+        institutionName: fixture.institutionName,
+        programCategory: fixture.programCategory,
+        proposedIntake: fixture.proposedIntake,
+      },
+      fixture.documents,
+      new Date("2026-10-27T00:00:00Z")
+    );
+
+    const finding = result.findings.find((f) => f.ruleId === "RULE_ANOMALY_STRUCTURE");
+    assert.ok(finding);
+    assert.equal(finding.outcome, "MANUAL_REVIEW_REQUIRED");
+    assert.equal(finding.severity, "HIGH");
+    assert.ok(finding.summary.includes("Active JavaScript action stream detected"));
+  });
+
+  it("flags MANUAL_REVIEW_REQUIRED with MEDIUM severity when document is encrypted", async () => {
+    const fixture = getFreshSampleFixture();
+    const doc06 = fixture.documents.find((d: any) => d.documentType === "DOC_06_BUILDING_PLAN");
+    assert.ok(doc06);
+
+    doc06.extractedData._mockForensics = {
+      pdfVersion: "1.5",
+      producer: "AutoCAD PDF",
+      creator: "AutoCAD",
+      creationDate: new Date("2026-08-01"),
+      modDate: new Date("2026-08-01"),
+      rawCreationDateStr: "2026-08-01",
+      rawModDateStr: "2026-08-01",
+      revisionCount: 1,
+      isEncrypted: true, // /Encrypt in trailer
+      hasJavaScript: false,
+      toolCategory: "STANDARD",
+      confidence: "CONFIRMED",
+      details: [],
+    };
+
+    const result = await complianceService.evaluateDocuments(
+      {
+        id: fixture.id,
+        institutionName: fixture.institutionName,
+        programCategory: fixture.programCategory,
+        proposedIntake: fixture.proposedIntake,
+      },
+      fixture.documents,
+      new Date("2026-10-27T00:00:00Z")
+    );
+
+    const finding = result.findings.find((f) => f.ruleId === "RULE_ANOMALY_STRUCTURE");
+    assert.ok(finding);
+    assert.equal(finding.outcome, "MANUAL_REVIEW_REQUIRED");
+    assert.equal(finding.severity, "MEDIUM");
+    assert.ok(finding.summary.includes("has encryption or restrictive permissions enabled"));
   });
 });
