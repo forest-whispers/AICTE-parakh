@@ -9,6 +9,7 @@
     "build": "tsc",
     "start": "node dist/index.js",
     "db:clear": "tsx prisma/clear-data.ts",
+    "seed:scenarios": "tsx src/scripts/seed-scenarios.ts",
     "typecheck": "tsc --noEmit"
   },
   "keywords": [],

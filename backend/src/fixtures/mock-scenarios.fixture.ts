@@ -1,0 +1,1388 @@
+/**
+ * Reusable Synthetic Demonstration Fixtures for AICTE Approval Process Scrutiny (Slice 4 - Baseline Dataset)
+ * 
+ * Exports 8 independent synthetic application scenarios with complete mocked VLM document extraction envelopes:
+ * 1. scenario1Compliant: Largely compliant application (COMPLIANT)
+ * 2. scenario2MissingDocs: Missing critical documents and metadata (MANUAL_REVIEW_REQUIRED / Missing)
+ * 3. scenario3UncertainEvidence: Ambiguous and illegible extractions (MANUAL_REVIEW_REQUIRED / Uncertain)
+ * 4. scenario4IdentityMismatch: Cross-document sponsoring body and address divergence (DEFICIENCIES_DETECTED)
+ * 5. scenario5LandDeficiencies: Substantive land acreage, lease duration, and plot count violations (DEFICIENCIES_DETECTED)
+ * 6. scenario6ExpiredChronology: Expired fire safety NOC and milestone sequence inversions (DEFICIENCIES_DETECTED)
+ * 7. scenario7InfraDeficit: Administrative / amenities carpet area shortfall and FAR overflow (DEFICIENCIES_DETECTED)
+ * 8. scenario8CompoundIssues: Composite application with multiple concurrent deficiencies (DEFICIENCIES_DETECTED)
+ */
+
+export interface SyntheticField<T> {
+  state: "PRESENT" | "NOT_FOUND" | "ILLEGIBLE" | "AMBIGUOUS" | "NOT_APPLICABLE";
+  value: T | null;
+  rawText: string | null;
+  pageNumber: number | null;
+  excerpt: string | null;
+  uncertaintyReason: string | null;
+}
+
+export function makeField<T>(value: T, rawText?: string, pageNumber: number = 1): SyntheticField<T> {
+  return {
+    state: "PRESENT",
+    value,
+    rawText: rawText !== undefined ? rawText : (value !== null ? String(value) : null),
+    pageNumber,
+    excerpt: rawText !== undefined ? rawText : (value !== null ? String(value) : null),
+    uncertaintyReason: null,
+  };
+}
+
+export function makeEmptyField(
+  state: "NOT_FOUND" | "ILLEGIBLE" | "AMBIGUOUS" = "NOT_FOUND",
+  uncertaintyReason?: string
+): SyntheticField<any> {
+  return {
+    state,
+    value: null,
+    rawText: state === "NOT_FOUND" ? null : "[Illegible or ambiguous text]",
+    pageNumber: state === "NOT_FOUND" ? null : 1,
+    excerpt: state === "NOT_FOUND" ? null : "[Illegible official stamp / seal]",
+    uncertaintyReason: uncertaintyReason || (state === "NOT_FOUND" ? "Field not found in document" : "Indistinct text"),
+  };
+}
+
+export interface SyntheticDocEnvelope {
+  documentId: string;
+  classifiedType: string;
+  classificationConfidence: "HIGH" | "MEDIUM" | "LOW";
+  classificationReasoning: string;
+  pageCount: number;
+  extractionStatus: "SUCCESS" | "PARTIAL" | "FAILED";
+  generalRemarks: string;
+  [key: string]: any;
+}
+
+export interface SyntheticScenario {
+  id: string;
+  applicationNumber: string;
+  institutionName: string;
+  programCategory: string | null;
+  proposedIntake: number | null;
+  status: string;
+  title: string;
+  description: string;
+  intendedScrutinyOutcome: "COMPLIANT" | "DEFICIENCIES_DETECTED" | "MANUAL_REVIEW_REQUIRED" | "INSUFFICIENT_INPUT";
+  documents: Array<{
+    documentType: string;
+    originalName: string;
+    extractedData: SyntheticDocEnvelope;
+  }>;
+}
+
+// ============================================================================
+// SCENARIO 1: Largely Compliant Application
+// ============================================================================
+export const scenario1Compliant: SyntheticScenario = {
+  id: "scenario-1-compliant",
+  applicationNumber: "AICTE-DEMO-01-COMPLIANT",
+  institutionName: "Vidyapeeth Institute of Technology and Science",
+  programCategory: "ENGINEERING_AND_TECHNOLOGY",
+  proposedIntake: 240,
+  status: "EXTRACTION_COMPLETED",
+  title: "Largely Compliant New Technical Institution",
+  description: "All mandatory statutory documents present, unencumbered funds >= ₹100 Lakhs, land >= 7.5 ac, valid certificates, consistent identities.",
+  intendedScrutinyOutcome: "COMPLIANT",
+  documents: [
+    {
+      documentType: "DOC_01_REGISTRATION",
+      originalName: "DOC_01_Trust_Registration_Certificate.pdf",
+      extractedData: {
+        documentId: "doc-01-01",
+        classifiedType: "DOC_01_REGISTRATION",
+        classificationConfidence: "HIGH",
+        classificationReasoning: "Registered Public Charitable Trust deed and certificate issued by Sub-Registrar.",
+        pageCount: 6,
+        extractionStatus: "SUCCESS",
+        generalRemarks: "Complete registration records.",
+        doc01Registration: {
+          applicantLegalName: makeField("Vidyapeeth Educational Trust"),
+          entityType: makeField("Public Charitable Trust"),
+          registrationNumber: makeField("REG/BPL/2015/04882"),
+          registrationDate: makeField("2015-08-10"),
+          registeringAuthority: makeField("Registrar of Public Trusts, Bhopal"),
+          registeredAddress: makeField("Plot 12, Arera Hills, Bhopal, Madhya Pradesh 462011"),
+          hasNonProfitClause: makeField(true),
+        },
+      },
+    },
+    {
+      documentType: "DOC_02_RESOLUTION",
+      originalName: "DOC_02_Format_3_Governing_Body_Resolution.pdf",
+      extractedData: {
+        documentId: "doc-01-02",
+        classifiedType: "DOC_02_RESOLUTION",
+        classificationConfidence: "HIGH",
+        classificationReasoning: "Governing body resolution in AICTE Format 3 approving establishment of proposed institution.",
+        pageCount: 3,
+        extractionStatus: "SUCCESS",
+        generalRemarks: "Resolution passed unanimously with authorized signatories designated.",
+        doc02Resolution: {
+          sponsoringBodyName: makeField("Vidyapeeth Educational Trust"),
+          proposedInstitutionName: makeField("Vidyapeeth Institute of Technology and Science"),
+          resolutionDate: makeField("2026-08-15"),
+          resolutionNumber: makeField("VET/GB/2026/08"),
+          resolutionReferenceNumber: makeField("VET/GB/2026/08"),
+          locationAddress: makeField("Village Rampur, Tehsil Sehore, District Sehore, Madhya Pradesh"),
+          authorizedSignatories: makeField("Dr. R. K. Sharma (Chairman) and Shri Suresh Patel (Secretary)"),
+          proposedCoursesIntake: makeField("B.Tech Computer Science (120), B.Tech Electronics and Communication (120)"),
+          proposedIntake: makeField(240),
+          hasResourceCommitment: makeField(true),
+          hasEstablishmentDecision: makeField(true),
+        },
+      },
+    },
+    {
+      documentType: "DOC_03_LAND_DEED",
+      originalName: "DOC_03_Registered_Sale_Deed.pdf",
+      extractedData: {
+        documentId: "doc-01-03",
+        classifiedType: "DOC_03_LAND_DEED",
+        classificationConfidence: "HIGH",
+        classificationReasoning: "Registered Sale Deed conveying freehold title to sponsoring trust.",
+        pageCount: 14,
+        extractionStatus: "SUCCESS",
+        generalRemarks: "Clear freehold title registered without encumbrances.",
+        doc03LandDeed: {
+          deedType: makeField("Sale Deed"),
+          documentType: makeField("Sale Deed"),
+          transferorLessorName: makeField("Rampur Farms & Properties Private Limited"),
+          transfereeLesseeName: makeField("Vidyapeeth Educational Trust"),
+          buyerTransferee: makeField("Vidyapeeth Educational Trust"),
+          deedRegistrationNumber: makeField("SD/SEH/2019/3321"),
+          registrationNumber: makeField("SD/SEH/2019/3321"),
+          registrationDate: makeField("2019-11-20"),
+          khasraSurveyPlotNumbers: makeField(["201/1"]),
+          khasraNumbers: makeField("201/1"),
+          parcelArea: makeField(8.5),
+          landAreaAcres: makeField(8.5),
+          landRevenueLocation: makeField("Village Rampur, Tehsil Sehore, District Sehore, Madhya Pradesh"),
+          landLocation: makeField("Village Rampur, Tehsil Sehore, District Sehore, Madhya Pradesh"),
+          registrarOffice: makeField("Sub-Registrar Office, Sehore"),
+          encumbrancesDeclared: makeField("Nil, Free from all encumbrances and charges"),
+        },
+      },
+    },
+    {
+      documentType: "DOC_05_LAND_USE",
+      originalName: "DOC_05_Land_Use_Conversion_Order.pdf",
+      extractedData: {
+        documentId: "doc-01-05",
+        classifiedType: "DOC_05_LAND_USE",
+        classificationConfidence: "HIGH",
+        classificationReasoning: "Collector / Revenue Commissioner Land Conversion Order.",
+        pageCount: 4,
+        extractionStatus: "SUCCESS",
+        generalRemarks: "Order officially permits educational institutional use.",
+        doc05LandUse: {
+          issuingAuthority: makeField("Office of the Sub-Divisional Officer (Revenue), Sehore"),
+          orderReferenceNumber: makeField("REV/LUC/2020/0142"),
+          orderNumber: makeField("REV/LUC/2020/0142"),
+          orderDate: makeField("2020-04-12"),
+          issueDate: makeField("2020-04-12"),
+          landownerApplicantName: makeField("Vidyapeeth Educational Trust"),
+          applicantName: makeField("Vidyapeeth Educational Trust"),
+          khasraSurveyPlotNumbers: makeField(["201/1"]),
+          khasraNumbers: makeField("201/1"),
+          landAreaAcres: makeField(8.5),
+          permittedLandUse: makeField("educational and institutional purposes"),
+          permittedUse: makeField("educational and institutional purposes"),
+          landLocation: makeField("Village Rampur, Tehsil Sehore, District Sehore, Madhya Pradesh"),
+          isEducationalUseExplicitlyAllowed: makeField(true),
+        },
+      },
+    },
+    {
+      documentType: "DOC_06_BUILDING_PLAN",
+      originalName: "DOC_06_Approved_Building_Plan.pdf",
+      extractedData: {
+        documentId: "doc-01-06",
+        classifiedType: "DOC_06_BUILDING_PLAN",
+        classificationConfidence: "HIGH",
+        classificationReasoning: "Town and Country Planning Sanctioned Master Blueprint.",
+        pageCount: 8,
+        extractionStatus: "SUCCESS",
+        generalRemarks: "Blueprint approved by competent municipal authority and certified by CoA registered architect.",
+        doc06BuildingPlan: {
+          approvingAuthority: makeField("Directorate of Town and Country Planning, Sehore Regional Office"),
+          sanctioningAuthority: makeField("Directorate of Town and Country Planning, Sehore Regional Office"),
+          sanctionOrderReference: makeField("DTCP/SEH/2022/BP-098"),
+          sanctionNumber: makeField("DTCP/SEH/2022/BP-098"),
+          sanctionDate: makeField("2022-03-10"),
+          architectName: makeField("Ar. Rajesh Verma"),
+          architectCoaRegistrationNumber: makeField("CA/2012/55443"),
+          architectCoaRegistration: makeField("CA/2012/55443"),
+          institutionName: makeField("Vidyapeeth Institute of Technology and Science"),
+          siteAddress: makeField("Village Rampur, Tehsil Sehore, District Sehore, Madhya Pradesh"),
+          totalSanctionedBuiltUpArea: makeField(12000),
+          totalBuiltUpAreaSqm: makeField(12000),
+          statedFarFsi: makeField(1.5),
+          farFsi: makeField(1.5),
+          adminCarpetAreaSqm: makeField(900),
+          amenitiesCarpetAreaSqm: makeField(600),
+          carpetAreaSummary: makeField({
+            instructionalSqM: 6500,
+            administrativeSqM: 900,
+            amenitiesSqM: 600,
+            circulationSqM: 4000,
+          }),
+        },
+      },
+    },
+    {
+      documentType: "DOC_07_OCCUPANCY",
+      originalName: "DOC_07_Occupancy_Certificate.pdf",
+      extractedData: {
+        documentId: "doc-01-07",
+        classifiedType: "DOC_07_OCCUPANCY",
+        classificationConfidence: "HIGH",
+        classificationReasoning: "Permanent Building Occupancy Certificate issued by Municipal Corporation.",
+        pageCount: 3,
+        extractionStatus: "SUCCESS",
+        generalRemarks: "Permanent occupancy granted for technical campus.",
+        doc07Occupancy: {
+          certificateType: makeField("OCCUPANCY_CERTIFICATE"),
+          issuingAuthority: makeField("Municipal Council, Sehore"),
+          certificateReferenceNumber: makeField("MC/SEH/OCC/2023/118"),
+          certificateNumber: makeField("MC/SEH/OCC/2023/118"),
+          institutionNameReferenced: makeField("Vidyapeeth Institute of Technology and Science"),
+          institutionName: makeField("Vidyapeeth Institute of Technology and Science"),
+          campusPhysicalSiteAddress: makeField("Village Rampur, Tehsil Sehore, District Sehore, Madhya Pradesh"),
+          siteAddress: makeField("Village Rampur, Tehsil Sehore, District Sehore, Madhya Pradesh"),
+          coveredBuildingsFloors: makeField("Administrative and Academic Blocks A & B (G+3 Floors)"),
+          issueDate: makeField("2023-09-15"),
+          occupancyStatus: makeField("permanent"),
+          occupancyType: makeField("permanent"),
+        },
+      },
+    },
+    {
+      documentType: "DOC_08_STRUCTURAL_STABILITY",
+      originalName: "DOC_08_Structural_Stability_Certificate.pdf",
+      extractedData: {
+        documentId: "doc-01-08",
+        classifiedType: "DOC_08_STRUCTURAL_STABILITY",
+        classificationConfidence: "HIGH",
+        classificationReasoning: "Registered Structural Engineer Fitness Certificate.",
+        pageCount: 3,
+        extractionStatus: "SUCCESS",
+        generalRemarks: "Structures certified sound and compliant with seismic safety standards.",
+        doc08StructuralStability: {
+          issuingEngineerName: makeField("Er. Anil Saxena, M.Tech (Structures)"),
+          engineerName: makeField("Er. Anil Saxena, M.Tech (Structures)"),
+          engineerQualification: makeField("Chartered Engineer, MIE-149928"),
+          engineerQualifications: makeField("Chartered Engineer, MIE-149928"),
+          certificateReferenceNumber: makeField("STR/2025/CERT-041"),
+          certificateNumber: makeField("STR/2025/CERT-041"),
+          siteAddress: makeField("Village Rampur, Tehsil Sehore, District Sehore, Madhya Pradesh"),
+          buildingAgeYears: makeField(2),
+          issueDate: makeField("2025-01-10"),
+          inspectionDate: makeField("2025-01-10"),
+          expiryDate: makeField("2030-01-09"),
+          validUntilDate: makeField("2030-01-09"),
+          structuralFitnessConclusion: makeField("structurally stable"),
+          stabilityStatus: makeField("structurally stable"),
+        },
+      },
+    },
+    {
+      documentType: "DOC_09_FIRE_SAFETY",
+      originalName: "DOC_09_Fire_Safety_NOC.pdf",
+      extractedData: {
+        documentId: "doc-01-09",
+        classifiedType: "DOC_09_FIRE_SAFETY",
+        classificationConfidence: "HIGH",
+        classificationReasoning: "State Fire Services Certificate of Fire Safety Compliance.",
+        pageCount: 3,
+        extractionStatus: "SUCCESS",
+        generalRemarks: "Fire safety installation inspected and certified active.",
+        doc09FireSafety: {
+          issuingAuthority: makeField("Fire Services Headquarters, Sehore Region"),
+          certificateReferenceNumber: makeField("FS/NOC/2026/0219"),
+          certificateNumber: makeField("FS/NOC/2026/0219"),
+          institutionNameReferenced: makeField("Vidyapeeth Institute of Technology and Science"),
+          institutionName: makeField("Vidyapeeth Institute of Technology and Science"),
+          campusPhysicalSiteAddress: makeField("Village Rampur, Tehsil Sehore, District Sehore, Madhya Pradesh"),
+          siteAddress: makeField("Village Rampur, Tehsil Sehore, District Sehore, Madhya Pradesh"),
+          coveredBuildingsFloors: makeField("Blocks A and B"),
+          issueDate: makeField("2026-02-01"),
+          expiryDate: makeField("2027-02-01"),
+          validUntilDate: makeField("2027-02-01"),
+          isCompliant: makeField(true),
+        },
+      },
+    },
+    {
+      documentType: "DOC_10_BANK_FUNDS",
+      originalName: "DOC_10_Bank_Funds_Certificate.pdf",
+      extractedData: {
+        documentId: "doc-01-10",
+        classifiedType: "DOC_10_BANK_FUNDS",
+        classificationConfidence: "HIGH",
+        classificationReasoning: "Bank Certificate of Liquid Funds (Certificate 3).",
+        pageCount: 2,
+        extractionStatus: "SUCCESS",
+        generalRemarks: "Unencumbered term deposit of ₹150 Lakhs confirmed.",
+        doc10BankFunds: {
+          bankName: makeField("State Bank of India"),
+          branchName: makeField("Sehore Main Branch"),
+          ifscCode: makeField("SBIN0000412"),
+          accountHolderName: makeField("Vidyapeeth Educational Trust"),
+          instrumentType: makeField("FDR"),
+          accountOrFdrNumber: makeField("FDR/39881029481"),
+          fdrNumber: makeField("FDR/39881029481"),
+          amountInLakhsINR: makeField(150),
+          amountInInr: makeField(15000000),
+          certificateDate: makeField("2026-08-10"),
+          issueDate: makeField("2026-08-10"),
+          fdrMaturityDate: makeField("2027-08-10"),
+          maturityDate: makeField("2027-08-10"),
+          isUnencumbered: makeField(true),
+          lienStatement: makeField("The deposit is completely unencumbered and free from any lien, pledge, or encumbrance."),
+        },
+      },
+    },
+    {
+      documentType: "DOC_11_AFFIDAVIT_2",
+      originalName: "DOC_11_Affidavit_2.pdf",
+      extractedData: {
+        documentId: "doc-01-11",
+        classifiedType: "DOC_11_AFFIDAVIT_2",
+        classificationConfidence: "HIGH",
+        classificationReasoning: "AICTE Format Affidavit 2 executed on non-judicial stamp paper.",
+        pageCount: 5,
+        extractionStatus: "SUCCESS",
+        generalRemarks: "Sworn by authorized deponent.",
+        doc11Affidavit2: {
+          deponentName: makeField("Dr. R. K. Sharma"),
+          trustSocietyName: makeField("Vidyapeeth Educational Trust"),
+          proposedInstitutionName: makeField("Vidyapeeth Institute of Technology and Science"),
+          placeOfExecution: makeField("Sehore"),
+          executionDate: makeField("2026-08-15"),
+        },
+      },
+    },
+    {
+      documentType: "DOC_14_SITE_MAP",
+      originalName: "DOC_14_Georeferenced_Site_Map.pdf",
+      extractedData: {
+        documentId: "doc-01-14",
+        classifiedType: "DOC_14_SITE_MAP",
+        classificationConfidence: "HIGH",
+        classificationReasoning: "Total Station georeferenced campus perimeter map.",
+        pageCount: 2,
+        extractionStatus: "SUCCESS",
+        generalRemarks: "Complete boundary coordinates and survey plot overlay.",
+        doc14SiteMap: {
+          latitude: makeField(23.2031),
+          longitude: makeField(77.0842),
+          siteAddress: makeField("Village Rampur, Tehsil Sehore, District Sehore, Madhya Pradesh"),
+          khasraNumbers: makeField("201/1"),
+          proposedInstitutionName: makeField("Vidyapeeth Institute of Technology and Science"),
+        },
+      },
+    },
+  ],
+};
+
+// ============================================================================
+// SCENARIO 2: Missing Documents & Insufficient Application Metadata
+// ============================================================================
+export const scenario2MissingDocs: SyntheticScenario = {
+  id: "scenario-2-missing-docs",
+  applicationNumber: "AICTE-DEMO-02-MISSING-DOCS",
+  institutionName: "Pinnacle Technical Academy",
+  programCategory: null, // intentionally missing metadata
+  proposedIntake: null,  // intentionally missing metadata
+  status: "EXTRACTION_COMPLETED",
+  title: "Missing Documents & Insufficient Input Metadata",
+  description: "Crucial mandatory slots (Land Deed, Building Plan, Fire Safety, Bank Funds) are missing; programCategory and proposedIntake not provided.",
+  intendedScrutinyOutcome: "MANUAL_REVIEW_REQUIRED",
+  documents: [
+    {
+      documentType: "DOC_01_REGISTRATION",
+      originalName: "DOC_01_Society_Registration.pdf",
+      extractedData: {
+        documentId: "doc-02-01",
+        classifiedType: "DOC_01_REGISTRATION",
+        classificationConfidence: "HIGH",
+        classificationReasoning: "Registered Society Registration Certificate.",
+        pageCount: 4,
+        extractionStatus: "SUCCESS",
+        generalRemarks: "Society registration in order.",
+        doc01Registration: {
+          applicantLegalName: makeField("Pinnacle Educational & Research Society"),
+          entityType: makeField("SOCIETY"),
+          registrationNumber: makeField("SOC/MP/2018/194"),
+          registrationDate: makeField("2018-03-12"),
+          registeringAuthority: makeField("Registrar of Societies, Indore"),
+          registeredAddress: makeField("14 Race Course Road, Indore, MP"),
+          hasNonProfitClause: makeField(true),
+        },
+      },
+    },
+    {
+      documentType: "DOC_02_RESOLUTION",
+      originalName: "DOC_02_Format_3_Resolution.pdf",
+      extractedData: {
+        documentId: "doc-02-02",
+        classifiedType: "DOC_02_RESOLUTION",
+        classificationConfidence: "HIGH",
+        classificationReasoning: "Governing Council resolution in AICTE Format 3.",
+        pageCount: 2,
+        extractionStatus: "SUCCESS",
+        generalRemarks: "Resolution passed.",
+        doc02Resolution: {
+          sponsoringBodyName: makeField("Pinnacle Educational & Research Society"),
+          proposedInstitutionName: makeField("Pinnacle Technical Academy"),
+          resolutionDate: makeField("2026-07-20"),
+          resolutionNumber: makeField("PERS/RES/2026/04"),
+          locationAddress: makeField("Sector 3, Pithampur Industrial Area, Dhar"),
+          authorizedSignatories: makeField("Vikramaditya Rao (President)"),
+          proposedCoursesIntake: makeField("Diploma Engineering (180)"),
+          proposedIntake: makeField(180),
+          hasResourceCommitment: makeField(true),
+        },
+      },
+    },
+  ],
+};
+
+// ============================================================================
+// SCENARIO 3: Incomplete or Uncertain Evidence
+// ============================================================================
+export const scenario3UncertainEvidence: SyntheticScenario = {
+  id: "scenario-3-uncertain-evidence",
+  applicationNumber: "AICTE-DEMO-03-UNCERTAIN-EVIDENCE",
+  institutionName: "Apex Institute of Engineering",
+  programCategory: "ENGINEERING_AND_TECHNOLOGY",
+  proposedIntake: 300,
+  status: "EXTRACTION_COMPLETED",
+  title: "Incomplete and Ambiguous Extraction Signals",
+  description: "Mandatory documents submitted, but key fields (land use permitted classification, room carpet schedule, fire NOC validity) are illegible or uncertain.",
+  intendedScrutinyOutcome: "MANUAL_REVIEW_REQUIRED",
+  documents: [
+    {
+      documentType: "DOC_01_REGISTRATION",
+      originalName: "DOC_01_Trust_Registration.pdf",
+      extractedData: {
+        documentId: "doc-03-01",
+        classifiedType: "DOC_01_REGISTRATION",
+        classificationConfidence: "HIGH",
+        classificationReasoning: "Trust registration certificate.",
+        pageCount: 5,
+        extractionStatus: "SUCCESS",
+        generalRemarks: "Clear registration deed.",
+        doc01Registration: {
+          applicantLegalName: makeField("Apex Shiksha Samiti"),
+          entityType: makeField("SOCIETY"),
+          registrationNumber: makeField("ASS/GWL/2016/9931"),
+          registrationDate: makeField("2016-04-18"),
+          registeringAuthority: makeField("Registrar of Societies, Gwalior"),
+          registeredAddress: makeField("City Centre, Gwalior, MP"),
+          hasNonProfitClause: makeField(true),
+        },
+      },
+    },
+    {
+      documentType: "DOC_02_RESOLUTION",
+      originalName: "DOC_02_Format_3_Resolution.pdf",
+      extractedData: {
+        documentId: "doc-03-02",
+        classifiedType: "DOC_02_RESOLUTION",
+        classificationConfidence: "HIGH",
+        classificationReasoning: "Format 3 governing body resolution.",
+        pageCount: 3,
+        extractionStatus: "SUCCESS",
+        generalRemarks: "Complete commitments.",
+        doc02Resolution: {
+          sponsoringBodyName: makeField("Apex Shiksha Samiti"),
+          proposedInstitutionName: makeField("Apex Institute of Engineering"),
+          resolutionDate: makeField("2026-08-10"),
+          resolutionNumber: makeField("ASS/2026/01"),
+          locationAddress: makeField("Survey 114/2, 115/1 and 116/3, Banmore, Morena"),
+          authorizedSignatories: makeField("Dr. Harish Chandra (Secretary)"),
+          proposedCoursesIntake: makeField("B.Tech in Computer Science (180), Mechanical (120)"),
+          proposedIntake: makeField(300),
+          hasResourceCommitment: makeField(true),
+        },
+      },
+    },
+    {
+      documentType: "DOC_03_LAND_DEED",
+      originalName: "DOC_03_Land_Deed.pdf",
+      extractedData: {
+        documentId: "doc-03-03",
+        classifiedType: "DOC_03_LAND_DEED",
+        classificationConfidence: "HIGH",
+        classificationReasoning: "Registered Sale Deed.",
+        pageCount: 10,
+        extractionStatus: "SUCCESS",
+        generalRemarks: "Multi-plot land holding.",
+        doc03LandDeed: {
+          deedType: makeField("Sale Deed"),
+          documentType: makeField("Sale Deed"),
+          transfereeLesseeName: makeField("Apex Shiksha Samiti"),
+          buyerTransferee: makeField("Apex Shiksha Samiti"),
+          deedRegistrationNumber: makeField("MOR/2019/8812"),
+          registrationNumber: makeField("MOR/2019/8812"),
+          registrationDate: makeField("2019-06-25"),
+          khasraSurveyPlotNumbers: makeField(["114/2", "115/1", "116/3"]),
+          khasraNumbers: makeField("114/2, 115/1 and 116/3"),
+          parcelArea: makeField(8.0),
+          landAreaAcres: makeField(8.0),
+          landRevenueLocation: makeField("Banmore, Morena, Madhya Pradesh"),
+          landLocation: makeField("Banmore, Morena, Madhya Pradesh"),
+        },
+      },
+    },
+    {
+      documentType: "DOC_05_LAND_USE",
+      originalName: "DOC_05_Land_Use_Certificate.pdf",
+      extractedData: {
+        documentId: "doc-03-05",
+        classifiedType: "DOC_05_LAND_USE",
+        classificationConfidence: "MEDIUM",
+        classificationReasoning: "Conversion order partially water-damaged.",
+        pageCount: 3,
+        extractionStatus: "PARTIAL",
+        generalRemarks: "Permitted land use description is ambiguous due to smudged official revenue seal.",
+        doc05LandUse: {
+          issuingAuthority: makeField("Sub-Divisional Magistrate, Morena"),
+          orderReferenceNumber: makeField("SDM/MOR/LUC/2021/04"),
+          orderNumber: makeField("SDM/MOR/LUC/2021/04"),
+          orderDate: makeField("2021-02-14"),
+          issueDate: makeField("2021-02-14"),
+          landownerApplicantName: makeField("Apex Shiksha Samiti"),
+          applicantName: makeField("Apex Shiksha Samiti"),
+          khasraSurveyPlotNumbers: makeField(["114/2", "115/1", "116/3"]),
+          khasraNumbers: makeField("114/2, 115/1 and 116/3"),
+          landAreaAcres: makeField(8.0),
+          permittedLandUse: makeEmptyField("AMBIGUOUS", "Water-damaged seal obscures permitted classification clause"),
+          permittedUse: makeEmptyField("AMBIGUOUS", "Water-damaged seal obscures permitted classification clause"),
+        },
+      },
+    },
+    {
+      documentType: "DOC_06_BUILDING_PLAN",
+      originalName: "DOC_06_Approved_Building_Plan.pdf",
+      extractedData: {
+        documentId: "doc-03-06",
+        classifiedType: "DOC_06_BUILDING_PLAN",
+        classificationConfidence: "MEDIUM",
+        classificationReasoning: "Blueprint blueprint schedule table torn at margin.",
+        pageCount: 6,
+        extractionStatus: "PARTIAL",
+        generalRemarks: "Carpet area summary values illegible.",
+        doc06BuildingPlan: {
+          approvingAuthority: makeField("Municipal Authority, Banmore"),
+          sanctionOrderReference: makeField("BAN/BP/2022/90"),
+          sanctionNumber: makeField("BAN/BP/2022/90"),
+          sanctionDate: makeField("2022-07-15"),
+          architectName: makeField("Ar. S. K. Gupta"),
+          architectCoaRegistrationNumber: makeField("CA/2015/67890"),
+          architectCoaRegistration: makeField("CA/2015/67890"),
+          institutionName: makeField("Apex Institute of Engineering"),
+          siteAddress: makeField("Banmore, Morena, Madhya Pradesh"),
+          totalSanctionedBuiltUpArea: makeField(11500),
+          totalBuiltUpAreaSqm: makeField(11500),
+          adminCarpetAreaSqm: makeEmptyField("ILLEGIBLE", "Torn table header on sheet 3"),
+          amenitiesCarpetAreaSqm: makeEmptyField("ILLEGIBLE", "Smudged column on sheet 3"),
+        },
+      },
+    },
+    {
+      documentType: "DOC_07_OCCUPANCY",
+      originalName: "DOC_07_Occupancy_Certificate.pdf",
+      extractedData: {
+        documentId: "doc-03-07",
+        classifiedType: "DOC_07_OCCUPANCY",
+        classificationConfidence: "HIGH",
+        classificationReasoning: "Permanent building occupancy certificate.",
+        pageCount: 2,
+        extractionStatus: "SUCCESS",
+        generalRemarks: "Valid occupancy certificate.",
+        doc07Occupancy: {
+          issuingAuthority: makeField("Municipal Authority, Banmore"),
+          certificateReferenceNumber: makeField("BAN/OCC/2023/12"),
+          certificateNumber: makeField("BAN/OCC/2023/12"),
+          institutionName: makeField("Apex Institute of Engineering"),
+          siteAddress: makeField("Banmore, Morena, Madhya Pradesh"),
+          issueDate: makeField("2023-10-18"),
+          occupancyType: makeField("permanent"),
+        },
+      },
+    },
+    {
+      documentType: "DOC_09_FIRE_SAFETY",
+      originalName: "DOC_09_Fire_Safety_Certificate.pdf",
+      extractedData: {
+        documentId: "doc-03-09",
+        classifiedType: "DOC_09_FIRE_SAFETY",
+        classificationConfidence: "LOW",
+        classificationReasoning: "Fire certificate missing validity dates.",
+        pageCount: 2,
+        extractionStatus: "PARTIAL",
+        generalRemarks: "Validity period omitted by issuing station.",
+        doc09FireSafety: {
+          issuingAuthority: makeField("District Fire Station, Morena"),
+          certificateReferenceNumber: makeField("FS/MOR/2026/09"),
+          certificateNumber: makeField("FS/MOR/2026/09"),
+          institutionName: makeField("Apex Institute of Engineering"),
+          siteAddress: makeField("Banmore, Morena, Madhya Pradesh"),
+          issueDate: makeEmptyField("NOT_FOUND", "No issue date stamped on certificate"),
+          expiryDate: makeEmptyField("NOT_FOUND", "No expiry date printed"),
+          validUntilDate: makeEmptyField("NOT_FOUND", "No expiry date printed"),
+        },
+      },
+    },
+    {
+      documentType: "DOC_10_BANK_FUNDS",
+      originalName: "DOC_10_Bank_Funds_Certificate.pdf",
+      extractedData: {
+        documentId: "doc-03-10",
+        classifiedType: "DOC_10_BANK_FUNDS",
+        classificationConfidence: "HIGH",
+        classificationReasoning: "Bank funds certificate.",
+        pageCount: 2,
+        extractionStatus: "SUCCESS",
+        generalRemarks: "Unencumbered funds verified.",
+        doc10BankFunds: {
+          bankName: makeField("Punjab National Bank"),
+          branchName: makeField("Gwalior Main"),
+          accountHolderName: makeField("Apex Shiksha Samiti"),
+          amountInLakhsINR: makeField(120),
+          amountInInr: makeField(12000000),
+          isUnencumbered: makeField(true),
+          certificateDate: makeField("2026-08-01"),
+        },
+      },
+    },
+  ],
+};
+
+// ============================================================================
+// SCENARIO 4: Cross-Document Identity Mismatch
+// ============================================================================
+export const scenario4IdentityMismatch: SyntheticScenario = {
+  id: "scenario-4-identity-mismatch",
+  applicationNumber: "AICTE-DEMO-04-IDENTITY-MISMATCH",
+  institutionName: "Zenith College of Engineering and Technology",
+  programCategory: "ENGINEERING_AND_TECHNOLOGY",
+  proposedIntake: 180,
+  status: "EXTRACTION_COMPLETED",
+  title: "Cross-Document Legal Entity & Location Mismatches",
+  description: "The land deed is titled under an unrelated commercial company, the bank deposit is held by a third-party trader, and revenue plot coordinates conflict with municipal planning records.",
+  intendedScrutinyOutcome: "DEFICIENCIES_DETECTED",
+  documents: [
+    {
+      documentType: "DOC_01_REGISTRATION",
+      originalName: "DOC_01_Trust_Deed.pdf",
+      extractedData: {
+        documentId: "doc-04-01",
+        classifiedType: "DOC_01_REGISTRATION",
+        classificationConfidence: "HIGH",
+        classificationReasoning: "Trust registration certificate.",
+        pageCount: 5,
+        extractionStatus: "SUCCESS",
+        generalRemarks: "Trust deed.",
+        doc01Registration: {
+          applicantLegalName: makeField("Zenith Welfare & Educational Foundation"),
+          entityType: makeField("Public Charitable Trust"),
+          registrationNumber: makeField("TR/JBP/2017/5541"),
+          registrationDate: makeField("2017-02-10"),
+          registeringAuthority: makeField("Registrar of Trusts, Jabalpur"),
+          registeredAddress: makeField("Civil Lines, Jabalpur"),
+          hasNonProfitClause: makeField(true),
+        },
+      },
+    },
+    {
+      documentType: "DOC_02_RESOLUTION",
+      originalName: "DOC_02_Format_3_Resolution.pdf",
+      extractedData: {
+        documentId: "doc-04-02",
+        classifiedType: "DOC_02_RESOLUTION",
+        classificationConfidence: "HIGH",
+        classificationReasoning: "Format 3 Resolution.",
+        pageCount: 2,
+        extractionStatus: "SUCCESS",
+        generalRemarks: "Resolution passed.",
+        doc02Resolution: {
+          sponsoringBodyName: makeField("Zenith Welfare & Educational Foundation"),
+          proposedInstitutionName: makeField("Zenith College of Engineering and Technology"),
+          resolutionDate: makeField("2026-08-01"),
+          locationAddress: makeField("Village Sonagiri, Khasra 45/1, District Bhopal"),
+          authorizedSignatories: makeField("M. K. Verma (Managing Trustee)"),
+          proposedCoursesIntake: makeField("B.Tech in Artificial Intelligence (180)"),
+          proposedIntake: makeField(180),
+          hasResourceCommitment: makeField(true),
+        },
+      },
+    },
+    {
+      documentType: "DOC_03_LAND_DEED",
+      originalName: "DOC_03_Land_Deed.pdf",
+      extractedData: {
+        documentId: "doc-04-03",
+        classifiedType: "DOC_03_LAND_DEED",
+        classificationConfidence: "HIGH",
+        classificationReasoning: "Registered Sale Deed.",
+        pageCount: 8,
+        extractionStatus: "SUCCESS",
+        generalRemarks: "Transferee is an unrelated commercial entity.",
+        doc03LandDeed: {
+          deedType: makeField("Sale Deed"),
+          documentType: makeField("Sale Deed"),
+          transferorLessorName: makeField("S. K. Land Developers"),
+          transfereeLesseeName: makeField("Sunrise Commercial Holdings Private Limited"), // Severe mismatch!
+          buyerTransferee: makeField("Sunrise Commercial Holdings Private Limited"),
+          deedRegistrationNumber: makeField("BPL/2019/1004"),
+          registrationNumber: makeField("BPL/2019/1004"),
+          registrationDate: makeField("2019-09-14"),
+          khasraSurveyPlotNumbers: makeField(["45/1"]),
+          khasraNumbers: makeField("45/1"),
+          parcelArea: makeField(8.0),
+          landAreaAcres: makeField(8.0),
+          landRevenueLocation: makeField("Village Sonagiri, Khasra 45/1, District Bhopal"),
+          landLocation: makeField("Village Sonagiri, Khasra 45/1, District Bhopal"),
+        },
+      },
+    },
+    {
+      documentType: "DOC_05_LAND_USE",
+      originalName: "DOC_05_Land_Use_Certificate.pdf",
+      extractedData: {
+        documentId: "doc-04-05",
+        classifiedType: "DOC_05_LAND_USE",
+        classificationConfidence: "HIGH",
+        classificationReasoning: "Conversion order.",
+        pageCount: 3,
+        extractionStatus: "SUCCESS",
+        generalRemarks: "Conflicting revenue location.",
+        doc05LandUse: {
+          issuingAuthority: makeField("SDO Sehore"),
+          orderReferenceNumber: makeField("LUC/2021/99"),
+          orderNumber: makeField("LUC/2021/99"),
+          orderDate: makeField("2021-05-18"),
+          issueDate: makeField("2021-05-18"),
+          applicantName: makeField("Zenith Welfare & Educational Foundation"),
+          khasraSurveyPlotNumbers: makeField(["89/4"]), // Conflicting khasra!
+          khasraNumbers: makeField("89/4"),
+          landAreaAcres: makeField(8.0),
+          permittedLandUse: makeField("educational and institutional purposes"),
+          permittedUse: makeField("educational and institutional purposes"),
+          landLocation: makeField("Industrial Area Kolar, Khasra 89/4, District Sehore"), // Conflicting location!
+        },
+      },
+    },
+    {
+      documentType: "DOC_10_BANK_FUNDS",
+      originalName: "DOC_10_Bank_Funds_Certificate.pdf",
+      extractedData: {
+        documentId: "doc-04-10",
+        classifiedType: "DOC_10_BANK_FUNDS",
+        classificationConfidence: "HIGH",
+        classificationReasoning: "Bank funds certificate.",
+        pageCount: 2,
+        extractionStatus: "SUCCESS",
+        generalRemarks: "Third-party commercial account holder.",
+        doc10BankFunds: {
+          bankName: makeField("HDFC Bank"),
+          branchName: makeField("MP Nagar Bhopal"),
+          accountHolderName: makeField("Blue Sky Trading Corporation"), // Conflicting entity!
+          amountInLakhsINR: makeField(150),
+          amountInInr: makeField(15000000),
+          isUnencumbered: makeField(true),
+          certificateDate: makeField("2026-08-01"),
+        },
+      },
+    },
+  ],
+};
+
+// ============================================================================
+// SCENARIO 5: Land and Tenure Deficiencies
+// ============================================================================
+export const scenario5LandDeficiencies: SyntheticScenario = {
+  id: "scenario-5-land-deficiencies",
+  applicationNumber: "AICTE-DEMO-05-LAND-DEFICIENCIES",
+  institutionName: "Imperial Institute of Technology",
+  programCategory: "ENGINEERING_AND_TECHNOLOGY",
+  proposedIntake: 300,
+  status: "EXTRACTION_COMPLETED",
+  title: "Substantive Statutory Land Violations",
+  description: "Total land area is only 1.1 acres (below 1.5 ac minimum anywhere in India), private lease is only 15 years (below 30 years required), land is split across 5 fragmented plots, and land use is strictly agricultural.",
+  intendedScrutinyOutcome: "DEFICIENCIES_DETECTED",
+  documents: [
+    {
+      documentType: "DOC_01_REGISTRATION",
+      originalName: "DOC_01_Trust_Registration.pdf",
+      extractedData: {
+        documentId: "doc-05-01",
+        classifiedType: "DOC_01_REGISTRATION",
+        classificationConfidence: "HIGH",
+        classificationReasoning: "Registered trust.",
+        pageCount: 4,
+        extractionStatus: "SUCCESS",
+        generalRemarks: "Valid trust.",
+        doc01Registration: {
+          applicantLegalName: makeField("Imperial Educational Society"),
+          entityType: makeField("SOCIETY"),
+          registrationNumber: makeField("SOC/2016/440"),
+          registrationDate: makeField("2016-01-15"),
+          registeringAuthority: makeField("Registrar, Ujjain"),
+          registeredAddress: makeField("Freeganj, Ujjain"),
+          hasNonProfitClause: makeField(true),
+        },
+      },
+    },
+    {
+      documentType: "DOC_02_RESOLUTION",
+      originalName: "DOC_02_Resolution.pdf",
+      extractedData: {
+        documentId: "doc-05-02",
+        classifiedType: "DOC_02_RESOLUTION",
+        classificationConfidence: "HIGH",
+        classificationReasoning: "Format 3 resolution.",
+        pageCount: 2,
+        extractionStatus: "SUCCESS",
+        generalRemarks: "Format 3 resolution.",
+        doc02Resolution: {
+          sponsoringBodyName: makeField("Imperial Educational Society"),
+          proposedInstitutionName: makeField("Imperial Institute of Technology"),
+          resolutionDate: makeField("2026-08-01"),
+          locationAddress: makeField("Dewas Road, Ujjain"),
+          authorizedSignatories: makeField("S. P. Singh (President)"),
+          proposedCoursesIntake: makeField("B.Tech in Civil (120), Electrical (180)"),
+          proposedIntake: makeField(300),
+          hasResourceCommitment: makeField(true),
+        },
+      },
+    },
+    {
+      documentType: "DOC_03_LAND_DEED",
+      originalName: "DOC_03_Lease_Deed.pdf",
+      extractedData: {
+        documentId: "doc-05-03",
+        classifiedType: "DOC_03_LAND_DEED",
+        classificationConfidence: "HIGH",
+        classificationReasoning: "Private lease agreement.",
+        pageCount: 8,
+        extractionStatus: "SUCCESS",
+        generalRemarks: "Short tenure private lease on undersized fragmented land.",
+        doc03LandDeed: {
+          deedType: makeField("Private Lease"),
+          documentType: makeField("Private Lease"),
+          transfereeLesseeName: makeField("Imperial Educational Society"),
+          buyerTransferee: makeField("Imperial Educational Society"),
+          deedRegistrationNumber: makeField("UJN/2021/541"),
+          registrationNumber: makeField("UJN/2021/541"),
+          registrationDate: makeField("2021-04-10"),
+          khasraSurveyPlotNumbers: makeField(["11/1", "11/2", "12/3", "14/1", "15/2"]), // 5 plots!
+          khasraNumbers: makeField("11/1, 11/2, 12/3, 14/1, 15/2"),
+          parcelArea: makeField(1.1), // 1.1 acres < 1.5 ac minimum!
+          landAreaAcres: makeField(1.1),
+          leaseTenureYears: makeField(15), // 15 years < 30 years statutory requirement!
+          leaseExpiryDate: makeField("2036-04-09"),
+          leaseCommencementDate: makeField("2021-04-10"),
+          landLocation: makeField("Dewas Road, Ujjain"),
+        },
+      },
+    },
+    {
+      documentType: "DOC_05_LAND_USE",
+      originalName: "DOC_05_Land_Use_Certificate.pdf",
+      extractedData: {
+        documentId: "doc-05-05",
+        classifiedType: "DOC_05_LAND_USE",
+        classificationConfidence: "HIGH",
+        classificationReasoning: "Agricultural revenue order.",
+        pageCount: 2,
+        extractionStatus: "SUCCESS",
+        generalRemarks: "Conversion refused; strictly agricultural.",
+        doc05LandUse: {
+          issuingAuthority: makeField("Revenue Office, Ujjain"),
+          orderReferenceNumber: makeField("AGRI/UJN/2021/88"),
+          orderNumber: makeField("AGRI/UJN/2021/88"),
+          issueDate: makeField("2021-06-01"),
+          applicantName: makeField("Imperial Educational Society"),
+          khasraNumbers: makeField("11/1, 11/2, 12/3, 14/1, 15/2"),
+          landAreaAcres: makeField(1.1),
+          permittedLandUse: makeField("strictly agricultural crop farming only"), // Non-educational restriction!
+          permittedUse: makeField("strictly agricultural crop farming only"),
+          landLocation: makeField("Dewas Road, Ujjain"),
+        },
+      },
+    },
+  ],
+};
+
+// ============================================================================
+// SCENARIO 6: Expired Certificates & Chronological Inversions
+// ============================================================================
+export const scenario6ExpiredChronology: SyntheticScenario = {
+  id: "scenario-6-expired-chronology",
+  applicationNumber: "AICTE-DEMO-06-EXPIRED-CHRONOLOGY",
+  institutionName: "Horizon Institute of Technology",
+  programCategory: "ENGINEERING_AND_TECHNOLOGY",
+  proposedIntake: 240,
+  status: "EXTRACTION_COMPLETED",
+  title: "Expired Fire Safety NOC & Milestone Sequence Inversions",
+  description: "Fire NOC is expired and has inverted issue/expiry dates; building occupancy certificate was issued two years prior to building plan approval, and land deed was acquired years before sponsoring trust incorporation.",
+  intendedScrutinyOutcome: "DEFICIENCIES_DETECTED",
+  documents: [
+    {
+      documentType: "DOC_01_REGISTRATION",
+      originalName: "DOC_01_Trust_Registration.pdf",
+      extractedData: {
+        documentId: "doc-06-01",
+        classifiedType: "DOC_01_REGISTRATION",
+        classificationConfidence: "HIGH",
+        classificationReasoning: "Trust registration.",
+        pageCount: 3,
+        extractionStatus: "SUCCESS",
+        generalRemarks: "Trust deed.",
+        doc01Registration: {
+          applicantLegalName: makeField("Horizon Foundation"),
+          entityType: makeField("Public Charitable Trust"),
+          registrationNumber: makeField("HF/2024/991"),
+          registrationDate: makeField("2024-09-01"), // Late incorporation!
+          registeringAuthority: makeField("Registrar, Ratlam"),
+          registeredAddress: makeField("Station Road, Ratlam"),
+          hasNonProfitClause: makeField(true),
+        },
+      },
+    },
+    {
+      documentType: "DOC_02_RESOLUTION",
+      originalName: "DOC_02_Resolution.pdf",
+      extractedData: {
+        documentId: "doc-06-02",
+        classifiedType: "DOC_02_RESOLUTION",
+        classificationConfidence: "HIGH",
+        classificationReasoning: "Format 3 Resolution.",
+        pageCount: 2,
+        extractionStatus: "SUCCESS",
+        generalRemarks: "Resolution passed.",
+        doc02Resolution: {
+          sponsoringBodyName: makeField("Horizon Foundation"),
+          proposedInstitutionName: makeField("Horizon Institute of Technology"),
+          resolutionDate: makeField("2026-08-01"),
+          locationAddress: makeField("Plot 5, Industrial Area, Ratlam"),
+          authorizedSignatories: makeField("S. K. Jain (Trustee)"),
+          proposedCoursesIntake: makeField("B.Tech in Data Science (240)"),
+          proposedIntake: makeField(240),
+          hasResourceCommitment: makeField(true),
+        },
+      },
+    },
+    {
+      documentType: "DOC_03_LAND_DEED",
+      originalName: "DOC_03_Land_Deed.pdf",
+      extractedData: {
+        documentId: "doc-06-03",
+        classifiedType: "DOC_03_LAND_DEED",
+        classificationConfidence: "HIGH",
+        classificationReasoning: "Registered Sale Deed.",
+        pageCount: 8,
+        extractionStatus: "SUCCESS",
+        generalRemarks: "Deed registered before trust legal incorporation.",
+        doc03LandDeed: {
+          deedType: makeField("Sale Deed"),
+          documentType: makeField("Sale Deed"),
+          transfereeLesseeName: makeField("Horizon Foundation"),
+          buyerTransferee: makeField("Horizon Foundation"),
+          deedRegistrationNumber: makeField("RTL/2021/330"),
+          registrationNumber: makeField("RTL/2021/330"),
+          registrationDate: makeField("2021-05-10"), // Inversion: 2021 deed vs 2024 trust!
+          khasraNumbers: makeField("44/1"),
+          parcelArea: makeField(8.0),
+          landAreaAcres: makeField(8.0),
+          landLocation: makeField("Plot 5, Industrial Area, Ratlam"),
+        },
+      },
+    },
+    {
+      documentType: "DOC_06_BUILDING_PLAN",
+      originalName: "DOC_06_Building_Plan.pdf",
+      extractedData: {
+        documentId: "doc-06-06",
+        classifiedType: "DOC_06_BUILDING_PLAN",
+        classificationConfidence: "HIGH",
+        classificationReasoning: "Building plan sanction.",
+        pageCount: 6,
+        extractionStatus: "SUCCESS",
+        generalRemarks: "Plan sanctioned after building was already occupied.",
+        doc06BuildingPlan: {
+          approvingAuthority: makeField("Municipal Corporation, Ratlam"),
+          sanctionOrderReference: makeField("BP/RTL/2025/110"),
+          sanctionNumber: makeField("BP/RTL/2025/110"),
+          sanctionDate: makeField("2025-08-10"), // Inversion: 2025 plan vs 2023 occupancy!
+          architectName: makeField("Ar. V. Saxena"),
+          architectCoaRegistrationNumber: makeField("CA/2010/44321"),
+          institutionName: makeField("Horizon Institute of Technology"),
+          siteAddress: makeField("Plot 5, Industrial Area, Ratlam"),
+          totalSanctionedBuiltUpArea: makeField(12000),
+          totalBuiltUpAreaSqm: makeField(12000),
+          adminCarpetAreaSqm: makeField(850),
+          amenitiesCarpetAreaSqm: makeField(550),
+        },
+      },
+    },
+    {
+      documentType: "DOC_07_OCCUPANCY",
+      originalName: "DOC_07_Occupancy_Certificate.pdf",
+      extractedData: {
+        documentId: "doc-06-07",
+        classifiedType: "DOC_07_OCCUPANCY",
+        classificationConfidence: "HIGH",
+        classificationReasoning: "Occupancy certificate.",
+        pageCount: 2,
+        extractionStatus: "SUCCESS",
+        generalRemarks: "Occupancy issued before plan sanction.",
+        doc07Occupancy: {
+          issuingAuthority: makeField("Municipal Corporation, Ratlam"),
+          certificateReferenceNumber: makeField("OCC/RTL/2023/45"),
+          certificateNumber: makeField("OCC/RTL/2023/45"),
+          institutionName: makeField("Horizon Institute of Technology"),
+          siteAddress: makeField("Plot 5, Industrial Area, Ratlam"),
+          issueDate: makeField("2023-04-12"), // Issued before plan sanction in 2025!
+          occupancyType: makeField("permanent"),
+        },
+      },
+    },
+    {
+      documentType: "DOC_09_FIRE_SAFETY",
+      originalName: "DOC_09_Fire_Safety_NOC.pdf",
+      extractedData: {
+        documentId: "doc-06-09",
+        classifiedType: "DOC_09_FIRE_SAFETY",
+        classificationConfidence: "HIGH",
+        classificationReasoning: "Expired Fire NOC with inverted internal dates.",
+        pageCount: 2,
+        extractionStatus: "SUCCESS",
+        generalRemarks: "NOC expired and issue date postdates expiry date.",
+        doc09FireSafety: {
+          issuingAuthority: makeField("Fire Services, Ratlam"),
+          certificateReferenceNumber: makeField("FS/RTL/2024/01"),
+          certificateNumber: makeField("FS/RTL/2024/01"),
+          institutionName: makeField("Horizon Institute of Technology"),
+          siteAddress: makeField("Plot 5, Industrial Area, Ratlam"),
+          issueDate: makeField("2024-06-01"), // Issue date AFTER expiry date!
+          expiryDate: makeField("2024-01-15"), // Expired in 2024!
+          validUntilDate: makeField("2024-01-15"),
+          isCompliant: makeField(true),
+        },
+      },
+    },
+  ],
+};
+
+// ============================================================================
+// SCENARIO 7: Infrastructure Shortfall & FAR Development Overflow
+// ============================================================================
+export const scenario7InfraDeficit: SyntheticScenario = {
+  id: "scenario-7-infra-deficit",
+  applicationNumber: "AICTE-DEMO-07-INFRASTRUCTURE-DEFICIT",
+  institutionName: "Grand Polytech and Engineering Institute",
+  programCategory: "ENGINEERING_AND_TECHNOLOGY",
+  proposedIntake: 300,
+  status: "EXTRACTION_COMPLETED",
+  title: "Administrative / Amenities Carpet Shortfall & FAR Capacity Breach",
+  description: "Declared administrative carpet area is only 450 sqm (vs 750 sqm required) and amenities carpet area is only 320 sqm (vs 500 sqm required); declared built-up area of 35,000 sqm massively exceeds approved FAR development capacity on 2.0 acres.",
+  intendedScrutinyOutcome: "DEFICIENCIES_DETECTED",
+  documents: [
+    {
+      documentType: "DOC_01_REGISTRATION",
+      originalName: "DOC_01_Registration.pdf",
+      extractedData: {
+        documentId: "doc-07-01",
+        classifiedType: "DOC_01_REGISTRATION",
+        classificationConfidence: "HIGH",
+        classificationReasoning: "Trust registration.",
+        pageCount: 4,
+        extractionStatus: "SUCCESS",
+        generalRemarks: "Registration in order.",
+        doc01Registration: {
+          applicantLegalName: makeField("Grand Educational Foundation"),
+          entityType: makeField("Public Charitable Trust"),
+          registrationNumber: makeField("GEF/2018/112"),
+          registrationDate: makeField("2018-05-14"),
+          registeringAuthority: makeField("Registrar, Sagar"),
+          registeredAddress: makeField("Civil Lines, Sagar"),
+          hasNonProfitClause: makeField(true),
+        },
+      },
+    },
+    {
+      documentType: "DOC_02_RESOLUTION",
+      originalName: "DOC_02_Resolution.pdf",
+      extractedData: {
+        documentId: "doc-07-02",
+        classifiedType: "DOC_02_RESOLUTION",
+        classificationConfidence: "HIGH",
+        classificationReasoning: "Format 3 resolution.",
+        pageCount: 2,
+        extractionStatus: "SUCCESS",
+        generalRemarks: "Resolution passed.",
+        doc02Resolution: {
+          sponsoringBodyName: makeField("Grand Educational Foundation"),
+          proposedInstitutionName: makeField("Grand Polytech and Engineering Institute"),
+          resolutionDate: makeField("2026-08-01"),
+          locationAddress: makeField("NH 44, Sagar, MP"),
+          authorizedSignatories: makeField("R. N. Mishra (Chairman)"),
+          proposedCoursesIntake: makeField("B.Tech in Civil (120), Mechanical (180)"),
+          proposedIntake: makeField(300),
+          hasResourceCommitment: makeField(true),
+        },
+      },
+    },
+    {
+      documentType: "DOC_03_LAND_DEED",
+      originalName: "DOC_03_Land_Deed.pdf",
+      extractedData: {
+        documentId: "doc-07-03",
+        classifiedType: "DOC_03_LAND_DEED",
+        classificationConfidence: "HIGH",
+        classificationReasoning: "Registered Sale Deed.",
+        pageCount: 8,
+        extractionStatus: "SUCCESS",
+        generalRemarks: "Registered deed for 2.0 acres.",
+        doc03LandDeed: {
+          deedType: makeField("Sale Deed"),
+          documentType: makeField("Sale Deed"),
+          transfereeLesseeName: makeField("Grand Educational Foundation"),
+          buyerTransferee: makeField("Grand Educational Foundation"),
+          deedRegistrationNumber: makeField("SGR/2020/412"),
+          registrationNumber: makeField("SGR/2020/412"),
+          registrationDate: makeField("2020-03-12"),
+          khasraNumbers: makeField("77/2"),
+          parcelArea: makeField(2.0),
+          landAreaAcres: makeField(2.0), // 2.0 acres = ~8093.7 sqm
+          landLocation: makeField("NH 44, Sagar, MP"),
+        },
+      },
+    },
+    {
+      documentType: "DOC_06_BUILDING_PLAN",
+      originalName: "DOC_06_Building_Plan.pdf",
+      extractedData: {
+        documentId: "doc-07-06",
+        classifiedType: "DOC_06_BUILDING_PLAN",
+        classificationConfidence: "HIGH",
+        classificationReasoning: "Approved building plan.",
+        pageCount: 6,
+        extractionStatus: "SUCCESS",
+        generalRemarks: "Substantive area shortfalls and FAR development capacity breach.",
+        doc06BuildingPlan: {
+          approvingAuthority: makeField("Town and Country Planning, Sagar"),
+          sanctionOrderReference: makeField("TCP/SGR/2022/88"),
+          sanctionNumber: makeField("TCP/SGR/2022/88"),
+          sanctionDate: makeField("2022-09-18"),
+          architectName: makeField("Ar. K. P. Shrivastava"),
+          architectCoaRegistrationNumber: makeField("CA/2014/99120"),
+          architectCoaRegistration: makeField("CA/2014/99120"),
+          institutionName: makeField("Grand Polytech and Engineering Institute"),
+          siteAddress: makeField("NH 44, Sagar, MP"),
+          adminCarpetAreaSqm: makeField(450), // Shortfall vs 750 sqm required!
+          amenitiesCarpetAreaSqm: makeField(320), // Shortfall vs 500 sqm required!
+          totalSanctionedBuiltUpArea: makeField(35000), // Massive development!
+          totalBuiltUpAreaSqm: makeField(35000),
+          statedFarFsi: makeField(1.2),
+          farFsi: makeField(1.2), // Max permissible = 8093.7 * 1.2 = ~9712 sqm vs 35,000 sqm declared!
+        },
+      },
+    },
+  ],
+};
+
+// ============================================================================
+// SCENARIO 8: Multiple Simultaneous Issues (Compound Failure Application)
+// ============================================================================
+export const scenario8CompoundIssues: SyntheticScenario = {
+  id: "scenario-8-compound-issues",
+  applicationNumber: "AICTE-DEMO-08-COMPOUND-ISSUES",
+  institutionName: "National Institute of Engineering Research", // Contains prohibited acronym "NATIONAL"!
+  programCategory: "ENGINEERING_AND_TECHNOLOGY",
+  proposedIntake: 300,
+  status: "EXTRACTION_COMPLETED",
+  title: "Compound Multi-Deficiency Application",
+  description: "Features a prohibited institutional name token ('National'), omitted fire NOC, deficient Format 3 resolution, encumbered bank funds below threshold, unconverted land shortfall, and a geometric impossibility where carpet area exceeds gross built-up area.",
+  intendedScrutinyOutcome: "DEFICIENCIES_DETECTED",
+  documents: [
+    {
+      documentType: "DOC_01_REGISTRATION",
+      originalName: "DOC_01_Registration.pdf",
+      extractedData: {
+        documentId: "doc-08-01",
+        classifiedType: "DOC_01_REGISTRATION",
+        classificationConfidence: "HIGH",
+        classificationReasoning: "Society registration.",
+        pageCount: 4,
+        extractionStatus: "SUCCESS",
+        generalRemarks: "Registration records.",
+        doc01Registration: {
+          applicantLegalName: makeField("National Engineering Research Trust"),
+          entityType: makeField("Public Charitable Trust"),
+          registrationNumber: makeField("NERT/2019/01"),
+          registrationDate: makeField("2019-03-10"),
+          registeringAuthority: makeField("Registrar, Bhopal"),
+          registeredAddress: makeField("Hoshangabad Road, Bhopal"),
+          hasNonProfitClause: makeField(true),
+        },
+      },
+    },
+    {
+      documentType: "DOC_02_RESOLUTION",
+      originalName: "DOC_02_Resolution.pdf",
+      extractedData: {
+        documentId: "doc-08-02",
+        classifiedType: "DOC_02_RESOLUTION",
+        classificationConfidence: "MEDIUM",
+        classificationReasoning: "Format 3 resolution missing mandatory signatories and course allocations.",
+        pageCount: 2,
+        extractionStatus: "PARTIAL",
+        generalRemarks: "Incomplete resolution.",
+        doc02Resolution: {
+          sponsoringBodyName: makeField("National Engineering Research Trust"),
+          proposedInstitutionName: makeField("National Institute of Engineering Research"),
+          resolutionDate: makeField("2026-08-01"),
+          locationAddress: makeField("Khasra 90/1, Bhopal"),
+          authorizedSignatories: makeEmptyField("NOT_FOUND", "Signatories section blank"),
+          proposedCoursesIntake: makeEmptyField("NOT_FOUND", "No course breakdown specified"),
+          proposedIntake: makeField(300),
+          hasResourceCommitment: makeField(true),
+        },
+      },
+    },
+    {
+      documentType: "DOC_03_LAND_DEED",
+      originalName: "DOC_03_Land_Deed.pdf",
+      extractedData: {
+        documentId: "doc-08-03",
+        classifiedType: "DOC_03_LAND_DEED",
+        classificationConfidence: "HIGH",
+        classificationReasoning: "Registered Sale Deed.",
+        pageCount: 8,
+        extractionStatus: "SUCCESS",
+        generalRemarks: "Deed for 10.0 acres.",
+        doc03LandDeed: {
+          deedType: makeField("Sale Deed"),
+          documentType: makeField("Sale Deed"),
+          transfereeLesseeName: makeField("National Engineering Research Trust"),
+          buyerTransferee: makeField("National Engineering Research Trust"),
+          deedRegistrationNumber: makeField("BPL/2020/774"),
+          registrationNumber: makeField("BPL/2020/774"),
+          registrationDate: makeField("2020-04-15"),
+          khasraNumbers: makeField("90/1"),
+          parcelArea: makeField(10.0),
+          landAreaAcres: makeField(10.0), // 10.0 acres in deed
+          landLocation: makeField("Khasra 90/1, Bhopal"),
+        },
+      },
+    },
+    {
+      documentType: "DOC_05_LAND_USE",
+      originalName: "DOC_05_Land_Use.pdf",
+      extractedData: {
+        documentId: "doc-08-05",
+        classifiedType: "DOC_05_LAND_USE",
+        classificationConfidence: "HIGH",
+        classificationReasoning: "Land conversion order.",
+        pageCount: 3,
+        extractionStatus: "SUCCESS",
+        generalRemarks: "Conversion covers only 2.0 acres out of 10.0 acres.",
+        doc05LandUse: {
+          issuingAuthority: makeField("SDO Revenue Bhopal"),
+          orderReferenceNumber: makeField("LUC/2021/41"),
+          orderNumber: makeField("LUC/2021/41"),
+          issueDate: makeField("2021-06-20"),
+          applicantName: makeField("National Engineering Research Trust"),
+          khasraNumbers: makeField("90/1"),
+          landAreaAcres: makeField(2.0), // Only 2.0 acres converted out of 10.0 acres!
+          permittedLandUse: makeField("educational and institutional purposes"),
+          permittedUse: makeField("educational and institutional purposes"),
+          landLocation: makeField("Khasra 90/1, Bhopal"),
+        },
+      },
+    },
+    {
+      documentType: "DOC_06_BUILDING_PLAN",
+      originalName: "DOC_06_Building_Plan.pdf",
+      extractedData: {
+        documentId: "doc-08-06",
+        classifiedType: "DOC_06_BUILDING_PLAN",
+        classificationConfidence: "HIGH",
+        classificationReasoning: "Building plan blueprint.",
+        pageCount: 6,
+        extractionStatus: "SUCCESS",
+        generalRemarks: "Carpet area geometrically exceeds gross built-up area.",
+        doc06BuildingPlan: {
+          approvingAuthority: makeField("Bhopal Municipal Corporation"),
+          sanctionOrderReference: makeField("BMC/2022/990"),
+          sanctionNumber: makeField("BMC/2022/990"),
+          sanctionDate: makeField("2022-10-10"),
+          architectName: makeField("Ar. Deepak Joshi"),
+          architectCoaRegistrationNumber: makeField("CA/2011/33421"),
+          architectCoaRegistration: makeField("CA/2011/33421"),
+          institutionName: makeField("National Institute of Engineering Research"),
+          siteAddress: makeField("Khasra 90/1, Bhopal"),
+          adminCarpetAreaSqm: makeField(6000), // Admin + Amenities = 11,000 sqm!
+          amenitiesCarpetAreaSqm: makeField(5000),
+          totalSanctionedBuiltUpArea: makeField(8000), // Total built-up only 8,000 sqm!
+          totalBuiltUpAreaSqm: makeField(8000),
+        },
+      },
+    },
+    {
+      documentType: "DOC_10_BANK_FUNDS",
+      originalName: "DOC_10_Bank_Funds.pdf",
+      extractedData: {
+        documentId: "doc-08-10",
+        classifiedType: "DOC_10_BANK_FUNDS",
+        classificationConfidence: "HIGH",
+        classificationReasoning: "Bank funds certificate.",
+        pageCount: 2,
+        extractionStatus: "SUCCESS",
+        generalRemarks: "Deficient amount and active lien declared.",
+        doc10BankFunds: {
+          bankName: makeField("Bank of Baroda"),
+          branchName: makeField("Bhopal Main"),
+          accountHolderName: makeField("National Engineering Research Trust"),
+          amountInLakhsINR: makeField(35), // ₹35 Lakhs < ₹100 Lakhs required!
+          amountInInr: makeField(3500000),
+          isUnencumbered: makeField(false), // Encumbered!
+          lienStatement: makeField("FDR pledged under lien to State Construction Corporation"),
+          certificateDate: makeField("2026-08-01"),
+        },
+      },
+    },
+  ],
+};
+
+// Array of all 8 scenarios
+export const allSyntheticScenarios: SyntheticScenario[] = [
+  scenario1Compliant,
+  scenario2MissingDocs,
+  scenario3UncertainEvidence,
+  scenario4IdentityMismatch,
+  scenario5LandDeficiencies,
+  scenario6ExpiredChronology,
+  scenario7InfraDeficit,
+  scenario8CompoundIssues,
+];
+
+// Convenience named aliases as requested: output1, output2, ... output8
+export const output1 = scenario1Compliant;
+export const output2 = scenario2MissingDocs;
+export const output3 = scenario3UncertainEvidence;
+export const output4 = scenario4IdentityMismatch;
+export const output5 = scenario5LandDeficiencies;
+export const output6 = scenario6ExpiredChronology;
+export const output7 = scenario7InfraDeficit;
+export const output8 = scenario8CompoundIssues;
