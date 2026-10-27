@@ -13,6 +13,7 @@ import {
   adaptDoc10,
 } from "../src/services/extraction-adapter.js";
 import { complianceService } from "../src/services/compliance.service.js";
+import { sanitizeJsonString } from "../src/services/vlm.service.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -123,6 +124,35 @@ describe("Extraction Adapter & Field Normalization", () => {
     const adapted = adaptDoc02(rawRes);
     assert.equal(adapted.proposedInstitutionName.value, "Sahyog Institute of Engineering and Technology");
     assert.equal(adapted.authorizedSignatories.value, "Chairperson and Secretary");
+  });
+});
+
+describe("VLM Response JSON Sanitization", () => {
+  it("escapes unescaped control characters (newlines, tabs) inside string literals", () => {
+    // Malformed JSON with literal raw newline and tab inside a string value
+    const badJson = '{\n  "excerpt": "Paragraph 1' + String.fromCharCode(10) + 'Paragraph 2\\t' + String.fromCharCode(9) + 'Column"\n}';
+    
+    // Verifying that native JSON.parse rejects this string
+    assert.throws(() => JSON.parse(badJson), /Bad control character/);
+
+    // Sanitizer fixes the control characters
+    const sanitized = sanitizeJsonString(badJson);
+    const parsed: any = JSON.parse(sanitized);
+    assert.equal(parsed.excerpt, "Paragraph 1\nParagraph 2\t\tColumn");
+  });
+
+  it("strips markdown code blocks around JSON", () => {
+    const fenced = '```json\n{\n  "status": "SUCCESS"\n}\n```';
+    const sanitized = sanitizeJsonString(fenced);
+    const parsed: any = JSON.parse(sanitized);
+    assert.equal(parsed.status, "SUCCESS");
+  });
+
+  it("preserves escaped quotes and backslashes properly", () => {
+    const withEscapes = '{\n  "text": "Name \\"with quotes\\" and C:\\\\path"\n}';
+    const sanitized = sanitizeJsonString(withEscapes);
+    const parsed: any = JSON.parse(sanitized);
+    assert.equal(parsed.text, 'Name "with quotes" and C:\\path');
   });
 });
 

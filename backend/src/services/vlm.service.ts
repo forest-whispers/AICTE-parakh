@@ -66,7 +66,9 @@ Your task is to analyze the provided documents, classify each document according
      * UNRECOGNIZED -> do not populate any doc block.
    - Leave all non-matching doc blocks undefined or omitted.
 
-5. OUTPUT FORMAT:
+5. OUTPUT FORMAT & JSON ENCODING:
+   - Your response must be strictly compliant RFC 8259 JSON.
+   - NEVER include raw literal unescaped line breaks, carriage returns, or tabs inside string values (such as excerpts, reasoning, addresses, or rawText). Always escape newlines as \n and tabs as \t.
    Return a valid JSON object matching the requested schema:
    {
      "documents": [
@@ -83,6 +85,56 @@ Your task is to analyze the provided documents, classify each document according
      ]
    }`;
 };
+
+/**
+ * Sanitizes raw JSON string from LLMs:
+ * - Strips Markdown fences
+ * - Escapes unescaped control characters (newlines, carriage returns, tabs) inside string literals
+ */
+export function sanitizeJsonString(raw: string): string {
+  let cleaned = raw.trim();
+  if (cleaned.startsWith("```json")) cleaned = cleaned.slice(7);
+  else if (cleaned.startsWith("```")) cleaned = cleaned.slice(3);
+  if (cleaned.endsWith("```")) cleaned = cleaned.slice(0, -3);
+  cleaned = cleaned.trim();
+
+  let result = "";
+  let inString = false;
+
+  for (let i = 0; i < cleaned.length; i++) {
+    const char = cleaned[i];
+    const code = cleaned.charCodeAt(i);
+
+    if (!inString) {
+      if (char === '"') inString = true;
+      result += char;
+    } else {
+      if (char === "\\") {
+        if (i + 1 < cleaned.length) {
+          result += char + cleaned[i + 1];
+          i++;
+        } else {
+          result += char;
+        }
+      } else if (char === '"') {
+        inString = false;
+        result += char;
+      } else if (code === 10) {
+        result += "\\n";
+      } else if (code === 13) {
+        result += "\\r";
+      } else if (code === 9) {
+        result += "\\t";
+      } else if (code < 32) {
+        // Drop invalid non-printable ASCII control characters inside strings
+      } else {
+        result += char;
+      }
+    }
+  }
+
+  return result;
+}
 
 export interface ProcessDocumentItem {
   id: string;
@@ -198,8 +250,10 @@ export class VLMService {
 
       let parsedJson: unknown;
       try {
-        parsedJson = JSON.parse(rawText);
+        const sanitized = sanitizeJsonString(rawText);
+        parsedJson = JSON.parse(sanitized);
       } catch (jsonErr: any) {
+        console.error("VLM JSON Parse Error. Raw response preview:", rawText.substring(0, 500));
         throw new Error(`Failed to parse VLM response as JSON: ${jsonErr.message}. Raw: ${rawText.substring(0, 300)}`);
       }
 

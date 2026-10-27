@@ -1,5 +1,11 @@
 import { type BatchExtractionResponse } from "../schemas/extraction.schema.js";
 export declare const buildSystemPrompt: () => string;
+/**
+ * Sanitizes raw JSON string from LLMs:
+ * - Strips Markdown fences
+ * - Escapes unescaped control characters (newlines, carriage returns, tabs) inside string literals
+ */
+export declare function sanitizeJsonString(raw: string): string;
 export interface ProcessDocumentItem {
     id: string;
     filePath: string;
