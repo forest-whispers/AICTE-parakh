@@ -3,6 +3,7 @@ import { AuthLayout } from "../layouts/auth-layout";
 import { OfficerLayout } from "../layouts/officer-layout";
 import { SignInPage } from "../features/auth/pages/sign-in-page";
 import { OfficerWorkbenchPage } from "../features/officer/pages/officer-workbench-page";
+import { GuidedSubmissionPage } from "../features/intake/pages/guided-submission-page";
 import { ProtectedRoute } from "../shared/components/protected-route";
 
 export const router = createBrowserRouter([
@@ -29,6 +30,10 @@ export const router = createBrowserRouter([
       {
         path: "workbench",
         element: <OfficerWorkbenchPage />,
+      },
+      {
+        path: "submit",
+        element: <GuidedSubmissionPage />,
       },
       {
         index: true,

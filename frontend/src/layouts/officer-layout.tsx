@@ -60,10 +60,8 @@ export const OfficerLayout: React.FC = () => {
     {
       label: "Guided submission",
       path: "/officer/submit",
-      active: location.pathname === "/officer/submit",
-      planned: true,
-      slice: "Slice 4 (Guided Submission & Document Intake)",
-      description: "Multi-step institutional document intake and preliminary validation wizard.",
+      active: location.pathname.startsWith("/officer/submit"),
+      planned: false,
     },
     {
       label: "Notifications",
@@ -127,9 +125,13 @@ export const OfficerLayout: React.FC = () => {
                 <Link
                   key={item.label}
                   to={item.path}
-                  className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-white transition-colors rounded-[2px]"
+                  className={`flex items-center gap-1.5 px-3 py-2 text-xs transition-colors rounded-[2px] ${
+                    item.active
+                      ? "font-medium text-white"
+                      : "font-normal text-[#98B2B4] hover:text-white hover:bg-[#1A383E]"
+                  }`}
                 >
-                  <span className="text-white">▸</span>
+                  {item.active && <span className="text-white">▸</span>}
                   <span>{item.label}</span>
                 </Link>
               );

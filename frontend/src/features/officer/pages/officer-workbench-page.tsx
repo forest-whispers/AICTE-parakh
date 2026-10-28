@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../auth/hooks/use-auth";
 import { useWorkbenchDashboard } from "../hooks/use-workbench-dashboard";
 import { useOfficerNotifications } from "../hooks/use-officer-notifications";
@@ -19,6 +20,7 @@ import type {
 } from "../types/workbench.types";
 
 export const OfficerWorkbenchPage: React.FC = () => {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const {
     data: dashboard,
@@ -137,13 +139,7 @@ export const OfficerWorkbenchPage: React.FC = () => {
       {/* Top Header */}
       <WorkbenchHeader
         officerName={user?.name || "Ananya Rao"}
-        onGuidedSubmissionClick={() =>
-          showPlannedModal(
-            "Guided Submission",
-            "Multi-step institutional document intake and preliminary validation wizard.",
-            "Slice 4 (Guided Submission & Document Intake)"
-          )
-        }
+        onGuidedSubmissionClick={() => navigate("/officer/submit")}
       />
 
       {/* Unboxed Metric Strip */}
