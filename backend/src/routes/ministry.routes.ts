@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { authenticate, requireRole } from "../middlewares/auth.middleware.js";
 import {
+  getMinistryDashboard,
   getMinistryOverview,
   getMinistryApplications,
   getMinistryWorkload,
@@ -13,6 +14,10 @@ const router = Router();
 // All Ministry Overview routes require MINISTRY_ADMIN role
 router.use(authenticate, requireRole("MINISTRY_ADMIN"));
 
+// Consolidated Ministry Dashboard endpoint
+router.get("/dashboard", getMinistryDashboard);
+
+// Standalone endpoints preserved for detailed views, deep drill-downs, and pagination
 router.get("/overview", getMinistryOverview);
 router.get("/applications", getMinistryApplications);
 router.get("/workload", getMinistryWorkload);

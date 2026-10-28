@@ -142,20 +142,22 @@ export const createApplication = async (req: Request, res: Response): Promise<vo
     const extractionResult = await vlmService.processApplicationDocuments(application.id, docItems);
 
     if (!extractionResult.success) {
-      await auditService.logEvent({
-        applicationId: application.id,
-        actorName: "SYSTEM",
-        actorRole: "SYSTEM",
-        action: "EXTRACTION_FAILED",
-        resourceType: "APPLICATION",
-        resourceId: application.id,
-        status: "FAILURE",
-        details: `Multimodal extraction failed: ${extractionResult.error}`,
-      });
-      await notificationService.notifyExtractionFailure(
-        { ...application, assignedOfficerId },
-        extractionResult.error || "Multimodal extraction failed"
-      );
+      await Promise.all([
+        auditService.logEvent({
+          applicationId: application.id,
+          actorName: "SYSTEM",
+          actorRole: "SYSTEM",
+          action: "EXTRACTION_FAILED",
+          resourceType: "APPLICATION",
+          resourceId: application.id,
+          status: "FAILURE",
+          details: `Multimodal extraction failed: ${extractionResult.error}`,
+        }),
+        notificationService.notifyExtractionFailure(
+          { ...application, assignedOfficerId },
+          extractionResult.error || "Multimodal extraction failed"
+        ),
+      ]);
     } else {
       await auditService.logEvent({
         applicationId: application.id,
@@ -176,21 +178,22 @@ export const createApplication = async (req: Request, res: Response): Promise<vo
         scrutinyResult = await complianceService.evaluateApplication(application.id);
 
         if (scrutinyResult) {
-          await auditService.logEvent({
-            applicationId: application.id,
-            actorName: "SYSTEM",
-            actorRole: "SYSTEM",
-            action: "SCRUTINY_EVALUATED",
-            resourceType: "SCRUTINY_REPORT",
-            resourceId: application.id,
-            status: scrutinyResult.overallStatus === "DEFICIENCIES_DETECTED" ? "WARNING" : "SUCCESS",
-            details: `Auto-scrutiny evaluated: ${scrutinyResult.overallStatus} (${scrutinyResult.passedCount} passed, ${scrutinyResult.deficiencyCount} deficiencies, ${scrutinyResult.reviewCount} reviews)`,
-          });
-
-          await notificationService.notifyScrutinyFindings(
-            { ...application, assignedOfficerId },
-            scrutinyResult
-          );
+          await Promise.all([
+            auditService.logEvent({
+              applicationId: application.id,
+              actorName: "SYSTEM",
+              actorRole: "SYSTEM",
+              action: "SCRUTINY_EVALUATED",
+              resourceType: "SCRUTINY_REPORT",
+              resourceId: application.id,
+              status: scrutinyResult.overallStatus === "DEFICIENCIES_DETECTED" ? "WARNING" : "SUCCESS",
+              details: `Auto-scrutiny evaluated: ${scrutinyResult.overallStatus} (${scrutinyResult.passedCount} passed, ${scrutinyResult.deficiencyCount} deficiencies, ${scrutinyResult.reviewCount} reviews)`,
+            }),
+            notificationService.notifyScrutinyFindings(
+              { ...application, assignedOfficerId },
+              scrutinyResult
+            ),
+          ]);
         }
       } catch (scrutinyErr: any) {
         console.error("Auto-scrutiny evaluation error:", scrutinyErr);
@@ -273,22 +276,23 @@ export const runExtractionForApplication = async (req: Request, res: Response): 
     const extractionResult = await vlmService.processApplicationDocuments(id, docItems);
 
     if (!extractionResult.success) {
-      await auditService.logEvent({
-        applicationId: id,
-        actorId: req.user?.id,
-        actorName: req.user?.name || "OFFICER",
-        actorRole: req.user?.role || "OFFICER",
-        action: "EXTRACTION_FAILED",
-        resourceType: "APPLICATION",
-        resourceId: id,
-        status: "FAILURE",
-        details: `Re-extraction failed: ${extractionResult.error}`,
-      });
-
-      await notificationService.notifyExtractionFailure(
-        application,
-        extractionResult.error || "Re-extraction failed"
-      );
+      await Promise.all([
+        auditService.logEvent({
+          applicationId: id,
+          actorId: req.user?.id,
+          actorName: req.user?.name || "OFFICER",
+          actorRole: req.user?.role || "OFFICER",
+          action: "EXTRACTION_FAILED",
+          resourceType: "APPLICATION",
+          resourceId: id,
+          status: "FAILURE",
+          details: `Re-extraction failed: ${extractionResult.error}`,
+        }),
+        notificationService.notifyExtractionFailure(
+          application,
+          extractionResult.error || "Re-extraction failed"
+        ),
+      ]);
     } else {
       await auditService.logEvent({
         applicationId: id,
@@ -310,22 +314,23 @@ export const runExtractionForApplication = async (req: Request, res: Response): 
         scrutinyResult = await complianceService.evaluateApplication(id);
 
         if (scrutinyResult) {
-          await auditService.logEvent({
-            applicationId: id,
-            actorId: req.user?.id,
-            actorName: req.user?.name || "OFFICER",
-            actorRole: req.user?.role || "OFFICER",
-            action: "SCRUTINY_EVALUATED",
-            resourceType: "SCRUTINY_REPORT",
-            resourceId: id,
-            status: scrutinyResult.overallStatus === "DEFICIENCIES_DETECTED" ? "WARNING" : "SUCCESS",
-            details: `Scrutiny evaluated after re-extraction: ${scrutinyResult.overallStatus}`,
-          });
-
-          await notificationService.notifyScrutinyFindings(
-            application,
-            scrutinyResult
-          );
+          await Promise.all([
+            auditService.logEvent({
+              applicationId: id,
+              actorId: req.user?.id,
+              actorName: req.user?.name || "OFFICER",
+              actorRole: req.user?.role || "OFFICER",
+              action: "SCRUTINY_EVALUATED",
+              resourceType: "SCRUTINY_REPORT",
+              resourceId: id,
+              status: scrutinyResult.overallStatus === "DEFICIENCIES_DETECTED" ? "WARNING" : "SUCCESS",
+              details: `Scrutiny evaluated after re-extraction: ${scrutinyResult.overallStatus}`,
+            }),
+            notificationService.notifyScrutinyFindings(
+              application,
+              scrutinyResult
+            ),
+          ]);
         }
       } catch (scrutinyErr) {
         console.error("Scrutiny evaluation error:", scrutinyErr);
@@ -405,29 +410,29 @@ export const runScrutinyForApplication = async (req: Request, res: Response): Pr
 
     const scrutinyResult = await complianceService.evaluateApplication(id);
 
-    // Audit log scrutiny evaluation
-    await auditService.logEvent({
-      applicationId: id,
-      actorId: req.user?.id,
-      actorName: req.user?.name || "OFFICER",
-      actorRole: req.user?.role || "OFFICER",
-      action: "SCRUTINY_EVALUATED",
-      resourceType: "SCRUTINY_REPORT",
-      resourceId: id,
-      status: scrutinyResult.overallStatus === "DEFICIENCIES_DETECTED" ? "WARNING" : "SUCCESS",
-      details: `Scrutiny evaluated: ${scrutinyResult.overallStatus} (${scrutinyResult.passedCount} passed, ${scrutinyResult.deficiencyCount} deficiencies, ${scrutinyResult.reviewCount} reviews)`,
-      metadata: {
-        overallStatus: scrutinyResult.overallStatus,
-        deficiencyCount: scrutinyResult.deficiencyCount,
-        reviewCount: scrutinyResult.reviewCount,
-      },
-    });
-
-    // Notification routing
-    await notificationService.notifyScrutinyFindings(
-      application,
-      scrutinyResult
-    );
+    // Audit log scrutiny evaluation and notification routing concurrently
+    await Promise.all([
+      auditService.logEvent({
+        applicationId: id,
+        actorId: req.user?.id,
+        actorName: req.user?.name || "OFFICER",
+        actorRole: req.user?.role || "OFFICER",
+        action: "SCRUTINY_EVALUATED",
+        resourceType: "SCRUTINY_REPORT",
+        resourceId: id,
+        status: scrutinyResult.overallStatus === "DEFICIENCIES_DETECTED" ? "WARNING" : "SUCCESS",
+        details: `Scrutiny evaluated: ${scrutinyResult.overallStatus} (${scrutinyResult.passedCount} passed, ${scrutinyResult.deficiencyCount} deficiencies, ${scrutinyResult.reviewCount} reviews)`,
+        metadata: {
+          overallStatus: scrutinyResult.overallStatus,
+          deficiencyCount: scrutinyResult.deficiencyCount,
+          reviewCount: scrutinyResult.reviewCount,
+        },
+      }),
+      notificationService.notifyScrutinyFindings(
+        application,
+        scrutinyResult
+      ),
+    ]);
 
     const updated = await prisma.application.findUnique({
       where: { id },
@@ -555,6 +560,91 @@ export const getApplicationById = async (req: Request, res: Response): Promise<v
     res.status(500).json({
       success: false,
       error: error.message || "Failed to fetch application.",
+    });
+  }
+};
+
+/**
+ * Unified Case Workspace endpoint (Slice 5).
+ * Consolidates application details, documents, latest scrutiny report,
+ * authority verifications, and audit chronology into a single concurrent response.
+ */
+export const getCaseWorkspaceData = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const rawId = req.params.id;
+    const id = Array.isArray(rawId) ? rawId[0] : rawId;
+    if (!id) {
+      res.status(400).json({ success: false, error: "Application ID is required." });
+      return;
+    }
+
+    // Role check: Officer can only access assigned application; Ministry Admin has read oversight
+    if (req.user?.role === "OFFICER") {
+      const appCheck = await prisma.application.findUnique({
+        where: { id },
+        select: { id: true, assignedOfficerId: true },
+      });
+      if (!appCheck) {
+        res.status(404).json({ success: false, error: "Application not found." });
+        return;
+      }
+      if (appCheck.assignedOfficerId !== req.user.id) {
+        res.status(403).json({
+          success: false,
+          error: "Access denied: You are not assigned to this application.",
+        });
+        return;
+      }
+    }
+
+    // Execute independent queries concurrently via Promise.all
+    const [application, verifications, auditTrail] = await Promise.all([
+      prisma.application.findUnique({
+        where: { id },
+        include: {
+          assignedOfficer: {
+            select: { id: true, name: true, email: true, designation: true },
+          },
+          documents: {
+            orderBy: { createdAt: "asc" },
+          },
+          scrutinyReports: {
+            orderBy: { createdAt: "desc" },
+            take: 1,
+          },
+        },
+      }),
+      prisma.authorityVerification.findMany({
+        where: { applicationId: id },
+        orderBy: { createdAt: "desc" },
+      }),
+      prisma.auditLog.findMany({
+        where: { applicationId: id },
+        orderBy: { createdAt: "desc" },
+        take: 50,
+      }),
+    ]);
+
+    if (!application) {
+      res.status(404).json({ success: false, error: "Application not found." });
+      return;
+    }
+
+    res.status(200).json({
+      success: true,
+      data: {
+        application,
+        documents: application.documents || [],
+        scrutinyReport: application.scrutinyReports?.[0] || null,
+        authorityVerifications: verifications || [],
+        auditTrail: auditTrail || [],
+      },
+    });
+  } catch (error: any) {
+    console.error("Error retrieving case workspace data:", error);
+    res.status(500).json({
+      success: false,
+      error: error.message || "Failed to retrieve case workspace data.",
     });
   }
 };

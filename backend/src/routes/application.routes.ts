@@ -9,6 +9,7 @@ import {
 import {
   createApplication,
   getApplicationById,
+  getCaseWorkspaceData,
   listApplications,
   runExtractionForApplication,
   runScrutinyForApplication,
@@ -38,6 +39,9 @@ router.get("/unassigned", authenticate, requireRole("MINISTRY_ADMIN"), getUnassi
 
 // Single Application Details
 router.get("/:id", authenticate, requireApplicationAccess("read"), getApplicationById);
+
+// Unified Case Workspace (Slice 5)
+router.get("/:id/workspace", authenticate, requireApplicationAccess("read"), getCaseWorkspaceData);
 
 // Assignment and Reassignment
 router.post("/:id/assign", authenticate, assignApplication);

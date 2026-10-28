@@ -8,6 +8,7 @@ import {
   getMinistryWorkload,
   getMinistryIssues,
   getMinistryActivity,
+  getMinistryDashboard,
 } from "../src/controllers/ministry.controller.js";
 import { requireRole } from "../src/middlewares/auth.middleware.js";
 
@@ -437,5 +438,41 @@ describe("Phase 2: Ministry Overview Service & Controllers", () => {
     const userAction = activityResult.activity.find((a) => !a.actor.isSystem);
     assert.ok(userAction);
     assert.equal(userAction.actor.role, "MINISTRY_ADMIN");
+  });
+
+  it("consolidates ministry dashboard into a single operation returning overview, workload, issues, and activity", async () => {
+    const dashboard = await ministryService.getMinistryDashboard();
+
+    assert.ok(dashboard.overview);
+    assert.equal(dashboard.overview.totalApplications, 5);
+    assert.equal(dashboard.overview.metrics.totalApplications, 5);
+    assert.equal(dashboard.overview.metrics.pendingAuthorityConfirmations, 1);
+
+    assert.ok(dashboard.workload);
+    assert.equal(dashboard.workload.officers.length, 2);
+    assert.equal(dashboard.workload.unassignedQueue.count, 1);
+
+    assert.ok(dashboard.issues);
+    assert.ok(dashboard.issues.categoryCounts);
+    assert.ok(dashboard.issues.issues.length >= 3);
+
+    assert.ok(Array.isArray(dashboard.recentActivity));
+    assert.equal(dashboard.recentActivity.length, 2);
+
+    // Controller test
+    const { req, res, getStatusCode, getData } = createMockContext({
+      user: {
+        id: "usr-admin-1",
+        role: "MINISTRY_ADMIN",
+      },
+    });
+
+    await getMinistryDashboard(req, res);
+    assert.equal(getStatusCode(), 200);
+    assert.equal(getData().success, true);
+    assert.ok(getData().data.overview);
+    assert.ok(getData().data.workload);
+    assert.ok(getData().data.issues);
+    assert.ok(getData().data.recentActivity);
   });
 });

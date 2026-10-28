@@ -1,15 +1,11 @@
 /**
- * Database Seeding Script for Synthetic Scenarios (Slice 4)
+ * Database Seeding Script for Synthetic Scenarios & Phase 1 Accounts
  *
- * Populates the development database with 8 distinct synthetic applications,
- * their associated document records, valid storage file references, and mocked
- * VLM extraction outputs.
- *
- * Rules & Guarantees:
- * - Idempotent: Can be run repeatedly without duplicating records.
- * - Safe: Only modifies applications with predictable prefix "AICTE-DEMO-".
- * - Deterministic: Stops immediately after persisting mocked extraction data.
- *   Does NOT call LLMs, run extraction, or create scrutiny reports.
+ * Populates the development database with:
+ * 1. Seeded Personnel: Ministry Administrator and Scrutiny Officers.
+ * 2. 8 distinct synthetic applications with explicit officer assignments (and an unassigned exception).
+ * 3. Associated document records with mocked VLM extraction outputs.
+ * 4. Audit trail records and internal officer notifications.
  */
 import "dotenv/config";
 //# sourceMappingURL=seed-scenarios.d.ts.map

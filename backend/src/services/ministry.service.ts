@@ -166,8 +166,14 @@ export class MinistryService {
       },
     });
 
+    return this.computeOverview(apps);
+  }
+
+  /**
+   * Computes portfolio overview metrics, stage distributions, and pipeline bottlenecks from applications.
+   */
+  computeOverview(apps: any[]): any {
     const now = Date.now();
-    const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
 
     let intakeCount = 0;
     let extractionProcessingCount = 0;
@@ -193,7 +199,7 @@ export class MinistryService {
       const latestVerifications = app.authorityVerifications || [];
 
       // Check stage
-      const hasFailedDoc = app.documents.some((d) => d.extractionStatus === "FAILED");
+      const hasFailedDoc = app.documents.some((d: any) => d.extractionStatus === "FAILED");
       const isExtractionFailed = app.status === "EXTRACTION_FAILED" || hasFailedDoc;
       const isExtractionProcessing = app.status === "PROCESSING_EXTRACTION";
       const isIntake = app.status === "SUBMITTED";
@@ -202,7 +208,7 @@ export class MinistryService {
       if (isExtractionProcessing) extractionProcessingCount++;
       if (isExtractionFailed) extractionFailedCount++;
 
-      const hasExtractedDocs = app.documents.some((d) => d.extractionStatus === "SUCCESS");
+      const hasExtractedDocs = app.documents.some((d: any) => d.extractionStatus === "SUCCESS");
       if (hasExtractedDocs && !latestScrutiny) {
         scrutinyPendingCount++;
       }
@@ -232,11 +238,11 @@ export class MinistryService {
       const hasMissingDocs = Boolean(latestScrutiny && latestScrutiny.missingCount > 0);
       if (hasMissingDocs) incompleteSubmissionsCount++;
 
-      const hasPendingConfirmations = latestVerifications.some((v) => v.status === "CONFIRMATION_PENDING");
+      const hasPendingConfirmations = latestVerifications.some((v: any) => v.status === "CONFIRMATION_PENDING");
       if (hasPendingConfirmations) pendingAuthorityConfirmationsCount++;
 
       const hasAuthorityMismatches = latestVerifications.some(
-        (v) => v.status === "MISMATCH_DETECTED" || v.status === "EXPIRED_AT_SOURCE"
+        (v: any) => v.status === "MISMATCH_DETECTED" || v.status === "EXPIRED_AT_SOURCE"
       );
       if (hasAuthorityMismatches) authorityMismatchesCount++;
 
@@ -406,7 +412,32 @@ export class MinistryService {
     const limit = Math.max(1, Math.min(100, Number(params.limit) || 20));
     const skip = (page - 1) * limit;
 
+    // Push indexable query filters directly into the database where clause
+    const where: any = {};
+
+    if (params.officerId) {
+      if (params.officerId === "unassigned") {
+        where.assignedOfficerId = null;
+      } else {
+        where.assignedOfficerId = params.officerId;
+      }
+    }
+
+    if (params.programCategory) {
+      where.programCategory = params.programCategory;
+    }
+
+    if (params.search) {
+      const query = params.search.trim();
+      where.OR = [
+        { applicationNumber: { contains: query, mode: "insensitive" } },
+        { institutionName: { contains: query, mode: "insensitive" } },
+      ];
+    }
+
+    // Execute database query with pushdown conditions
     const allApps = await prisma.application.findMany({
+      where: Object.keys(where).length > 0 ? where : undefined,
       include: {
         assignedOfficer: {
           select: { id: true, name: true, email: true, designation: true },
@@ -590,43 +621,66 @@ export class MinistryService {
       maxApplicationsPerOfficer: number;
     };
   }> {
-    const officers = await prisma.user.findMany({
-      where: { role: "OFFICER", isActive: true },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        designation: true,
-        department: true,
-        assignedApplications: {
-          include: {
-            scrutinyReports: {
-              orderBy: { createdAt: "desc" },
-              take: 1,
-              select: { overallStatus: true, deficiencyCount: true, reviewCount: true },
-            },
-            authorityVerifications: {
-              select: { status: true },
+    const [officers, unassignedApps] = await Promise.all([
+      prisma.user.findMany({
+        where: { role: "OFFICER", isActive: true },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          designation: true,
+          department: true,
+          assignedApplications: {
+            include: {
+              scrutinyReports: {
+                orderBy: { createdAt: "desc" },
+                take: 1,
+                select: { overallStatus: true, deficiencyCount: true, reviewCount: true },
+              },
+              authorityVerifications: {
+                select: { status: true },
+              },
             },
           },
         },
-      },
-      orderBy: { name: "asc" },
-    });
+        orderBy: { name: "asc" },
+      }),
+      prisma.application.findMany({
+        where: { assignedOfficerId: null },
+        orderBy: { createdAt: "desc" },
+        select: {
+          id: true,
+          applicationNumber: true,
+          institutionName: true,
+          programCategory: true,
+          status: true,
+          createdAt: true,
+        },
+      }),
+    ]);
 
-    const unassignedApps = await prisma.application.findMany({
-      where: { assignedOfficerId: null },
-      orderBy: { createdAt: "desc" },
-      select: {
-        id: true,
-        applicationNumber: true,
-        institutionName: true,
-        programCategory: true,
-        status: true,
-        createdAt: true,
-      },
-    });
+    return this.computeOfficerWorkload(officers, unassignedApps);
+  }
 
+  /**
+   * Computes officer workloads and distribution statistics from officer user records and unassigned applications.
+   */
+  computeOfficerWorkload(
+    officers: any[],
+    unassignedApps: any[]
+  ): {
+    officers: OfficerWorkloadItem[];
+    unassignedQueue: {
+      count: number;
+      applications: any[];
+    };
+    distributionSummary: {
+      totalOfficers: number;
+      totalAssignedApplications: number;
+      avgApplicationsPerOfficer: number;
+      maxApplicationsPerOfficer: number;
+    };
+  } {
     const now = Date.now();
     const officerWorkloads: OfficerWorkloadItem[] = officers.map((off) => {
       const assigned = off.assignedApplications || [];
@@ -637,13 +691,13 @@ export class MinistryService {
       let agingCount = 0;
 
       for (const app of assigned) {
-        const latest = app.scrutinyReports[0];
+        const latest = app.scrutinyReports?.[0];
         if (latest) {
           if (latest.overallStatus === "COMPLIANT") compliantCount++;
           if (latest.deficiencyCount > 0 || latest.overallStatus === "DEFICIENCIES_DETECTED") deficienciesCount++;
           if (latest.reviewCount > 0 || latest.overallStatus === "MANUAL_REVIEW_REQUIRED") manualReviewCount++;
         }
-        if (app.authorityVerifications?.some((v) => v.status === "CONFIRMATION_PENDING")) {
+        if (app.authorityVerifications?.some((v: any) => v.status === "CONFIRMATION_PENDING")) {
           pendingConfirmationsCount++;
         }
         const days = Math.floor((now - new Date(app.updatedAt || app.createdAt).getTime()) / (24 * 60 * 60 * 1000));
@@ -709,10 +763,6 @@ export class MinistryService {
       totalPages: number;
     };
   }> {
-    const page = Math.max(1, Number(params.page) || 1);
-    const limit = Math.max(1, Math.min(100, Number(params.limit) || 25));
-    const skip = (page - 1) * limit;
-
     const apps = await prisma.application.findMany({
       include: {
         assignedOfficer: {
@@ -728,10 +778,40 @@ export class MinistryService {
       },
     });
 
+    return this.computeIssuesFromApps(apps, params);
+  }
+
+  /**
+   * Computes cross-application issues, counts, and filtered pagination from a pre-fetched applications list.
+   */
+  computeIssuesFromApps(
+    apps: any[],
+    params: {
+      category?: string | undefined;
+      severity?: string | undefined;
+      search?: string | undefined;
+      page?: number | undefined;
+      limit?: number | undefined;
+    } = {}
+  ): {
+    issues: CrossApplicationIssueItem[];
+    categoryCounts: Record<string, number>;
+    severityCounts: Record<string, number>;
+    pagination: {
+      total: number;
+      page: number;
+      limit: number;
+      totalPages: number;
+    };
+  } {
+    const page = Math.max(1, Number(params.page) || 1);
+    const limit = Math.max(1, Math.min(100, Number(params.limit) || 25));
+    const skip = (page - 1) * limit;
+
     const issues: CrossApplicationIssueItem[] = [];
 
     for (const app of apps) {
-      const scrutiny = app.scrutinyReports[0];
+      const scrutiny = app.scrutinyReports?.[0];
       const verifs = app.authorityVerifications || [];
 
       // 1. Collect Scrutiny Findings Issues
@@ -767,7 +847,7 @@ export class MinistryService {
             title: finding.ruleName || finding.ruleId,
             details: finding.details || finding.summary || "Deficiency observed",
             evidenceExcerpt: excerpt,
-            timestamp: new Date(scrutiny.createdAt).toISOString(),
+            timestamp: new Date(scrutiny.createdAt || Date.now()).toISOString(),
           });
         }
       }
@@ -808,7 +888,7 @@ export class MinistryService {
           title: `${v.authorityName} Verification: ${v.status}`,
           details: v.summary || v.scrutinyActionPrompt,
           evidenceExcerpt: v.queryReference ? `Query Ref: ${v.queryReference}` : null,
-          timestamp: new Date(v.createdAt).toISOString(),
+          timestamp: new Date(v.createdAt || Date.now()).toISOString(),
         });
       }
     }
@@ -857,6 +937,125 @@ export class MinistryService {
         limit,
         totalPages: Math.ceil(total / limit) || 1,
       },
+    };
+  }
+
+  /**
+   * Consolidated Ministry Administration Dashboard.
+   * Executes independent database queries concurrently via Promise.all
+   * and derives overview, workload, issues preview, and recent activity in one trip.
+   */
+  async getMinistryDashboard(): Promise<{
+    overview: any;
+    workload: any;
+    issues: {
+      issues: CrossApplicationIssueItem[];
+      categoryCounts: Record<string, number>;
+      severityCounts: Record<string, number>;
+      total: number;
+    };
+    recentActivity: any[];
+  }> {
+    const [allApps, officers, unassignedApps, recentLogs] = await Promise.all([
+      prisma.application.findMany({
+        include: {
+          assignedOfficer: {
+            select: { id: true, name: true, email: true, designation: true },
+          },
+          documents: {
+            select: { id: true, extractionStatus: true, documentType: true },
+          },
+          scrutinyReports: {
+            orderBy: { createdAt: "desc" },
+            take: 1,
+          },
+          authorityVerifications: {
+            orderBy: { createdAt: "desc" },
+          },
+        },
+      }),
+      prisma.user.findMany({
+        where: { role: "OFFICER", isActive: true },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          designation: true,
+          department: true,
+          assignedApplications: {
+            include: {
+              scrutinyReports: {
+                orderBy: { createdAt: "desc" },
+                take: 1,
+                select: { overallStatus: true, deficiencyCount: true, reviewCount: true },
+              },
+              authorityVerifications: {
+                select: { status: true },
+              },
+            },
+          },
+        },
+        orderBy: { name: "asc" },
+      }),
+      prisma.application.findMany({
+        where: { assignedOfficerId: null },
+        orderBy: { createdAt: "desc" },
+        select: {
+          id: true,
+          applicationNumber: true,
+          institutionName: true,
+          programCategory: true,
+          status: true,
+          createdAt: true,
+        },
+      }),
+      prisma.auditLog.findMany({
+        take: 10,
+        orderBy: { createdAt: "desc" },
+        include: {
+          application: {
+            select: {
+              id: true,
+              applicationNumber: true,
+              institutionName: true,
+            },
+          },
+        },
+      }),
+    ]);
+
+    const overview = this.computeOverview(allApps);
+    const workload = this.computeOfficerWorkload(officers, unassignedApps);
+    const issuesResult = this.computeIssuesFromApps(allApps, { limit: 10 });
+
+    const formattedActivity = recentLogs.map((log: any) => ({
+      id: log.id,
+      timestamp: log.createdAt,
+      action: log.action,
+      actor: {
+        id: log.actorId,
+        name: log.actorName,
+        role: log.actorRole,
+        isSystem: log.actorRole === "SYSTEM",
+      },
+      application: log.application || null,
+      resourceType: log.resourceType,
+      resourceId: log.resourceId,
+      status: log.status,
+      details: log.details,
+      metadata: log.metadata,
+    }));
+
+    return {
+      overview,
+      workload,
+      issues: {
+        issues: issuesResult.issues,
+        categoryCounts: issuesResult.categoryCounts,
+        severityCounts: issuesResult.severityCounts,
+        total: issuesResult.pagination.total,
+      },
+      recentActivity: formattedActivity,
     };
   }
 

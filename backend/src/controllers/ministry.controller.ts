@@ -1,6 +1,22 @@
 import type { Request, Response } from "express";
 import { ministryService } from "../services/ministry.service.js";
 
+export const getMinistryDashboard = async (_req: Request, res: Response): Promise<void> => {
+  try {
+    const dashboard = await ministryService.getMinistryDashboard();
+    res.status(200).json({
+      success: true,
+      data: dashboard,
+    });
+  } catch (error: any) {
+    console.error("Error retrieving ministry dashboard:", error);
+    res.status(500).json({
+      success: false,
+      error: error.message || "Failed to retrieve ministry dashboard.",
+    });
+  }
+};
+
 export const getMinistryOverview = async (_req: Request, res: Response): Promise<void> => {
   try {
     const overview = await ministryService.getPortfolioOverview();

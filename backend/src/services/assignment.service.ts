@@ -86,37 +86,37 @@ export class AssignmentService {
       },
     });
 
-    // 4. Audit trail
+    // 4. Audit trail & 5. Dispatch notifications concurrently
     const action = isReassignment ? "APPLICATION_REASSIGNED" : "APPLICATION_ASSIGNED";
-    await auditService.logEvent({
-      applicationId: application.id,
-      actorId: actor.id,
-      actorName: actor.name,
-      actorRole: actor.role,
-      action,
-      resourceType: "APPLICATION",
-      resourceId: application.id,
-      status: "SUCCESS",
-      details: isReassignment
-        ? `Application ${application.applicationNumber} reassigned from ${previousOfficer?.name} to ${targetOfficer.name}`
-        : `Application ${application.applicationNumber} assigned to ${targetOfficer.name}`,
-      metadata: {
-        previousOfficerId: previousOfficer?.id || null,
-        previousOfficerName: previousOfficer?.name || null,
-        newOfficerId: targetOfficer.id,
-        newOfficerName: targetOfficer.name,
-        assignedBy: actor.name,
-        reason: reason || "Routine scrutiny workload assignment",
-      },
-    });
-
-    // 5. Dispatch notifications
-    await notificationService.notifyAssignment(
-      application,
-      targetOfficer,
-      previousOfficer,
-      actor.name
-    );
+    await Promise.all([
+      auditService.logEvent({
+        applicationId: application.id,
+        actorId: actor.id,
+        actorName: actor.name,
+        actorRole: actor.role,
+        action,
+        resourceType: "APPLICATION",
+        resourceId: application.id,
+        status: "SUCCESS",
+        details: isReassignment
+          ? `Application ${application.applicationNumber} reassigned from ${previousOfficer?.name} to ${targetOfficer.name}`
+          : `Application ${application.applicationNumber} assigned to ${targetOfficer.name}`,
+        metadata: {
+          previousOfficerId: previousOfficer?.id || null,
+          previousOfficerName: previousOfficer?.name || null,
+          newOfficerId: targetOfficer.id,
+          newOfficerName: targetOfficer.name,
+          assignedBy: actor.name,
+          reason: reason || "Routine scrutiny workload assignment",
+        },
+      }),
+      notificationService.notifyAssignment(
+        application,
+        targetOfficer,
+        previousOfficer,
+        actor.name
+      ),
+    ]);
 
     return updatedApplication;
   }

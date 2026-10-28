@@ -53,33 +53,33 @@ export const runAuthorityVerification = async (
       officerBankConfirmation,
     });
 
-    // Audit log
-    await auditService.logEvent({
-      applicationId: id,
-      actorId: req.user?.id,
-      actorName: req.user?.name || "OFFICER",
-      actorRole: req.user?.role || "OFFICER",
-      action: "AUTHORITY_VERIFICATION_EXECUTED",
-      resourceType: "AUTHORITY_VERIFICATION",
-      resourceId: summary.batchId,
-      status: summary.mismatchCount > 0 ? "WARNING" : "SUCCESS",
-      details: `Executed authority verification batch ${summary.batchId}: ${summary.verifiedSimulatedCount} verified, ${summary.mismatchCount} mismatches, ${summary.expiredCount} expired at source, ${summary.pendingCount} pending confirmation`,
-      metadata: {
+    // Audit log and notification routing concurrently
+    await Promise.all([
+      auditService.logEvent({
+        applicationId: id,
+        actorId: req.user?.id,
+        actorName: req.user?.name || "OFFICER",
+        actorRole: req.user?.role || "OFFICER",
+        action: "AUTHORITY_VERIFICATION_EXECUTED",
+        resourceType: "AUTHORITY_VERIFICATION",
+        resourceId: summary.batchId,
+        status: summary.mismatchCount > 0 ? "WARNING" : "SUCCESS",
+        details: `Executed authority verification batch ${summary.batchId}: ${summary.verifiedSimulatedCount} verified, ${summary.mismatchCount} mismatches, ${summary.expiredCount} expired at source, ${summary.pendingCount} pending confirmation`,
+        metadata: {
+          batchId: summary.batchId,
+          totalRun: summary.totalRun,
+          mismatchCount: summary.mismatchCount,
+          expiredCount: summary.expiredCount,
+          pendingCount: summary.pendingCount,
+        },
+      }),
+      notificationService.notifyAuthorityVerification(application, {
         batchId: summary.batchId,
-        totalRun: summary.totalRun,
         mismatchCount: summary.mismatchCount,
         expiredCount: summary.expiredCount,
         pendingCount: summary.pendingCount,
-      },
-    });
-
-    // Notification routing
-    await notificationService.notifyAuthorityVerification(application, {
-      batchId: summary.batchId,
-      mismatchCount: summary.mismatchCount,
-      expiredCount: summary.expiredCount,
-      pendingCount: summary.pendingCount,
-    });
+      }),
+    ]);
 
     res.status(200).json({
       success: true,
@@ -209,37 +209,42 @@ export const recordBankConfirmation = async (
       documentId
     );
 
-    // Audit log
-    await auditService.logEvent({
-      applicationId: id,
-      actorId: req.user?.id,
-      actorName: req.user?.name || recordingOfficer,
-      actorRole: req.user?.role || "OFFICER",
-      action: "BANK_CONFIRMATION_RECORDED",
-      resourceType: "AUTHORITY_VERIFICATION",
-      resourceId: record.id,
-      status: "SUCCESS",
-      details: `Recorded official bank confirmation letter: Ref ${letterReference}, confirmed amount ₹${confirmedAmountLakhs} Lakhs, unencumbered: ${isUnencumbered ?? true}`,
-      metadata: {
-        letterReference,
-        confirmedAmountLakhs,
-        isUnencumbered: isUnencumbered ?? true,
-        recordingOfficer: req.user?.name || recordingOfficer,
-      },
-    });
+    // Audit log and officer notification concurrently
+    const sideEffects: Promise<any>[] = [
+      auditService.logEvent({
+        applicationId: id,
+        actorId: req.user?.id,
+        actorName: req.user?.name || recordingOfficer,
+        actorRole: req.user?.role || "OFFICER",
+        action: "BANK_CONFIRMATION_RECORDED",
+        resourceType: "AUTHORITY_VERIFICATION",
+        resourceId: record.id,
+        status: "SUCCESS",
+        details: `Recorded official bank confirmation letter: Ref ${letterReference}, confirmed amount ₹${confirmedAmountLakhs} Lakhs, unencumbered: ${isUnencumbered ?? true}`,
+        metadata: {
+          letterReference,
+          confirmedAmountLakhs,
+          isUnencumbered: isUnencumbered ?? true,
+          recordingOfficer: req.user?.name || recordingOfficer,
+        },
+      }),
+    ];
 
-    // Notify officer
     if (application.assignedOfficerId) {
-      await notificationService.sendNotification({
-        recipientId: application.assignedOfficerId,
-        applicationId: application.id,
-        type: "BANK_CONFIRMATION_RECORDED",
-        title: `Bank Confirmation Filed: ${application.applicationNumber}`,
-        message: `Official branch manager confirmation letter (Ref: ${letterReference}) recorded on file for ${application.institutionName}.`,
-        severity: "INFO",
-        metadata: { letterReference, confirmedAmountLakhs },
-      });
+      sideEffects.push(
+        notificationService.sendNotification({
+          recipientId: application.assignedOfficerId,
+          applicationId: application.id,
+          type: "BANK_CONFIRMATION_RECORDED",
+          title: `Bank Confirmation Filed: ${application.applicationNumber}`,
+          message: `Official branch manager confirmation letter (Ref: ${letterReference}) recorded on file for ${application.institutionName}.`,
+          severity: "INFO",
+          metadata: { letterReference, confirmedAmountLakhs },
+        })
+      );
     }
+
+    await Promise.all(sideEffects);
 
     res.status(201).json({
       success: true,

@@ -162,8 +162,25 @@ export class WorkbenchService {
     const limit = Math.max(1, Math.min(100, Number(params.limit) || 20));
     const skip = (page - 1) * limit;
 
+    // Push indexable query filters directly into the database where clause
+    const where: any = {
+      assignedOfficerId: officerId,
+    };
+
+    if (params.programCategory) {
+      where.programCategory = params.programCategory;
+    }
+
+    if (params.search) {
+      const q = params.search.trim();
+      where.OR = [
+        { applicationNumber: { contains: q, mode: "insensitive" } },
+        { institutionName: { contains: q, mode: "insensitive" } },
+      ];
+    }
+
     const apps = await prisma.application.findMany({
-      where: { assignedOfficerId: officerId },
+      where,
       include: {
         documents: {
           select: {
@@ -319,7 +336,7 @@ export class WorkbenchService {
       const verifs = app.authorityVerifications || [];
 
       // 1. Priority 1 (CRITICAL): Extraction Failures
-      const hasFailedDoc = app.documents.some((d) => d.extractionStatus === "FAILED");
+      const hasFailedDoc = app.documents.some((d: any) => d.extractionStatus === "FAILED");
       if (app.status === "EXTRACTION_FAILED" || hasFailedDoc) {
         queue.push({
           id: `queue-${app.id}-extraction-fail`,
@@ -414,7 +431,7 @@ export class WorkbenchService {
       }
 
       // 5. Priority 5 (MEDIUM): Pending Bank Branch Confirmations
-      const pendingBankVerifs = verifs.filter((v) => v.status === "CONFIRMATION_PENDING");
+      const pendingBankVerifs = verifs.filter((v: any) => v.status === "CONFIRMATION_PENDING");
       for (const pv of pendingBankVerifs) {
         queue.push({
           id: `queue-${app.id}-bank-pend-${pv.id}`,
@@ -492,7 +509,7 @@ export class WorkbenchService {
       }
 
       // 8. Priority 8 (INFO): Applications Awaiting First Scrutiny Run
-      const hasExtracted = app.documents.some((d) => d.extractionStatus === "SUCCESS");
+      const hasExtracted = app.documents.some((d: any) => d.extractionStatus === "SUCCESS");
       if (hasExtracted && !scrutiny) {
         queue.push({
           id: `queue-${app.id}-scrutiny-pending`,
