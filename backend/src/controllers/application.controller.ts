@@ -512,6 +512,134 @@ export const getScrutinyReportForApplication = async (req: Request, res: Respons
   }
 };
 
+/**
+ * Update document validation status (Officer regulatory action).
+ * Persists an officer override or manual verification decision on a document
+ * without mutating or overwriting the original VLM extracted data.
+ */
+export const updateDocumentValidationStatus = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const rawId = req.params.id;
+    const rawDocId = req.params.documentId;
+    const id = Array.isArray(rawId) ? rawId[0] : rawId;
+    const documentId = Array.isArray(rawDocId) ? rawDocId[0] : rawDocId;
+
+    if (!id || !documentId) {
+      res.status(400).json({ success: false, error: "Application ID and Document ID are required." });
+      return;
+    }
+
+    const { status, notes } = req.body;
+    const validStatuses = ["PASS", "DEFICIENCY", "MANUAL_APPROVAL", "RESET"];
+
+    if (!status || !validStatuses.includes(status)) {
+      res.status(400).json({
+        success: false,
+        error: `Invalid status. Must be one of: ${validStatuses.join(", ")}`,
+      });
+      return;
+    }
+
+    // Role check: Officer can only modify assigned application; Ministry Admin has read oversight only
+    if (req.user?.role === "OFFICER") {
+      const app = await prisma.application.findUnique({
+        where: { id },
+        select: { id: true, assignedOfficerId: true },
+      });
+      if (!app) {
+        res.status(404).json({ success: false, error: "Application not found." });
+        return;
+      }
+      if (app.assignedOfficerId !== req.user.id) {
+        res.status(403).json({
+          success: false,
+          error: "Access denied: You are not assigned to this application.",
+        });
+        return;
+      }
+    } else if (req.user?.role === "MINISTRY_ADMIN") {
+      res.status(403).json({
+        success: false,
+        error: "Access denied: Ministry Administrators have operational oversight only and cannot execute regulatory status changes.",
+      });
+      return;
+    }
+
+    const document = await prisma.document.findFirst({
+      where: { id: documentId, applicationId: id },
+    });
+
+    if (!document) {
+      res.status(404).json({
+        success: false,
+        error: "Document not found in this application.",
+      });
+      return;
+    }
+
+    const existingExtractedData = (document.extractedData as Record<string, any>) || {};
+
+    let officerValidation: Record<string, any> | null = null;
+    if (status !== "RESET") {
+      officerValidation = {
+        status,
+        notes: typeof notes === "string" ? notes.trim() : "",
+        reviewedAt: new Date().toISOString(),
+        reviewedById: req.user?.id,
+        reviewedByName: req.user?.name || "OFFICER",
+      };
+    }
+
+    const updatedExtractedData = {
+      ...existingExtractedData,
+      officerValidation,
+    };
+
+    const updatedDoc = await prisma.document.update({
+      where: { id: documentId },
+      data: {
+        extractedData: updatedExtractedData,
+      },
+    });
+
+    // Audit log the status update event
+    await auditService.logEvent({
+      applicationId: id,
+      actorId: req.user?.id,
+      actorName: req.user?.name || "OFFICER",
+      actorRole: req.user?.role || "OFFICER",
+      action: "DOCUMENT_STATUS_UPDATED",
+      resourceType: "DOCUMENT",
+      resourceId: documentId,
+      status: "SUCCESS",
+      details: `Officer ${req.user?.name || "OFFICER"} updated validation status for ${
+        document.originalName || document.fileName
+      } to ${status}${notes ? ` (Notes: ${notes})` : ""}`,
+      metadata: {
+        documentId,
+        documentType: document.documentType,
+        fileName: document.fileName,
+        status,
+        officerValidation,
+      },
+    });
+
+    res.status(200).json({
+      success: true,
+      data: {
+        document: updatedDoc,
+        officerValidation,
+      },
+    });
+  } catch (error: any) {
+    console.error("Error updating document validation status:", error);
+    res.status(500).json({
+      success: false,
+      error: error.message || "Failed to update document validation status.",
+    });
+  }
+};
+
 export const getApplicationById = async (req: Request, res: Response): Promise<void> => {
   try {
     const rawId = req.params.id;

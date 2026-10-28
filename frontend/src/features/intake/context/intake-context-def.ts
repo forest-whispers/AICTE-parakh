@@ -47,6 +47,12 @@ export interface IntakeContextValue {
   runExtraction: () => Promise<boolean>;
   runScrutiny: () => Promise<boolean>;
   latestScrutinyReport: BackendScrutinyReport | null;
+  // Officer Regulatory Validation Override
+  updateDocumentStatus: (
+    documentId: string,
+    status: "PASS" | "DEFICIENCY" | "MANUAL_APPROVAL" | "RESET",
+    notes?: string
+  ) => Promise<boolean>;
 }
 
 export const IntakeContext = createContext<IntakeContextValue | undefined>(undefined);

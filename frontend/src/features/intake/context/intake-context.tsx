@@ -5,7 +5,9 @@ import type {
   IntakeAlertNotice,
   IntakeStepIndex,
   BackendCreatedApplication,
+  BackendCreatedDocument,
   BackendScrutinyReport,
+  OfficerValidationDecision,
 } from "../types/intake.types";
 import {
   STATUTORY_DOCUMENT_CATEGORIES,
@@ -462,13 +464,18 @@ export const IntakeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                 : "STAGED";
 
             const extractedFields = extractFieldsFromEnvelope(backendDoc.extractedData, doc.categoryCode);
+            const officerVal =
+              ((backendDoc.extractedData as Record<string, unknown>)
+                ?.officerValidation as OfficerValidationDecision | null) || null;
 
             return {
               ...doc,
+              backendDocId: backendDoc.id,
               processingState,
               processingNote: `Backend status: ${extractionStatus}`,
               extractionData: {
                 status: extractionStatus,
+                officerValidation: officerVal,
                 fields: Object.keys(extractedFields).length > 0 ? extractedFields : undefined,
                 rawOutput: backendDoc.extractedData,
               },
@@ -563,13 +570,18 @@ export const IntakeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                 : "STAGED";
 
             const extractedFields = extractFieldsFromEnvelope(backendDoc.extractedData, doc.categoryCode);
+            const officerVal =
+              ((backendDoc.extractedData as Record<string, unknown>)
+                ?.officerValidation as OfficerValidationDecision | null) || null;
 
             return {
               ...doc,
+              backendDocId: backendDoc.id,
               processingState,
               processingNote: `Backend status: ${extractionStatus}`,
               extractionData: {
                 status: extractionStatus,
+                officerValidation: officerVal,
                 fields: Object.keys(extractedFields).length > 0 ? extractedFields : undefined,
                 rawOutput: backendDoc.extractedData,
               },
@@ -623,6 +635,77 @@ export const IntakeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       setIsEvaluatingScrutiny(false);
     }
   }, [createdApplication]);
+
+  const updateDocumentStatus = useCallback(
+    async (
+      documentId: string,
+      status: "PASS" | "DEFICIENCY" | "MANUAL_APPROVAL" | "RESET",
+      notes?: string
+    ): Promise<boolean> => {
+      if (!createdApplication?.id) {
+        return false;
+      }
+
+      try {
+        const response = await apiClient<{
+          success: boolean;
+          data: {
+            document: BackendCreatedDocument;
+            officerValidation: OfficerValidationDecision | null;
+          };
+        }>(`/api/applications/${createdApplication.id}/documents/${documentId}/status`, {
+          method: "PATCH",
+          body: JSON.stringify({ status, notes }),
+          headers: {
+            "Content-Type": "application/json",
+          },
+        });
+
+        if (response && response.success) {
+          const updatedValidation = response.data.officerValidation;
+
+          // Update stagedDocuments
+          setStagedDocuments((prev) =>
+            prev.map((doc) => {
+              if (doc.backendDocId === documentId || doc.id === documentId) {
+                return {
+                  ...doc,
+                  extractionData: doc.extractionData
+                    ? {
+                        ...doc.extractionData,
+                        officerValidation: updatedValidation,
+                      }
+                    : {
+                        status: "PENDING",
+                        officerValidation: updatedValidation,
+                      },
+                };
+              }
+              return doc;
+            })
+          );
+
+          // Update createdApplication.documents
+          setCreatedApplication((prev) => {
+            if (!prev) return prev;
+            return {
+              ...prev,
+              documents: prev.documents.map((d) =>
+                d.id === documentId ? response.data.document : d
+              ),
+            };
+          });
+
+          return true;
+        }
+        return false;
+      } catch (err: unknown) {
+        console.error("Failed to update document validation status:", err);
+        return false;
+      }
+    },
+    [createdApplication]
+  );
 
   const resetIntake = useCallback(() => {
     stagedDocuments.forEach((doc) => {
@@ -679,6 +762,7 @@ export const IntakeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       runExtraction,
       runScrutiny,
       latestScrutinyReport,
+      updateDocumentStatus,
     }),
     [
       currentStep,
@@ -710,6 +794,7 @@ export const IntakeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       runExtraction,
       runScrutiny,
       latestScrutinyReport,
+      updateDocumentStatus,
     ]
   );
 

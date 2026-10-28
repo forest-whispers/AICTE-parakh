@@ -9,7 +9,7 @@ import {
 } from "../src/middlewares/auth.middleware.js";
 import { login } from "../src/controllers/auth.controller.js";
 import { getMyNotifications } from "../src/controllers/notification.controller.js";
-import { getCaseWorkspaceData } from "../src/controllers/application.controller.js";
+import { getCaseWorkspaceData, updateDocumentValidationStatus } from "../src/controllers/application.controller.js";
 
 // Helper to create mock Express request and response objects
 function createMockContext(options: {
@@ -209,6 +209,22 @@ describe("Phase 1: API Route Security & Authorization Boundaries", () => {
 
     (prisma.auditLog as any).create = async ({ data }: any) => {
       return { id: "audit-test-id", ...data, createdAt: new Date() };
+    };
+
+    (prisma.document as any).findFirst = async ({ where }: any) => {
+      const app = mockApps.find((a) => a.id === where.applicationId);
+      return app?.documents?.find((d: any) => d.id === where.id) || null;
+    };
+
+    (prisma.document as any).update = async ({ where, data }: any) => {
+      for (const app of mockApps) {
+        const doc = app.documents?.find((d: any) => d.id === where.id);
+        if (doc) {
+          Object.assign(doc, data);
+          return doc;
+        }
+      }
+      return null;
     };
 
     (prisma.authorityVerification as any).findMany = async ({ where }: any) => {
@@ -451,5 +467,94 @@ describe("Phase 1: API Route Security & Authorization Boundaries", () => {
     assert.equal(getStatusCode(), 200);
     assert.equal(getData().success, true);
     assert.equal(getData().data.application.id, "app-1");
+  });
+
+  it("permits assigned officer to update document validation status and records audit log", async () => {
+    const officer1 = mockUsers[1];
+    const { req, res, next, getStatusCode, getData, wasNextCalled } = createMockContext({
+      params: { id: "app-1", documentId: "doc-1" },
+      body: { status: "PASS", notes: "Verified land resolution seals." },
+      user: {
+        id: officer1.id,
+        email: officer1.email,
+        name: officer1.name,
+        role: "OFFICER",
+      },
+    });
+
+    const guard = requireApplicationAccess("write");
+    await guard(req, res, next);
+    assert.equal(wasNextCalled(), true);
+
+    await updateDocumentValidationStatus(req, res);
+    assert.equal(getStatusCode(), 200);
+    assert.equal(getData().success, true);
+    assert.equal(getData().data.officerValidation.status, "PASS");
+    assert.equal(getData().data.officerValidation.notes, "Verified land resolution seals.");
+  });
+
+  it("blocks ministry admin from modifying document validation status with 403", async () => {
+    const admin = mockUsers[0];
+    const { req, res, next, getStatusCode, getData, wasNextCalled } = createMockContext({
+      params: { id: "app-1", documentId: "doc-1" },
+      body: { status: "DEFICIENCY", notes: "Admin tamper test" },
+      user: {
+        id: admin.id,
+        email: admin.email,
+        name: admin.name,
+        role: "MINISTRY_ADMIN",
+      },
+    });
+
+    const guard = requireApplicationAccess("write");
+    await guard(req, res, next);
+    assert.equal(wasNextCalled(), false);
+    assert.equal(getStatusCode(), 403);
+    assert.equal(getData().success, false);
+    assert.ok(getData().error.includes("operational oversight only"));
+  });
+
+  it("blocks unassigned officer from modifying document validation status with 403", async () => {
+    const officer2 = mockUsers[2]; // not assigned to app-1
+    const { req, res, next, getStatusCode, getData, wasNextCalled } = createMockContext({
+      params: { id: "app-1", documentId: "doc-1" },
+      body: { status: "PASS" },
+      user: {
+        id: officer2.id,
+        email: officer2.email,
+        name: officer2.name,
+        role: "OFFICER",
+      },
+    });
+
+    const guard = requireApplicationAccess("write");
+    await guard(req, res, next);
+    assert.equal(wasNextCalled(), false);
+    assert.equal(getStatusCode(), 403);
+    assert.equal(getData().success, false);
+    assert.ok(getData().error.includes("assigned to this application"));
+  });
+
+  it("rejects invalid status string with 400 Bad Request", async () => {
+    const officer1 = mockUsers[1];
+    const { req, res, next, getStatusCode, getData, wasNextCalled } = createMockContext({
+      params: { id: "app-1", documentId: "doc-1" },
+      body: { status: "INVALID_STATUS" },
+      user: {
+        id: officer1.id,
+        email: officer1.email,
+        name: officer1.name,
+        role: "OFFICER",
+      },
+    });
+
+    const guard = requireApplicationAccess("write");
+    await guard(req, res, next);
+    assert.equal(wasNextCalled(), true);
+
+    await updateDocumentValidationStatus(req, res);
+    assert.equal(getStatusCode(), 400);
+    assert.equal(getData().success, false);
+    assert.ok(getData().error.includes("Invalid status"));
   });
 });

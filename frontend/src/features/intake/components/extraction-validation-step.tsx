@@ -29,11 +29,67 @@ export const ExtractionValidationStep: React.FC<ExtractionValidationStepProps> =
     runExtraction,
     runScrutiny,
     latestScrutinyReport,
+    updateDocumentStatus,
   } = useIntake();
 
   // Drawer & Preview states
   const [selectedDrawerDoc, setSelectedDrawerDoc] = useState<StagedDocument | null>(null);
   const [previewDoc, setPreviewDoc] = useState<StagedDocument | null>(null);
+
+  // Status update tracking
+  const [updatingDocId, setUpdatingDocId] = useState<string | null>(null);
+  const [statusFeedback, setStatusFeedback] = useState<{
+    docId: string;
+    success: boolean;
+    message: string;
+  } | null>(null);
+
+  const handleStatusChange = async (
+    doc: StagedDocument,
+    newStatus: "PASS" | "DEFICIENCY" | "MANUAL_APPROVAL" | "RESET"
+  ) => {
+    const documentId =
+      doc.backendDocId ||
+      createdApplication?.documents.find(
+        (bd) => bd.originalName === doc.fileName || bd.documentType === doc.categoryCode
+      )?.id;
+
+    if (!documentId) {
+      setStatusFeedback({
+        docId: doc.id,
+        success: false,
+        message: "Document not yet uploaded to server.",
+      });
+      return;
+    }
+
+    setUpdatingDocId(doc.id);
+    setStatusFeedback(null);
+    try {
+      const ok = await updateDocumentStatus(documentId, newStatus);
+      if (ok) {
+        setStatusFeedback({
+          docId: doc.id,
+          success: true,
+          message: `Saved as ${newStatus.replace("_", " ")}`,
+        });
+      } else {
+        setStatusFeedback({
+          docId: doc.id,
+          success: false,
+          message: "Failed to persist status change.",
+        });
+      }
+    } catch {
+      setStatusFeedback({
+        docId: doc.id,
+        success: false,
+        message: "Status update error.",
+      });
+    } finally {
+      setUpdatingDocId(null);
+    }
+  };
 
   // Focus document for right sidebar context (default to first staged doc)
   const [focusedDocId, setFocusedDocId] = useState<string | null>(
@@ -73,10 +129,35 @@ export const ExtractionValidationStep: React.FC<ExtractionValidationStepProps> =
         onClose={() => setSelectedDrawerDoc(null)}
       />
 
-      {/* Document In-Browser Preview Modal */}
+      {/* Document In-Browser Preview Modal with Officer Regulatory Inspection Controls */}
       <DocumentPreviewModal
         document={previewDoc}
         onClose={() => setPreviewDoc(null)}
+        validationBadge={
+          previewDoc
+            ? computeDocumentValidationOutcome(
+                previewDoc,
+                latestScrutinyReport || createdApplication?.scrutinyReports?.[0],
+                isExtractionFailed
+              )
+            : undefined
+        }
+        onUpdateStatus={
+          createdApplication
+            ? async (status, notes) => {
+                if (!previewDoc) return false;
+                const documentId =
+                  previewDoc.backendDocId ||
+                  createdApplication?.documents.find(
+                    (bd) =>
+                      bd.originalName === previewDoc.fileName ||
+                      bd.documentType === previewDoc.categoryCode
+                  )?.id;
+                if (!documentId) return false;
+                return await updateDocumentStatus(documentId, status, notes);
+              }
+            : undefined
+        }
       />
 
       {/* Top Summary Metrics Strip */}
@@ -255,13 +336,14 @@ export const ExtractionValidationStep: React.FC<ExtractionValidationStepProps> =
                     <th className="py-2.5 px-3 font-semibold">Code</th>
                     <th className="py-2.5 px-3 font-semibold">Extraction Status</th>
                     <th className="py-2.5 px-3 font-semibold">Validation State</th>
+                    <th className="py-2.5 px-3 font-semibold">Status Control</th>
                     <th className="py-2.5 px-4 font-semibold text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#D7DEDA] text-[13px]">
                   {stagedDocuments.length === 0 ? (
                     <tr>
-                      <td colSpan={5} className="py-8 text-center text-[#8A9B9D]">
+                      <td colSpan={6} className="py-8 text-center text-[#8A9B9D]">
                         No documents staged. Please return to Step 2 to add statutory files.
                       </td>
                     </tr>
@@ -293,6 +375,8 @@ export const ExtractionValidationStep: React.FC<ExtractionValidationStepProps> =
                         latestScrutinyReport || createdApplication?.scrutinyReports?.[0],
                         isExtractionFailed
                       );
+
+                      const isManualApprovalRequired = valBadge.outcome === "MANUAL_APPROVAL";
 
                       return (
                         <tr
@@ -337,12 +421,75 @@ export const ExtractionValidationStep: React.FC<ExtractionValidationStepProps> =
                           <td className="py-3 px-3 whitespace-nowrap">
                             <span
                               className={`text-[11px] font-mono px-2 py-0.5 rounded-[2px] border ${valBadge.bgClass}`}
+                              title={valBadge.detailNote || valBadge.text}
                             >
                               {valBadge.text}
                             </span>
                           </td>
 
-                          {/* Col 5: Action Link to right drawer */}
+                          {/* Col 5: Status Control (Officer decision override) */}
+                          <td className="py-3 px-3 whitespace-nowrap">
+                            {isManualApprovalRequired ? (
+                              <Button
+                                type="button"
+                                variant="secondary"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setPreviewDoc(doc);
+                                }}
+                                className="text-[11px] font-mono font-medium py-1 px-2.5 rounded-[2px] border-[#FFE58F] bg-[#FFF9E6] text-[#8D6B00] hover:bg-[#FFF3CD] inline-flex items-center gap-1 shadow-xs"
+                                title="Inspection required before configuring validation status"
+                              >
+                                Inspect ↗
+                              </Button>
+                            ) : (
+                              <div className="flex flex-col gap-0.5">
+                                <div className="flex items-center gap-1.5">
+                                  <select
+                                    value={
+                                      doc.extractionData?.officerValidation?.status || ""
+                                    }
+                                    disabled={updatingDocId === doc.id || !createdApplication}
+                                    onChange={(e) => {
+                                      e.stopPropagation();
+                                      const val = e.target.value as
+                                        | "PASS"
+                                        | "DEFICIENCY"
+                                        | "MANUAL_APPROVAL"
+                                        | "RESET";
+                                      if (val) handleStatusChange(doc, val);
+                                    }}
+                                    onClick={(e) => e.stopPropagation()}
+                                    className="text-[11px] font-mono bg-white border border-[#D7DEDA] rounded-[2px] px-2 py-1 text-[#172E33] hover:border-[#165A60] focus:outline-none focus:border-[#165A60] cursor-pointer disabled:opacity-50"
+                                  >
+                                    <option value="" disabled>
+                                      Change status...
+                                    </option>
+                                    <option value="PASS">✓ Pass / Compliant</option>
+                                    <option value="DEFICIENCY">! Flag Deficiency</option>
+                                    <option value="MANUAL_APPROVAL">△ Request Manual Review</option>
+                                    {doc.extractionData?.officerValidation && (
+                                      <option value="RESET">↺ Reset to Computed</option>
+                                    )}
+                                  </select>
+                                  {updatingDocId === doc.id && (
+                                    <span className="text-[11px] animate-spin text-[#165A60]">◌</span>
+                                  )}
+                                </div>
+                                {statusFeedback?.docId === doc.id && (
+                                  <span
+                                    className={`text-[10px] ${
+                                      statusFeedback.success ? "text-[#245E3F]" : "text-[#9E2A2B]"
+                                    }`}
+                                  >
+                                    {statusFeedback.message}
+                                  </span>
+                                )}
+                              </div>
+                            )}
+                          </td>
+
+                          {/* Col 6: Action Link to right drawer */}
                           <td className="py-3 px-4 text-right whitespace-nowrap">
                             <div className="flex items-center justify-end gap-2">
                               {doc.previewUrl && (

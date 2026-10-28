@@ -1,13 +1,24 @@
-import type { StagedDocument, BackendScrutinyReport } from "../types/intake.types";
+import type {
+  StagedDocument,
+  BackendScrutinyReport,
+  OfficerValidationDecision,
+} from "../types/intake.types";
 
 export interface DocumentValidationBadge {
   text: string;
   bgClass: string;
   outcome: "PASS" | "DEFICIENCY" | "MANUAL_APPROVAL" | "EVIDENCE_MISSING" | "FAILED";
   detailNote?: string;
+  isOfficerOverride?: boolean;
+  officerDecision?: {
+    status: "PASS" | "DEFICIENCY" | "MANUAL_APPROVAL";
+    notes?: string;
+    reviewedAt: string;
+    reviewedByName?: string;
+  };
 }
 
-export function computeDocumentValidationOutcome(
+export function computeRawValidationOutcome(
   doc: StagedDocument,
   latestScrutinyReport?: BackendScrutinyReport | null,
   isExtractionFailed?: boolean
@@ -146,4 +157,51 @@ export function computeDocumentValidationOutcome(
     outcome: "PASS",
     detailNote: "Document staged and uploaded",
   };
+}
+
+export function computeDocumentValidationOutcome(
+  doc: StagedDocument,
+  latestScrutinyReport?: BackendScrutinyReport | null,
+  isExtractionFailed?: boolean
+): DocumentValidationBadge {
+  // Check for Officer Validation decision first
+  const rawEnvelope = doc.extractionData?.rawOutput as Record<string, unknown> | undefined;
+  const officerVal =
+    doc.extractionData?.officerValidation ||
+    ((rawEnvelope?.officerValidation as OfficerValidationDecision | undefined) ?? null);
+
+  if (officerVal && officerVal.status) {
+    if (officerVal.status === "PASS") {
+      return {
+        text: "✓ PASS (OFFICER)",
+        bgClass: "bg-[#EAF3EE] text-[#245E3F] border-[#C8E6C9]",
+        outcome: "PASS",
+        detailNote: officerVal.notes || `Verified by ${officerVal.reviewedByName || "Officer"}`,
+        isOfficerOverride: true,
+        officerDecision: officerVal,
+      };
+    }
+    if (officerVal.status === "DEFICIENCY") {
+      return {
+        text: "! DEFICIENCY (OFFICER)",
+        bgClass: "bg-[#FDF2F2] text-[#9E2A2B] border-[#E8C5C5]",
+        outcome: "DEFICIENCY",
+        detailNote: officerVal.notes || `Deficiency flagged by ${officerVal.reviewedByName || "Officer"}`,
+        isOfficerOverride: true,
+        officerDecision: officerVal,
+      };
+    }
+    if (officerVal.status === "MANUAL_APPROVAL") {
+      return {
+        text: "△ MANUAL REVIEW (OFFICER)",
+        bgClass: "bg-[#FFF9E6] text-[#8D6B00] border-[#FFE58F]",
+        outcome: "MANUAL_APPROVAL",
+        detailNote: officerVal.notes || `Manual inspection recorded by ${officerVal.reviewedByName || "Officer"}`,
+        isOfficerOverride: true,
+        officerDecision: officerVal,
+      };
+    }
+  }
+
+  return computeRawValidationOutcome(doc, latestScrutinyReport, isExtractionFailed);
 }

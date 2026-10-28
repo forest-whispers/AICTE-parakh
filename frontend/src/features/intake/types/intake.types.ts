@@ -24,9 +24,18 @@ export interface ExtractedFieldItem {
   uncertaintyReason?: string;
 }
 
+export interface OfficerValidationDecision {
+  status: "PASS" | "DEFICIENCY" | "MANUAL_APPROVAL";
+  notes?: string;
+  reviewedAt: string;
+  reviewedByName?: string;
+  reviewedById?: string;
+}
+
 export interface DocumentExtractionData {
   status: "PENDING" | "EXTRACTING" | "SUCCESS" | "UNCERTAIN" | "FAILED" | "PARTIAL";
   extractedAt?: string;
+  officerValidation?: OfficerValidationDecision | null;
   fields?: Record<string, {
     state: "present" | "absent" | "uncertain";
     backendState?: string;
@@ -42,6 +51,7 @@ export interface DocumentExtractionData {
 
 export interface StagedDocument {
   id: string; // internal UUID for tracking
+  backendDocId?: string; // persisted database document ID
   categoryCode: string;
   categoryLabel: string;
   shortLabel: string;

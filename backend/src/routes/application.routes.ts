@@ -14,6 +14,7 @@ import {
   runExtractionForApplication,
   runScrutinyForApplication,
   getScrutinyReportForApplication,
+  updateDocumentValidationStatus,
 } from "../controllers/application.controller.js";
 import {
   runAuthorityVerification,
@@ -50,6 +51,7 @@ router.post("/:id/assign", authenticate, assignApplication);
 router.post("/:id/extract", authenticate, requireApplicationAccess("write"), runExtractionForApplication);
 router.post("/:id/scrutiny", authenticate, requireApplicationAccess("write"), runScrutinyForApplication);
 router.get("/:id/scrutiny", authenticate, requireApplicationAccess("read"), getScrutinyReportForApplication);
+router.patch("/:id/documents/:documentId/status", authenticate, requireApplicationAccess("write"), updateDocumentValidationStatus);
 
 // Authority Verification Workflow
 router.post("/:id/verify", authenticate, requireApplicationAccess("write"), runAuthorityVerification);
