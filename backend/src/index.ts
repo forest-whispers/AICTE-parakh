@@ -6,6 +6,8 @@ import applicationRoutes from "./routes/application.routes.js";
 import authRoutes from "./routes/auth.routes.js";
 import notificationRoutes from "./routes/notification.routes.js";
 import auditRoutes from "./routes/audit.routes.js";
+import ministryRoutes from "./routes/ministry.routes.js";
+import workbenchRoutes from "./routes/workbench.routes.js";
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -29,6 +31,8 @@ app.use("/api/auth", authRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/audit", auditRoutes);
 app.use("/api/applications", applicationRoutes);
+app.use("/api/ministry", ministryRoutes);
+app.use("/api/workbench", workbenchRoutes);
 
 app.get("/api/health", (_req, res) => {
   res.json({ status: "OK", timestamp: new Date().toISOString() });
