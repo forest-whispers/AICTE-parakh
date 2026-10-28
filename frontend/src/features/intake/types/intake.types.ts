@@ -16,6 +16,7 @@ export interface ExtractedFieldItem {
   type: "string" | "number" | "boolean" | "date";
   isCrucialForScrutiny: boolean;
   state: "present" | "absent" | "uncertain" | "awaiting";
+  backendState?: string;
   value?: unknown;
   rawText?: string;
   pageNumber?: number;
@@ -24,10 +25,11 @@ export interface ExtractedFieldItem {
 }
 
 export interface DocumentExtractionData {
-  status: "PENDING" | "EXTRACTING" | "SUCCESS" | "UNCERTAIN" | "FAILED";
+  status: "PENDING" | "EXTRACTING" | "SUCCESS" | "UNCERTAIN" | "FAILED" | "PARTIAL";
   extractedAt?: string;
   fields?: Record<string, {
     state: "present" | "absent" | "uncertain";
+    backendState?: string;
     value: unknown;
     rawText?: string;
     pageNumber?: number;
@@ -77,13 +79,31 @@ export interface BackendCreatedDocument {
   extractedData?: unknown;
 }
 
+export interface BackendScrutinyFinding {
+  ruleId: string;
+  ruleName: string;
+  aphClause?: string;
+  outcome: string;
+  severity?: string;
+  evidence?: Array<{
+    documentType?: string;
+    fieldName?: string;
+    extractedValue?: unknown;
+    rawText?: string | null;
+    pageNumber?: number | null;
+  }>;
+  findingNote?: string;
+  suggestedAction?: string;
+}
+
 export interface BackendScrutinyReport {
-  id: string;
+  id?: string;
   overallStatus: string;
   passedCount: number;
   deficiencyCount: number;
   reviewCount: number;
-  findings?: unknown;
+  missingCount?: number;
+  findings?: BackendScrutinyFinding[];
 }
 
 export interface BackendCreatedApplication {

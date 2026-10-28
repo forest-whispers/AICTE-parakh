@@ -5,6 +5,7 @@ import type {
   IntakeAlertNotice,
   IntakeStepIndex,
   BackendCreatedApplication,
+  BackendScrutinyReport,
 } from "../types/intake.types";
 
 export interface IntakeContextValue {
@@ -38,6 +39,14 @@ export interface IntakeContextValue {
   isUploading: boolean;
   uploadError: string | null;
   submitApplication: () => Promise<boolean>;
+  // Re-run Extraction & Scrutiny
+  extractionError: string | null;
+  scrutinyError: string | null;
+  isExtracting: boolean;
+  isEvaluatingScrutiny: boolean;
+  runExtraction: () => Promise<boolean>;
+  runScrutiny: () => Promise<boolean>;
+  latestScrutinyReport: BackendScrutinyReport | null;
 }
 
 export const IntakeContext = createContext<IntakeContextValue | undefined>(undefined);

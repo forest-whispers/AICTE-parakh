@@ -4,6 +4,7 @@ import { Button } from "../../../shared/ui/button";
 import { STATUTORY_DOCUMENT_CATEGORIES } from "../constants/statutory-documents";
 import { VlmExtractedFieldsDrawer } from "./vlm-extracted-fields-drawer";
 import { DocumentPreviewModal } from "./document-preview-modal";
+import { computeDocumentValidationOutcome } from "../utils/validation-state";
 import type { StagedDocument } from "../types/intake.types";
 
 interface ExtractionValidationStepProps {
@@ -21,6 +22,13 @@ export const ExtractionValidationStep: React.FC<ExtractionValidationStepProps> =
     requiredCategories,
     institutionDetails,
     createdApplication,
+    extractionError,
+    scrutinyError,
+    isExtracting,
+    isEvaluatingScrutiny,
+    runExtraction,
+    runScrutiny,
+    latestScrutinyReport,
   } = useIntake();
 
   // Drawer & Preview states
@@ -38,6 +46,23 @@ export const ExtractionValidationStep: React.FC<ExtractionValidationStepProps> =
   const totalUploaded = stagedDocuments.length;
   const missingCount = missingRequiredCategories.length;
   const hasBlockingErrors = missingCount > 0;
+
+  // Determine failure states
+  const hasFailedDocs = stagedDocuments.some(
+    (d) => d.processingState === "FAILED" || d.extractionData?.status === "FAILED"
+  );
+
+  const isExtractionFailed =
+    Boolean(extractionError) ||
+    createdApplication?.status === "EXTRACTION_FAILED" ||
+    (createdApplication !== null && hasFailedDocs);
+
+  const isScrutinyFailed =
+    !isExtractionFailed &&
+    (Boolean(scrutinyError) ||
+      createdApplication?.status === "SCRUTINY_FAILED" ||
+      (createdApplication !== null &&
+        (!createdApplication.scrutinyReports || createdApplication.scrutinyReports.length === 0)));
 
   return (
     <div>
@@ -100,11 +125,33 @@ export const ExtractionValidationStep: React.FC<ExtractionValidationStepProps> =
           <div className="text-[10px] font-mono uppercase tracking-wider text-[#5C6F73]">
             PIPELINE READINESS
           </div>
-          <div className="text-2xl font-bold text-[#172E33] mt-1 font-mono">
-            {hasBlockingErrors ? "BLOCKED" : "READY"}
+          <div
+            className={`text-2xl font-bold mt-1 font-mono ${
+              isExtractionFailed
+                ? "text-[#A14637]"
+                : isScrutinyFailed
+                ? "text-[#8D6B00]"
+                : hasBlockingErrors
+                ? "text-[#A14637]"
+                : "text-[#245E3F]"
+            }`}
+          >
+            {isExtractionFailed
+              ? "EXTRACTION FAILED"
+              : isScrutinyFailed
+              ? "SCRUTINY PENDING"
+              : hasBlockingErrors
+              ? "BLOCKED"
+              : "READY"}
           </div>
           <div className="text-[11px] text-[#5C6F73] mt-0.5">
-            {hasBlockingErrors ? "Missing required evidence" : "Ready for review & approve"}
+            {isExtractionFailed
+              ? "Model high demand / error"
+              : isScrutinyFailed
+              ? "Awaiting statutory audit"
+              : hasBlockingErrors
+              ? "Missing required evidence"
+              : "Ready for review & approve"}
           </div>
         </div>
       </div>
@@ -113,6 +160,76 @@ export const ExtractionValidationStep: React.FC<ExtractionValidationStepProps> =
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         {/* Left Column: Document-Level Table & Blocking States (8 cols) */}
         <div className="lg:col-span-8 space-y-6">
+          {/* Conditional Alert: Extraction Failed -> Run Extraction Button */}
+          {isExtractionFailed && (
+            <div className="bg-[#FDF2F2] border border-[#E8C5C5] rounded-[3px] p-4 text-[#9E2A2B] shadow-sm">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="flex items-start gap-3">
+                  <span className="text-xl">⚠️</span>
+                  <div>
+                    <h4 className="text-[14px] font-bold m-0 text-[#172E33]">
+                      Multimodal VLM Extraction Incomplete
+                    </h4>
+                    <p className="text-[12px] text-[#5C6F73] mt-1 mb-0 leading-relaxed">
+                      {extractionError ||
+                        "The VLM extraction model experienced temporary high demand (HTTP 503) or an outage. Your documents are safely uploaded."}
+                    </p>
+                  </div>
+                </div>
+                <Button
+                  type="button"
+                  onClick={runExtraction}
+                  disabled={isExtracting}
+                  className="bg-[#165A60] hover:bg-[#122B30] text-white text-[13px] font-medium px-4 py-2 rounded-[3px] inline-flex items-center gap-1.5 self-start sm:self-auto shrink-0 shadow-sm transition-colors"
+                >
+                  {isExtracting ? (
+                    <>
+                      <span className="inline-block animate-spin mr-1">◌</span>
+                      Running extraction...
+                    </>
+                  ) : (
+                    "Run extraction"
+                  )}
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* Conditional Alert: Scrutiny Failed/Pending -> Run Scrutiny Button */}
+          {isScrutinyFailed && (
+            <div className="bg-[#FEF7EC] border border-[#FFE58F] rounded-[3px] p-4 text-[#8D6B00] shadow-sm">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="flex items-start gap-3">
+                  <span className="text-xl">⚖️</span>
+                  <div>
+                    <h4 className="text-[14px] font-bold m-0 text-[#172E33]">
+                      Deterministic Scrutiny Evaluation Pending
+                    </h4>
+                    <p className="text-[12px] text-[#5C6F73] mt-1 mb-0 leading-relaxed">
+                      {scrutinyError ||
+                        "Document feature extraction has succeeded, but automated compliance scrutiny evaluation has not yet been computed."}
+                    </p>
+                  </div>
+                </div>
+                <Button
+                  type="button"
+                  onClick={runScrutiny}
+                  disabled={isEvaluatingScrutiny}
+                  className="bg-[#165A60] hover:bg-[#122B30] text-white text-[13px] font-medium px-4 py-2 rounded-[3px] inline-flex items-center gap-1.5 self-start sm:self-auto shrink-0 shadow-sm transition-colors"
+                >
+                  {isEvaluatingScrutiny ? (
+                    <>
+                      <span className="inline-block animate-spin mr-1">◌</span>
+                      Running scrutiny...
+                    </>
+                  ) : (
+                    "Run scrutiny"
+                  )}
+                </Button>
+              </div>
+            </div>
+          )}
+
           <div className="bg-white border border-[#D7DEDA] rounded-[2px] shadow-sm overflow-hidden">
             {/* Table Header Section */}
             <div className="px-5 py-4 border-b border-[#D7DEDA] bg-[#FAFAF8] flex flex-col sm:flex-row sm:items-center justify-between gap-2">
@@ -170,17 +287,12 @@ export const ExtractionValidationStep: React.FC<ExtractionValidationStepProps> =
                         extBadgeText = "△ Uncertain";
                       }
 
-                      // Validation Outcome Badge
-                      let valBadgeBg = "bg-[#EAF3EE] text-[#245E3F] border-[#C8E6C9]";
-                      let valBadgeText = "✓ Ready for Ingestion";
-
-                      if (isFailed) {
-                        valBadgeBg = "bg-[#FDF2F2] text-[#9E2A2B] border-[#E8C5C5]";
-                        valBadgeText = "! Pipeline Error";
-                      } else if (isUncertain) {
-                        valBadgeBg = "bg-[#FFF9E6] text-[#8D6B00] border-[#FFE58F]";
-                        valBadgeText = "△ Review Required";
-                      }
+                      // Real validation state computed from backend extraction & scrutiny findings
+                      const valBadge = computeDocumentValidationOutcome(
+                        doc,
+                        latestScrutinyReport || createdApplication?.scrutinyReports?.[0],
+                        isExtractionFailed
+                      );
 
                       return (
                         <tr
@@ -224,9 +336,9 @@ export const ExtractionValidationStep: React.FC<ExtractionValidationStepProps> =
                           {/* Col 4: Validation State */}
                           <td className="py-3 px-3 whitespace-nowrap">
                             <span
-                              className={`text-[11px] font-mono px-2 py-0.5 rounded-[2px] border ${valBadgeBg}`}
+                              className={`text-[11px] font-mono px-2 py-0.5 rounded-[2px] border ${valBadge.bgClass}`}
                             >
-                              {valBadgeText}
+                              {valBadge.text}
                             </span>
                           </td>
 
@@ -410,12 +522,55 @@ export const ExtractionValidationStep: React.FC<ExtractionValidationStepProps> =
           ← Back
         </Button>
 
-        <div className="w-full sm:w-auto flex items-center justify-between sm:justify-end gap-4">
+        <div className="w-full sm:w-auto flex flex-wrap items-center justify-between sm:justify-end gap-3">
           <span className="text-[12px] text-[#5C6F73]">
-            {hasBlockingErrors
+            {isExtractionFailed
+              ? "Extraction incomplete · Re-run available"
+              : isScrutinyFailed
+              ? "Scrutiny pending · Re-run available"
+              : hasBlockingErrors
               ? "Missing mandatory evidence items"
               : "Authorized intake · Ready for review"}
           </span>
+
+          {/* Conditional Action: Run Extraction */}
+          {isExtractionFailed && (
+            <Button
+              type="button"
+              onClick={runExtraction}
+              disabled={isExtracting}
+              className="bg-[#165A60] hover:bg-[#122B30] text-white text-[13px] font-medium px-4 py-2.5 rounded-[3px] inline-flex items-center gap-1.5 transition-colors cursor-pointer"
+            >
+              {isExtracting ? (
+                <>
+                  <span className="inline-block animate-spin mr-1">◌</span>
+                  Running extraction...
+                </>
+              ) : (
+                "Run extraction"
+              )}
+            </Button>
+          )}
+
+          {/* Conditional Action: Run Scrutiny */}
+          {isScrutinyFailed && (
+            <Button
+              type="button"
+              onClick={runScrutiny}
+              disabled={isEvaluatingScrutiny}
+              className="bg-[#165A60] hover:bg-[#122B30] text-white text-[13px] font-medium px-4 py-2.5 rounded-[3px] inline-flex items-center gap-1.5 transition-colors cursor-pointer"
+            >
+              {isEvaluatingScrutiny ? (
+                <>
+                  <span className="inline-block animate-spin mr-1">◌</span>
+                  Running scrutiny...
+                </>
+              ) : (
+                "Run scrutiny"
+              )}
+            </Button>
+          )}
+
           <Button
             type="button"
             onClick={onProceedToReview}

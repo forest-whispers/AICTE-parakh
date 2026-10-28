@@ -28,8 +28,18 @@ export const VlmExtractedFieldsDrawer: React.FC<VlmExtractedFieldsDrawerProps> =
   if (!isOpen || !document) return null;
 
   const expectedFields = EXPECTED_DOCUMENT_FIELDS[document.categoryCode] || [];
-  const hasExtractedData = Boolean(document.extractionData?.fields);
   const extractionFields = document.extractionData?.fields || {};
+
+  const isExtractionDone =
+    document.processingState === "SUCCESS" ||
+    document.extractionData?.status === "SUCCESS" ||
+    document.extractionData?.status === "PARTIAL" ||
+    document.extractionData?.status === "UNCERTAIN" ||
+    Boolean(document.extractionData?.rawOutput) ||
+    Object.keys(extractionFields).length > 0;
+
+  const isExtractionFailed =
+    document.processingState === "FAILED" || document.extractionData?.status === "FAILED";
 
   return (
     <>
@@ -74,7 +84,34 @@ export const VlmExtractedFieldsDrawer: React.FC<VlmExtractedFieldsDrawerProps> =
         {/* Content Body */}
         <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-[#F6F5F0]">
           {/* Honest Status Banner */}
-          {!hasExtractedData ? (
+          {isExtractionFailed ? (
+            <div className="p-4 bg-[#FDF2F2] border border-[#E8C5C5] rounded-[3px] shadow-sm">
+              <div className="flex items-start gap-3">
+                <span className="text-lg">⚠️</span>
+                <div>
+                  <div className="text-[12px] font-bold text-[#9E2A2B] uppercase tracking-wide">
+                    VLM Extraction Incomplete / Paused
+                  </div>
+                  <p className="text-[12px] text-[#5C6F73] mt-1 mb-0 leading-relaxed">
+                    Automated feature extraction has not completed for this document (e.g. model high demand). Click &ldquo;Run extraction&rdquo; on the validation screen to retry.
+                  </p>
+                  <p className="text-[11px] text-[#8A9B9D] mt-2 mb-0">
+                    Below are the registered schema fields for{" "}
+                    <span className="font-mono text-[#172E33]">{document.categoryCode}</span>.
+                  </p>
+                </div>
+              </div>
+            </div>
+          ) : isExtractionDone ? (
+            <div className="p-4 bg-[#EAF3EE] border border-[#C8E6C9] rounded-[3px]">
+              <div className="text-[12px] font-bold text-[#245E3F] uppercase tracking-wide">
+                Extraction Results Available
+              </div>
+              <p className="text-[12px] text-[#245E3F] mt-1 mb-0">
+                Extracted via VLM pipeline at {document.extractionData?.extractedAt || "recent run"}.
+              </p>
+            </div>
+          ) : (
             <div className="p-4 bg-white border border-[#D7DEDA] rounded-[3px] shadow-sm">
               <div className="flex items-start gap-3">
                 <span className="text-lg">⚡</span>
@@ -93,15 +130,6 @@ export const VlmExtractedFieldsDrawer: React.FC<VlmExtractedFieldsDrawerProps> =
                 </div>
               </div>
             </div>
-          ) : (
-            <div className="p-4 bg-[#EAF3EE] border border-[#C8E6C9] rounded-[3px]">
-              <div className="text-[12px] font-bold text-[#245E3F] uppercase tracking-wide">
-                Extraction Results Available
-              </div>
-              <p className="text-[12px] text-[#245E3F] mt-1 mb-0">
-                Extracted via VLM pipeline at {document.extractionData?.extractedAt || "recent run"}.
-              </p>
-            </div>
           )}
 
           {/* Schema Fields List */}
@@ -113,24 +141,30 @@ export const VlmExtractedFieldsDrawer: React.FC<VlmExtractedFieldsDrawerProps> =
 
             {expectedFields.map((field) => {
               const extracted = extractionFields[field.key];
-              const isPresent = extracted?.state === "present";
-              const isAbsent = extracted?.state === "absent";
-              const isUncertain = extracted?.state === "uncertain";
+              const isPresent = extracted?.state === "present" || extracted?.backendState === "PRESENT";
+              const isUncertain =
+                extracted?.state === "uncertain" ||
+                extracted?.backendState === "ILLEGIBLE" ||
+                extracted?.backendState === "AMBIGUOUS";
 
               let badgeBg = "bg-[#F0F2F2] text-[#5C6F73] border-[#D7DEDA]";
               let badgeText = "Awaiting extraction";
 
-              if (hasExtractedData) {
+              if (isExtractionDone) {
                 if (isPresent) {
                   badgeBg = "bg-[#EAF3EE] text-[#245E3F] border-[#C8E6C9]";
-                  badgeText = "✓ Present";
-                } else if (isAbsent) {
-                  badgeBg = "bg-[#FDF2F2] text-[#9E2A2B] border-[#E8C5C5]";
-                  badgeText = "✗ Absent";
+                  badgeText = "✓ PRESENT";
                 } else if (isUncertain) {
                   badgeBg = "bg-[#FFF9E6] text-[#8D6B00] border-[#FFE58F]";
-                  badgeText = "△ Uncertain";
+                  badgeText = extracted?.backendState ? `△ ${extracted.backendState}` : "△ UNCERTAIN";
+                } else {
+                  // Not found / Absent: show MISSING or whatever the backend returned (e.g. NOT_FOUND, NOT_APPLICABLE)
+                  badgeBg = "bg-[#FDF2F2] text-[#9E2A2B] border-[#E8C5C5]";
+                  badgeText = extracted?.backendState ? `✗ ${extracted.backendState}` : "✗ MISSING";
                 }
+              } else if (isExtractionFailed) {
+                badgeBg = "bg-[#FDF2F2] text-[#9E2A2B] border-[#E8C5C5]";
+                badgeText = "✗ Pipeline Failed";
               }
 
               return (
@@ -170,24 +204,47 @@ export const VlmExtractedFieldsDrawer: React.FC<VlmExtractedFieldsDrawerProps> =
                     <div className="text-[10px] font-mono text-[#8A9B9D] uppercase">
                       Extracted Value:
                     </div>
-                    {hasExtractedData && extracted ? (
-                      <div>
-                        <div className="font-semibold text-[#172E33] mt-0.5">
-                          {extracted.value !== undefined ? String(extracted.value) : "—"}
+                    {isExtractionDone ? (
+                      isPresent && extracted ? (
+                        <div>
+                          <div className="font-semibold text-[#172E33] mt-0.5">
+                            {extracted.value !== undefined && extracted.value !== null
+                              ? String(extracted.value)
+                              : "Present (not explicitly quantified)"}
+                          </div>
+                          {extracted.excerpt && (
+                            <div className="text-[11px] text-[#5C6F73] italic mt-1 bg-white p-1.5 rounded border border-[#D7DEDA]">
+                              &ldquo;{extracted.excerpt}&rdquo;
+                              {extracted.pageNumber && (
+                                <span className="text-[#8A9B9D] ml-1">(p. {extracted.pageNumber})</span>
+                              )}
+                            </div>
+                          )}
                         </div>
-                        {extracted.excerpt && (
-                          <div className="text-[11px] text-[#5C6F73] italic mt-1 bg-white p-1.5 rounded border border-[#D7DEDA]">
-                            &ldquo;{extracted.excerpt}&rdquo;
-                            {extracted.pageNumber && (
-                              <span className="text-[#8A9B9D] ml-1">(p. {extracted.pageNumber})</span>
-                            )}
+                      ) : isUncertain && extracted ? (
+                        <div>
+                          <div className="text-[#8D6B00] font-medium mt-0.5">
+                            {extracted.uncertaintyReason || "Ambiguous / uncertain in document scan"}
                           </div>
-                        )}
-                        {extracted.uncertaintyReason && (
-                          <div className="text-[11px] text-[#8D6B00] mt-1">
-                            Note: {extracted.uncertaintyReason}
-                          </div>
-                        )}
+                          {extracted.rawText && (
+                            <div className="text-[11px] text-[#5C6F73] italic mt-1 bg-white p-1.5 rounded border border-[#D7DEDA]">
+                              Raw read: &ldquo;{extracted.rawText}&rdquo;
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="text-[#9E2A2B] font-medium mt-0.5 flex items-center gap-1.5">
+                          <span>Not detected in document</span>
+                          {extracted?.backendState && (
+                            <span className="font-mono text-[10px] text-[#8A9B9D]">
+                              ({extracted.backendState})
+                            </span>
+                          )}
+                        </div>
+                      )
+                    ) : isExtractionFailed ? (
+                      <div className="text-[#9E2A2B] italic mt-0.5">
+                        — (Extraction failed: click &ldquo;Run extraction&rdquo; to retry)
                       </div>
                     ) : (
                       <div className="text-[#8A9B9D] italic mt-0.5">

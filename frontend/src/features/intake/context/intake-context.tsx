@@ -13,8 +13,63 @@ import {
 import { IntakeContext } from "./intake-context-def";
 import { apiClient } from "../../../shared/api/client";
 
+const FIELD_ALIASES: Record<string, string[]> = {
+  applicantLegalName: ["trustSocietyName"],
+  trustSocietyName: ["applicantLegalName"],
+  resolutionReferenceNumber: ["resolutionNumber"],
+  resolutionNumber: ["resolutionReferenceNumber"],
+  deedType: ["documentType"],
+  documentType: ["deedType"],
+  transfereeLesseeName: ["buyerTransferee"],
+  buyerTransferee: ["transfereeLesseeName"],
+  transferorLessorName: ["sellerTransferor"],
+  sellerTransferor: ["transferorLessorName"],
+  deedRegistrationNumber: ["registrationNumber"],
+  registrationNumber: ["deedRegistrationNumber"],
+  khasraSurveyPlotNumbers: ["khasraNumbers"],
+  khasraNumbers: ["khasraSurveyPlotNumbers", "khasraSurveyNumbersShown"],
+  parcelArea: ["landAreaAcres"],
+  landAreaAcres: ["parcelArea"],
+  orderReferenceNumber: ["orderNumber"],
+  orderNumber: ["orderReferenceNumber"],
+  orderDate: ["issueDate"],
+  issueDate: ["orderDate", "sanctionDate", "certificateDate", "reviewDate"],
+  landownerApplicantName: ["applicantName"],
+  applicantName: ["landownerApplicantName"],
+  permittedLandUse: ["permittedUse"],
+  permittedUse: ["permittedLandUse"],
+  approvingAuthority: ["sanctioningAuthority"],
+  sanctioningAuthority: ["approvingAuthority"],
+  sanctionOrderReference: ["sanctionNumber"],
+  sanctionNumber: ["sanctionOrderReference"],
+  architectCoaRegistrationNumber: ["architectCoaRegistration"],
+  architectCoaRegistration: ["architectCoaRegistrationNumber"],
+  totalSanctionedBuiltUpArea: ["totalBuiltUpAreaSqm"],
+  totalBuiltUpAreaSqm: ["totalSanctionedBuiltUpArea"],
+  statedFarFsi: ["farFsi"],
+  farFsi: ["statedFarFsi"],
+  certificateReferenceNumber: ["certificateNumber"],
+  certificateNumber: ["certificateReferenceNumber"],
+  certificateType: ["occupancyType"],
+  occupancyType: ["certificateType"],
+  coveredBuildingsFloors: ["buildingDetails"],
+  buildingDetails: ["coveredBuildingsFloors"],
+  issuingEngineerName: ["engineerName"],
+  engineerName: ["issuingEngineerName"],
+  engineerQualification: ["engineerQualifications"],
+  engineerQualifications: ["engineerQualification"],
+  structuralFitnessConclusion: ["stabilityStatus"],
+  stabilityStatus: ["structuralFitnessConclusion"],
+  accountOrFdrNumber: ["fdrNumber"],
+  fdrNumber: ["accountOrFdrNumber"],
+  isStatedUnencumbered: ["isUnencumbered"],
+  isUnencumbered: ["isStatedUnencumbered"],
+  sponsoringBodyName: ["trustSocietyName"],
+};
+
 function extractFieldsFromEnvelope(extractedData: unknown, categoryCode: string): Record<string, {
   state: "present" | "absent" | "uncertain";
+  backendState?: string;
   value: unknown;
   rawText?: string;
   pageNumber?: number;
@@ -44,6 +99,7 @@ function extractFieldsFromEnvelope(extractedData: unknown, categoryCode: string)
 
   const result: Record<string, {
     state: "present" | "absent" | "uncertain";
+    backendState?: string;
     value: unknown;
     rawText?: string;
     pageNumber?: number;
@@ -63,14 +119,26 @@ function extractFieldsFromEnvelope(extractedData: unknown, categoryCode: string)
       };
       const isPresent = f.state === "PRESENT";
       const isUncertain = f.state === "ILLEGIBLE" || f.state === "AMBIGUOUS";
-      result[key] = {
-        state: isPresent ? "present" : isUncertain ? "uncertain" : "absent",
+      const entry = {
+        state: isPresent ? "present" as const : isUncertain ? "uncertain" as const : "absent" as const,
+        backendState: f.state,
         value: f.value,
         rawText: f.rawText ?? undefined,
         pageNumber: f.pageNumber ?? undefined,
         excerpt: f.excerpt ?? undefined,
         uncertaintyReason: f.uncertaintyReason ?? undefined,
       };
+
+      result[key] = entry;
+
+      const aliases = FIELD_ALIASES[key];
+      if (aliases) {
+        for (const alias of aliases) {
+          if (!result[alias]) {
+            result[alias] = entry;
+          }
+        }
+      }
     }
   }
 
@@ -310,6 +378,11 @@ export const IntakeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [createdApplication, setCreatedApplication] = useState<BackendCreatedApplication | null>(null);
   const [isUploading, setIsUploading] = useState<boolean>(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [extractionError, setExtractionError] = useState<string | null>(null);
+  const [scrutinyError, setScrutinyError] = useState<string | null>(null);
+  const [isExtracting, setIsExtracting] = useState<boolean>(false);
+  const [isEvaluatingScrutiny, setIsEvaluatingScrutiny] = useState<boolean>(false);
+  const [latestScrutinyReport, setLatestScrutinyReport] = useState<BackendScrutinyReport | null>(null);
 
   const submitApplication = useCallback(async (): Promise<boolean> => {
     if (stagedDocuments.length === 0) {
@@ -356,6 +429,13 @@ export const IntakeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
       if (response && response.success && response.data) {
         setCreatedApplication(response.data);
+        setLatestScrutinyReport(response.scrutinyReport || response.data.scrutinyReports?.[0] || null);
+
+        if (response.extractionSuccess === false) {
+          setExtractionError(response.extractionError || "Batch VLM extraction failure. The model may be experiencing high demand.");
+        } else {
+          setExtractionError(null);
+        }
 
         // Update stagedDocuments with real backend extraction statuses and envelope fields
         setStagedDocuments((prev) =>
@@ -427,6 +507,123 @@ export const IntakeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }
   }, [institutionDetails, stagedDocuments]);
 
+  const runExtraction = useCallback(async (): Promise<boolean> => {
+    if (!createdApplication?.id) {
+      return false;
+    }
+
+    setIsExtracting(true);
+    setExtractionError(null);
+
+    try {
+      const response = await apiClient<{
+        success: boolean;
+        extractionSuccess: boolean;
+        extractionError?: string | null;
+        scrutinyReport?: BackendScrutinyReport | null;
+        data: BackendCreatedApplication;
+      }>(`/api/applications/${createdApplication.id}/extract`, {
+        method: "POST",
+      });
+
+      if (response && response.data) {
+        setCreatedApplication(response.data);
+        setLatestScrutinyReport(response.scrutinyReport || response.data.scrutinyReports?.[0] || null);
+
+        if (!response.extractionSuccess) {
+          setExtractionError(
+            response.extractionError || "Extraction did not complete successfully. The model may be experiencing high demand."
+          );
+        } else {
+          setExtractionError(null);
+        }
+
+        // Update staged documents with real extraction outcomes
+        setStagedDocuments((prev) =>
+          prev.map((doc, idx) => {
+            const backendDoc = response.data.documents.find(
+              (bd) => bd.originalName === doc.fileName || bd.documentType === doc.categoryCode
+            ) || response.data.documents[idx];
+
+            if (!backendDoc) return doc;
+
+            const extractionStatus = (backendDoc.extractionStatus || "PENDING") as
+              | "SUCCESS"
+              | "FAILED"
+              | "UNCERTAIN"
+              | "PENDING";
+
+            const processingState =
+              extractionStatus === "SUCCESS"
+                ? "SUCCESS"
+                : extractionStatus === "UNCERTAIN"
+                ? "UNCERTAIN"
+                : extractionStatus === "FAILED"
+                ? "FAILED"
+                : "STAGED";
+
+            const extractedFields = extractFieldsFromEnvelope(backendDoc.extractedData, doc.categoryCode);
+
+            return {
+              ...doc,
+              processingState,
+              processingNote: `Backend status: ${extractionStatus}`,
+              extractionData: {
+                status: extractionStatus,
+                fields: Object.keys(extractedFields).length > 0 ? extractedFields : undefined,
+                rawOutput: backendDoc.extractedData,
+              },
+            };
+          })
+        );
+
+        return response.extractionSuccess;
+      }
+      return false;
+    } catch (err: unknown) {
+      const errorObj = err as { message?: string };
+      setExtractionError(errorObj.message || "Failed to run extraction. Please try again.");
+      return false;
+    } finally {
+      setIsExtracting(false);
+    }
+  }, [createdApplication]);
+
+  const runScrutiny = useCallback(async (): Promise<boolean> => {
+    if (!createdApplication?.id) {
+      return false;
+    }
+
+    setIsEvaluatingScrutiny(true);
+    setScrutinyError(null);
+
+    try {
+      const response = await apiClient<{
+        success: boolean;
+        scrutinyReport?: BackendScrutinyReport | null;
+        data: BackendCreatedApplication;
+      }>(`/api/applications/${createdApplication.id}/scrutiny`, {
+        method: "POST",
+      });
+
+      if (response && response.data) {
+        setCreatedApplication(response.data);
+        setLatestScrutinyReport(response.scrutinyReport || response.data.scrutinyReports?.[0] || null);
+        setScrutinyError(null);
+        return true;
+      } else {
+        setScrutinyError("Scrutiny evaluation did not succeed.");
+        return false;
+      }
+    } catch (err: unknown) {
+      const errorObj = err as { message?: string };
+      setScrutinyError(errorObj.message || "Failed to evaluate scrutiny. Please try again.");
+      return false;
+    } finally {
+      setIsEvaluatingScrutiny(false);
+    }
+  }, [createdApplication]);
+
   const resetIntake = useCallback(() => {
     stagedDocuments.forEach((doc) => {
       if (doc.previewUrl) URL.revokeObjectURL(doc.previewUrl);
@@ -436,7 +633,10 @@ export const IntakeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     setFormErrors({});
     setActiveAlert(null);
     setCreatedApplication(null);
+    setLatestScrutinyReport(null);
     setUploadError(null);
+    setExtractionError(null);
+    setScrutinyError(null);
     setCurrentStep(1);
     try {
       sessionStorage.removeItem(STORAGE_KEY_STEP1);
@@ -472,6 +672,13 @@ export const IntakeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       isUploading,
       uploadError,
       submitApplication,
+      extractionError,
+      scrutinyError,
+      isExtracting,
+      isEvaluatingScrutiny,
+      runExtraction,
+      runScrutiny,
+      latestScrutinyReport,
     }),
     [
       currentStep,
@@ -496,6 +703,13 @@ export const IntakeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       isUploading,
       uploadError,
       submitApplication,
+      extractionError,
+      scrutinyError,
+      isExtracting,
+      isEvaluatingScrutiny,
+      runExtraction,
+      runScrutiny,
+      latestScrutinyReport,
     ]
   );
 

@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { useIntake } from "../hooks/use-intake";
 import { Button } from "../../../shared/ui/button";
 import { ApprovalBoundaryDialog } from "./approval-boundary-dialog";
+import { computeDocumentValidationOutcome } from "../utils/validation-state";
 
 export const ReviewApproveStep: React.FC = () => {
   const {
@@ -10,6 +11,7 @@ export const ReviewApproveStep: React.FC = () => {
     stagedDocuments,
     missingRequiredCategories,
     createdApplication,
+    latestScrutinyReport,
   } = useIntake();
 
   const [isAttested, setIsAttested] = useState(false);
@@ -143,31 +145,40 @@ export const ReviewApproveStep: React.FC = () => {
                       </td>
                     </tr>
                   ) : (
-                    stagedDocuments.map((doc) => (
-                      <tr key={doc.id} className="hover:bg-[#FAFAF8]">
-                        <td className="py-3 px-4">
-                          <div className="font-semibold text-[#172E33]">
-                            {doc.categoryLabel}
-                          </div>
-                          <div className="text-[10px] font-mono text-[#8A9B9D]">
-                            {doc.categoryCode} · Ref: {doc.issuingReference}
-                          </div>
-                        </td>
-                        <td className="py-3 px-4">
-                          <div className="font-mono text-[12px] text-[#165A60] font-medium">
-                            {doc.fileName}
-                          </div>
-                          <div className="text-[11px] text-[#8A9B9D]">
-                            {doc.formattedSize}
-                          </div>
-                        </td>
-                        <td className="py-3 px-4 text-right">
-                          <span className="text-[11px] font-mono px-2 py-0.5 rounded-[2px] border bg-[#EAF3EE] text-[#245E3F] border-[#C8E6C9]">
-                            ✓ READY
-                          </span>
-                        </td>
-                      </tr>
-                    ))
+                    stagedDocuments.map((doc) => {
+                      const valBadge = computeDocumentValidationOutcome(
+                        doc,
+                        latestScrutinyReport || createdApplication?.scrutinyReports?.[0]
+                      );
+
+                      return (
+                        <tr key={doc.id} className="hover:bg-[#FAFAF8]">
+                          <td className="py-3 px-4">
+                            <div className="font-semibold text-[#172E33]">
+                              {doc.categoryLabel}
+                            </div>
+                            <div className="text-[10px] font-mono text-[#8A9B9D]">
+                              {doc.categoryCode} · Ref: {doc.issuingReference}
+                            </div>
+                          </td>
+                          <td className="py-3 px-4">
+                            <div className="font-mono text-[12px] text-[#165A60] font-medium">
+                              {doc.fileName}
+                            </div>
+                            <div className="text-[11px] text-[#8A9B9D]">
+                              {doc.formattedSize}
+                            </div>
+                          </td>
+                          <td className="py-3 px-4 text-right">
+                            <span
+                              className={`text-[11px] font-mono px-2 py-0.5 rounded-[2px] border ${valBadge.bgClass}`}
+                            >
+                              {valBadge.text}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })
                   )}
                 </tbody>
               </table>
@@ -194,10 +205,13 @@ export const ReviewApproveStep: React.FC = () => {
 
             {/* Validation Outcome Pill */}
             <div>
-              {hasErrors ? (
+              {latestScrutinyReport?.overallStatus === "DEFICIENCIES_DETECTED" || hasErrors ? (
                 <div className="p-3 bg-[#FDF2F2] border border-[#E8C5C5] rounded-[2px] text-[12px] text-[#9E2A2B]">
-                  <strong>{missingCount} blocking issue(s) detected.</strong> Mandatory statutory
-                  categories are missing from the manifest.
+                  <strong>Deficiencies detected in scrutiny.</strong> Regulatory findings must be resolved.
+                </div>
+              ) : latestScrutinyReport?.overallStatus === "MANUAL_REVIEW_REQUIRED" ? (
+                <div className="p-3 bg-[#FFF9E6] border border-[#FFE58F] rounded-[2px] text-[12px] text-[#8D6B00]">
+                  <strong>Needs manual approval.</strong> Ambiguous evidence requires officer review.
                 </div>
               ) : (
                 <div className="p-3 bg-[#EAF3EE] border border-[#C8E6C9] rounded-[2px] text-[12px] text-[#245E3F] flex items-center gap-2">
