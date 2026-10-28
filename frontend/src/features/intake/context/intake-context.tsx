@@ -4,11 +4,78 @@ import type {
   StagedDocument,
   IntakeAlertNotice,
   IntakeStepIndex,
+  BackendCreatedApplication,
+  BackendScrutinyReport,
 } from "../types/intake.types";
 import {
   STATUTORY_DOCUMENT_CATEGORIES,
 } from "../constants/statutory-documents";
 import { IntakeContext } from "./intake-context-def";
+import { apiClient } from "../../../shared/api/client";
+
+function extractFieldsFromEnvelope(extractedData: unknown, categoryCode: string): Record<string, {
+  state: "present" | "absent" | "uncertain";
+  value: unknown;
+  rawText?: string;
+  pageNumber?: number;
+  excerpt?: string;
+  uncertaintyReason?: string;
+}> {
+  if (!extractedData || typeof extractedData !== "object") return {};
+  const data = extractedData as Record<string, unknown>;
+
+  const blockMap: Record<string, string> = {
+    DOC_01_REGISTRATION: "doc01Registration",
+    DOC_02_RESOLUTION: "doc02Resolution",
+    DOC_03_LAND_DEED: "doc03LandDeed",
+    DOC_04_LEASE_AFFIDAVIT: "doc04LeaseAffidavit",
+    DOC_05_LAND_USE: "doc05LandUse",
+    DOC_06_BUILDING_PLAN: "doc06BuildingPlan",
+    DOC_07_OCCUPANCY: "doc07Occupancy",
+    DOC_08_STRUCTURAL_STABILITY: "doc08StructuralStability",
+    DOC_09_FIRE_SAFETY: "doc09FireSafety",
+    DOC_10_BANK_FUNDS: "doc10BankFunds",
+    DOC_11_AFFIDAVIT_2: "doc11Affidavit2",
+    DOC_14_SITE_MAP: "doc14SiteMap",
+  };
+
+  const blockKey = blockMap[categoryCode];
+  const block = (blockKey && data[blockKey]) ? (data[blockKey] as Record<string, unknown>) : data;
+
+  const result: Record<string, {
+    state: "present" | "absent" | "uncertain";
+    value: unknown;
+    rawText?: string;
+    pageNumber?: number;
+    excerpt?: string;
+    uncertaintyReason?: string;
+  }> = {};
+
+  for (const [key, fieldVal] of Object.entries(block)) {
+    if (fieldVal && typeof fieldVal === "object" && "state" in fieldVal) {
+      const f = fieldVal as {
+        state?: string;
+        value?: unknown;
+        rawText?: string | null;
+        pageNumber?: number | null;
+        excerpt?: string | null;
+        uncertaintyReason?: string | null;
+      };
+      const isPresent = f.state === "PRESENT";
+      const isUncertain = f.state === "ILLEGIBLE" || f.state === "AMBIGUOUS";
+      result[key] = {
+        state: isPresent ? "present" : isUncertain ? "uncertain" : "absent",
+        value: f.value,
+        rawText: f.rawText ?? undefined,
+        pageNumber: f.pageNumber ?? undefined,
+        excerpt: f.excerpt ?? undefined,
+        uncertaintyReason: f.uncertaintyReason ?? undefined,
+      };
+    }
+  }
+
+  return result;
+}
 
 const STORAGE_KEY_STEP1 = "parakh_intake_step1_data";
 
@@ -240,6 +307,126 @@ export const IntakeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }
   }, [currentStep]);
 
+  const [createdApplication, setCreatedApplication] = useState<BackendCreatedApplication | null>(null);
+  const [isUploading, setIsUploading] = useState<boolean>(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+
+  const submitApplication = useCallback(async (): Promise<boolean> => {
+    if (stagedDocuments.length === 0) {
+      setActiveAlert({
+        type: "UPLOAD_ERROR",
+        title: "No Documents Staged",
+        message: "Please add statutory documents before uploading the application.",
+      });
+      return false;
+    }
+
+    setIsUploading(true);
+    setUploadError(null);
+    setActiveAlert(null);
+
+    try {
+      const formData = new FormData();
+      formData.append("institutionName", institutionDetails.institutionName.trim());
+      formData.append("applicationNumber", institutionDetails.applicationNumber.trim());
+      if (institutionDetails.programCategory) {
+        formData.append("programCategory", institutionDetails.programCategory.trim());
+      }
+      if (institutionDetails.proposedIntake) {
+        formData.append("proposedIntake", institutionDetails.proposedIntake.trim());
+      }
+
+      const documentTypes: string[] = [];
+      stagedDocuments.forEach((doc) => {
+        formData.append("documents", doc.file, doc.fileName);
+        documentTypes.push(doc.categoryCode);
+      });
+      formData.append("documentTypes", JSON.stringify(documentTypes));
+
+      const response = await apiClient<{
+        success: boolean;
+        extractionSuccess?: boolean;
+        extractionError?: string | null;
+        scrutinyReport?: BackendScrutinyReport | null;
+        data: BackendCreatedApplication;
+      }>("/api/applications", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (response && response.success && response.data) {
+        setCreatedApplication(response.data);
+
+        // Update stagedDocuments with real backend extraction statuses and envelope fields
+        setStagedDocuments((prev) =>
+          prev.map((doc, idx) => {
+            const backendDoc = response.data.documents.find(
+              (bd) => bd.originalName === doc.fileName || bd.documentType === doc.categoryCode
+            ) || response.data.documents[idx];
+
+            if (!backendDoc) return doc;
+
+            const extractionStatus = (backendDoc.extractionStatus || "PENDING") as
+              | "SUCCESS"
+              | "FAILED"
+              | "UNCERTAIN"
+              | "PENDING";
+
+            const processingState =
+              extractionStatus === "SUCCESS"
+                ? "SUCCESS"
+                : extractionStatus === "UNCERTAIN"
+                ? "UNCERTAIN"
+                : extractionStatus === "FAILED"
+                ? "FAILED"
+                : "STAGED";
+
+            const extractedFields = extractFieldsFromEnvelope(backendDoc.extractedData, doc.categoryCode);
+
+            return {
+              ...doc,
+              processingState,
+              processingNote: `Backend status: ${extractionStatus}`,
+              extractionData: {
+                status: extractionStatus,
+                fields: Object.keys(extractedFields).length > 0 ? extractedFields : undefined,
+                rawOutput: backendDoc.extractedData,
+              },
+            };
+          })
+        );
+
+        setCurrentStep(3);
+        window.scrollTo({ top: 0, behavior: "smooth" });
+        return true;
+      } else {
+        const errorMsg = "Application creation returned an unsuccessful response.";
+        setUploadError(errorMsg);
+        setActiveAlert({
+          type: "UPLOAD_ERROR",
+          title: "Upload Failed",
+          message: errorMsg,
+        });
+        return false;
+      }
+    } catch (err: unknown) {
+      const errorObj = err as { message?: string; status?: number };
+      const errorMsg =
+        errorObj.message ||
+        "An unexpected error occurred while uploading the application. Please try again.";
+
+      setUploadError(errorMsg);
+      setActiveAlert({
+        type: "UPLOAD_ERROR",
+        title: errorObj.status === 409 ? "Application Number Conflict" : "Application Upload Error",
+        message: errorMsg,
+      });
+      return false;
+    } finally {
+      setIsUploading(false);
+    }
+  }, [institutionDetails, stagedDocuments]);
+
   const resetIntake = useCallback(() => {
     stagedDocuments.forEach((doc) => {
       if (doc.previewUrl) URL.revokeObjectURL(doc.previewUrl);
@@ -248,6 +435,8 @@ export const IntakeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     setInstitutionDetails(initialStep1Data);
     setFormErrors({});
     setActiveAlert(null);
+    setCreatedApplication(null);
+    setUploadError(null);
     setCurrentStep(1);
     try {
       sessionStorage.removeItem(STORAGE_KEY_STEP1);
@@ -278,6 +467,11 @@ export const IntakeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       missingRequiredCategories,
       isStep2Valid,
       resetIntake,
+      createdApplication,
+      setCreatedApplication,
+      isUploading,
+      uploadError,
+      submitApplication,
     }),
     [
       currentStep,
@@ -298,6 +492,10 @@ export const IntakeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       missingRequiredCategories,
       isStep2Valid,
       resetIntake,
+      createdApplication,
+      isUploading,
+      uploadError,
+      submitApplication,
     ]
   );
 

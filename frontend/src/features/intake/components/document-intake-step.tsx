@@ -7,7 +7,7 @@ import { DocumentPreviewModal } from "./document-preview-modal";
 import type { StagedDocument } from "../types/intake.types";
 
 interface DocumentIntakeStepProps {
-  onBoundaryProceed: () => void;
+  onBoundaryProceed?: () => void;
 }
 
 export const DocumentIntakeStep: React.FC<DocumentIntakeStepProps> = ({
@@ -23,6 +23,8 @@ export const DocumentIntakeStep: React.FC<DocumentIntakeStepProps> = ({
     clearAlert,
     missingRequiredCategories,
     isStep2Valid,
+    isUploading,
+    submitApplication,
   } = useIntake();
 
   // Selected Category & Issuing Reference for upload
@@ -409,15 +411,27 @@ export const DocumentIntakeStep: React.FC<DocumentIntakeStepProps> = ({
           </span>
           <Button
             type="button"
-            onClick={onBoundaryProceed}
-            disabled={!isStep2Valid}
+            onClick={async () => {
+              const success = await submitApplication();
+              if (success && onBoundaryProceed) {
+                onBoundaryProceed();
+              }
+            }}
+            disabled={!isStep2Valid || isUploading}
             className={`px-5 py-2.5 rounded-[3px] text-[13px] font-medium inline-flex items-center gap-1.5 transition-colors ${
-              isStep2Valid
+              isStep2Valid && !isUploading
                 ? "bg-[#165A60] hover:bg-[#122B30] text-white cursor-pointer"
                 : "bg-[#D7DEDA] text-[#8A9B9D] cursor-not-allowed"
             }`}
           >
-            Review extraction →
+            {isUploading ? (
+              <>
+                <span className="inline-block animate-spin mr-1">◌</span>
+                Uploading Application...
+              </>
+            ) : (
+              "Upload Application"
+            )}
           </Button>
         </div>
       </div>

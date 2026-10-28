@@ -4,6 +4,7 @@ import type {
   StagedDocument,
   IntakeAlertNotice,
   IntakeStepIndex,
+  BackendCreatedApplication,
 } from "../types/intake.types";
 
 export interface IntakeContextValue {
@@ -31,6 +32,12 @@ export interface IntakeContextValue {
   missingRequiredCategories: string[];
   isStep2Valid: boolean;
   resetIntake: () => void;
+  // Application Creation & Uploading
+  createdApplication: BackendCreatedApplication | null;
+  setCreatedApplication: (app: BackendCreatedApplication | null) => void;
+  isUploading: boolean;
+  uploadError: string | null;
+  submitApplication: () => Promise<boolean>;
 }
 
 export const IntakeContext = createContext<IntakeContextValue | undefined>(undefined);

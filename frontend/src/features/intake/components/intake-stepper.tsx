@@ -10,7 +10,7 @@ const STEPS: Array<{ index: IntakeStepIndex; stepNumber: string; label: string }
   { index: 1, stepNumber: "STEP 01", label: "Institution details" },
   { index: 2, stepNumber: "STEP 02", label: "Document intake" },
   { index: 3, stepNumber: "STEP 03", label: "Extraction & validation" },
-  { index: 4, stepNumber: "STEP 04", label: "Review & submit" },
+  { index: 4, stepNumber: "STEP 04", label: "Review & approve" },
   { index: 5, stepNumber: "STEP 05", label: "Submission result" },
 ];
 

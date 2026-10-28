@@ -86,6 +86,31 @@ export const IntakeBlockingAlert: React.FC<IntakeBlockingAlertProps> = ({
     );
   }
 
+  if (alert.type === "UPLOAD_ERROR") {
+    return (
+      <div className="bg-[#FDF2F2] border-l-[3px] border-[#A14637] p-4 rounded-r-[3px] mb-4">
+        <div className="flex items-start justify-between">
+          <div>
+            <h4 className="text-[13px] font-bold text-[#172E33] m-0">
+              {alert.title || "Application Upload Error"}
+            </h4>
+            <p className="text-[12px] text-[#A14637] mt-1 mb-0 leading-relaxed">
+              {alert.message}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onDismiss}
+            className="text-[#8A9B9D] hover:text-[#172E33] text-sm ml-2"
+            title="Dismiss notice"
+          >
+            ✕
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   if (alert.type === "EXTRACTION_UNAVAILABLE") {
     return (
       <div className="bg-[#FEF7EC] border-l-[3px] border-[#94631F] p-4 rounded-r-[3px] mb-4">
