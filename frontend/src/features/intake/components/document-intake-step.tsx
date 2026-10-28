@@ -142,7 +142,7 @@ export const DocumentIntakeStep: React.FC<DocumentIntakeStepProps> = ({
                   >
                     {STATUTORY_DOCUMENT_CATEGORIES.map((cat) => (
                       <option key={cat.code} value={cat.code}>
-                        {cat.shortLabel} {cat.isRequired ? "*" : "(Optional)"}
+                        {cat.shortLabel} ({cat.code}) {cat.isRequired ? "*" : "(Optional)"}
                       </option>
                     ))}
                   </select>
@@ -236,7 +236,9 @@ export const DocumentIntakeStep: React.FC<DocumentIntakeStepProps> = ({
                     stagedDocuments.map((doc) => (
                       <tr key={doc.id} className="hover:bg-[#FAFAF8] transition-colors">
                         <td className="py-3 px-4">
-                          <div className="font-medium text-[#172E33]">{doc.shortLabel}</div>
+                          <div className="font-medium text-[#172E33]">
+                            {doc.shortLabel} <span className="font-mono text-xs text-[#5C6F73]">({doc.categoryCode})</span>
+                          </div>
                           <div className="font-mono text-[11px] text-[#5C6F73] truncate max-w-[240px]">
                             {doc.fileName}
                           </div>
@@ -339,7 +341,7 @@ export const DocumentIntakeStep: React.FC<DocumentIntakeStepProps> = ({
                           : "text-[#5C6F73]"
                       }
                     >
-                      {item.shortLabel} {isStaged ? "" : "— missing"}
+                      {item.shortLabel} <span className="font-mono text-xs opacity-80">({item.code})</span> {isStaged ? "" : "— missing"}
                     </span>
                   </div>
                 );
@@ -364,7 +366,7 @@ export const DocumentIntakeStep: React.FC<DocumentIntakeStepProps> = ({
                     >
                       {isStaged ? "✓" : "○"}
                     </span>
-                    <span className="text-[#5C6F73]">{item.shortLabel}</span>
+                    <span className="text-[#5C6F73]">{item.shortLabel} <span className="font-mono text-xs opacity-80">({item.code})</span></span>
                   </div>
                 );
               })}

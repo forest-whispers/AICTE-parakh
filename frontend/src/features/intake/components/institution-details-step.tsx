@@ -2,10 +2,7 @@ import React from "react";
 import { useIntake } from "../hooks/use-intake";
 import { Input } from "../../../shared/ui/input";
 import { Button } from "../../../shared/ui/button";
-import {
-  APPLICATION_CATEGORIES,
-  INDIAN_STATES_AND_UTS,
-} from "../constants/statutory-documents";
+import { PROGRAM_CATEGORIES } from "../constants/statutory-documents";
 
 interface InstitutionDetailsStepProps {
   onCancelClick: () => void;
@@ -36,7 +33,7 @@ export const InstitutionDetailsStep: React.FC<InstitutionDetailsStepProps> = ({
             Application particulars
           </h2>
 
-          <div className="space-y-5">
+          <div className="space-y-6">
             {/* Institution Name */}
             <div>
               <Input
@@ -50,28 +47,41 @@ export const InstitutionDetailsStep: React.FC<InstitutionDetailsStepProps> = ({
               />
             </div>
 
-            {/* Row 2: Application Category & Academic Year */}
+            {/* Row 2: Application Reference & Program Category */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
               <div>
+                <Input
+                  label="Application reference"
+                  required
+                  value={institutionDetails.applicationNumber}
+                  onChange={(e) => updateInstitutionDetails({ applicationNumber: e.target.value })}
+                  onFocus={() => clearFieldError("applicationNumber")}
+                  placeholder="e.g. TCE/EOA/2026/019 or AICTE-2026-9041"
+                  error={formErrors.applicationNumber}
+                  helperText="Unique reference used for PARAKH intake & scrutiny."
+                />
+              </div>
+
+              <div>
                 <label
-                  htmlFor="applicationCategory"
+                  htmlFor="programCategory"
                   className="block text-[13px] font-medium text-[#172E33] mb-1.5"
                 >
-                  Application category <span className="text-[#A14637] ml-0.5">*</span>
+                  Program category <span className="text-[#A14637] ml-0.5">*</span>
                 </label>
                 <div className="relative">
                   <select
-                    id="applicationCategory"
-                    value={institutionDetails.applicationCategory}
-                    onChange={(e) => updateInstitutionDetails({ applicationCategory: e.target.value })}
-                    onFocus={() => clearFieldError("applicationCategory")}
+                    id="programCategory"
+                    value={institutionDetails.programCategory}
+                    onChange={(e) => updateInstitutionDetails({ programCategory: e.target.value })}
+                    onFocus={() => clearFieldError("programCategory")}
                     className={`w-full bg-white text-[13px] text-[#172E33] rounded-[3px] border px-3 py-2.5 transition-colors appearance-none focus:outline-none focus:ring-1 ${
-                      formErrors.applicationCategory
+                      formErrors.programCategory
                         ? "border-[#A14637] focus:border-[#A14637] focus:ring-[#A14637]"
                         : "border-[#D7DEDA] focus:border-[#165A60] focus:ring-[#165A60]"
                     }`}
                   >
-                    {APPLICATION_CATEGORIES.map((cat) => (
+                    {PROGRAM_CATEGORIES.map((cat) => (
                       <option key={cat.value} value={cat.value}>
                         {cat.label}
                       </option>
@@ -81,115 +91,34 @@ export const InstitutionDetailsStep: React.FC<InstitutionDetailsStepProps> = ({
                     <span className="text-xs">▼</span>
                   </div>
                 </div>
-                {formErrors.applicationCategory && (
+                {formErrors.programCategory ? (
                   <p className="mt-1 text-[11px] text-[#A14637] m-0">
-                    {formErrors.applicationCategory}
+                    {formErrors.programCategory}
+                  </p>
+                ) : (
+                  <p className="mt-1 text-[11px] text-[#5C6F73] m-0">
+                    Determines statutory liquid fund and land requirement baselines.
                   </p>
                 )}
               </div>
-
-              <div>
-                <Input
-                  label="Academic year"
-                  required
-                  value={institutionDetails.academicYear}
-                  onChange={(e) => updateInstitutionDetails({ academicYear: e.target.value })}
-                  onFocus={() => clearFieldError("academicYear")}
-                  placeholder="2026–27"
-                  error={formErrors.academicYear}
-                />
-              </div>
             </div>
 
-            {/* Row 3: Institution ID & Application Reference */}
+            {/* Row 3: Proposed Intake */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
               <div>
                 <Input
-                  label="Institution ID"
-                  required
-                  value={institutionDetails.institutionId}
-                  onChange={(e) => updateInstitutionDetails({ institutionId: e.target.value })}
-                  onFocus={() => clearFieldError("institutionId")}
-                  placeholder="e.g. 1-482716903"
-                  error={formErrors.institutionId}
+                  label="Proposed student intake"
+                  type="number"
+                  min="0"
+                  step="1"
+                  value={institutionDetails.proposedIntake}
+                  onChange={(e) => updateInstitutionDetails({ proposedIntake: e.target.value })}
+                  onFocus={() => clearFieldError("proposedIntake")}
+                  placeholder="e.g. 240, 300, 600"
+                  error={formErrors.proposedIntake}
+                  helperText="Total annual intake across proposed technical courses."
                 />
               </div>
-
-              <div>
-                <Input
-                  label="Institution application reference"
-                  required
-                  value={institutionDetails.institutionApplicationReference}
-                  onChange={(e) =>
-                    updateInstitutionDetails({ institutionApplicationReference: e.target.value })
-                  }
-                  onFocus={() => clearFieldError("institutionApplicationReference")}
-                  placeholder="e.g. TCE/EOA/2026/019"
-                  error={formErrors.institutionApplicationReference}
-                />
-              </div>
-            </div>
-
-            {/* Row 4: State / UT & City / District */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-              <div>
-                <label
-                  htmlFor="state"
-                  className="block text-[13px] font-medium text-[#172E33] mb-1.5"
-                >
-                  State / UT <span className="text-[#A14637] ml-0.5">*</span>
-                </label>
-                <div className="relative">
-                  <select
-                    id="state"
-                    value={institutionDetails.state}
-                    onChange={(e) => updateInstitutionDetails({ state: e.target.value })}
-                    onFocus={() => clearFieldError("state")}
-                    className={`w-full bg-white text-[13px] text-[#172E33] rounded-[3px] border px-3 py-2.5 transition-colors appearance-none focus:outline-none focus:ring-1 ${
-                      formErrors.state
-                        ? "border-[#A14637] focus:border-[#A14637] focus:ring-[#A14637]"
-                        : "border-[#D7DEDA] focus:border-[#165A60] focus:ring-[#165A60]"
-                    }`}
-                  >
-                    {INDIAN_STATES_AND_UTS.map((state) => (
-                      <option key={state} value={state}>
-                        {state}
-                      </option>
-                    ))}
-                  </select>
-                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-[#5C6F73]">
-                    <span className="text-xs">▼</span>
-                  </div>
-                </div>
-                {formErrors.state && (
-                  <p className="mt-1 text-[11px] text-[#A14637] m-0">
-                    {formErrors.state}
-                  </p>
-                )}
-              </div>
-
-              <div>
-                <Input
-                  label="City / district"
-                  required
-                  value={institutionDetails.cityDistrict}
-                  onChange={(e) => updateInstitutionDetails({ cityDistrict: e.target.value })}
-                  onFocus={() => clearFieldError("cityDistrict")}
-                  placeholder="e.g. Hubballi / Dharwad"
-                  error={formErrors.cityDistrict}
-                />
-              </div>
-            </div>
-
-            {/* Row 5: Sponsoring Body */}
-            <div>
-              <Input
-                label="Sponsoring body"
-                value={institutionDetails.sponsoringBody}
-                onChange={(e) => updateInstitutionDetails({ sponsoringBody: e.target.value })}
-                placeholder="e.g. Tungabhadra Education Society"
-                helperText="Use the name printed on the submitted registration evidence."
-              />
             </div>
           </div>
         </div>

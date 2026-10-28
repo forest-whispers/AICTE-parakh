@@ -14,13 +14,9 @@ const STORAGE_KEY_STEP1 = "parakh_intake_step1_data";
 
 const initialStep1Data: InstitutionDetailsFormData = {
   institutionName: "",
-  applicationCategory: "EXTENSION_OF_APPROVAL",
-  academicYear: "2026-27",
-  institutionId: "",
-  institutionApplicationReference: "",
-  state: "Karnataka",
-  cityDistrict: "",
-  sponsoringBody: "",
+  applicationNumber: "",
+  programCategory: "ENGINEERING_AND_TECHNOLOGY",
+  proposedIntake: "",
 };
 
 export const IntakeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -90,23 +86,14 @@ export const IntakeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     if (!institutionDetails.institutionName.trim()) {
       errors.institutionName = "Institution name is required.";
     }
-    if (!institutionDetails.applicationCategory.trim()) {
-      errors.applicationCategory = "Application category is required.";
+    if (!institutionDetails.applicationNumber.trim()) {
+      errors.applicationNumber = "Application reference number is required.";
     }
-    if (!institutionDetails.academicYear.trim()) {
-      errors.academicYear = "Academic year is required.";
+    if (!institutionDetails.programCategory.trim()) {
+      errors.programCategory = "Program category is required.";
     }
-    if (!institutionDetails.institutionId.trim()) {
-      errors.institutionId = "Institution ID is required.";
-    }
-    if (!institutionDetails.institutionApplicationReference.trim()) {
-      errors.institutionApplicationReference = "Institution application reference is required.";
-    }
-    if (!institutionDetails.state.trim()) {
-      errors.state = "State / UT is required.";
-    }
-    if (!institutionDetails.cityDistrict.trim()) {
-      errors.cityDistrict = "City / district is required.";
+    if (institutionDetails.proposedIntake && isNaN(Number(institutionDetails.proposedIntake))) {
+      errors.proposedIntake = "Proposed intake must be a valid number.";
     }
 
     setFormErrors(errors);

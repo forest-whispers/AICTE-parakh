@@ -43,7 +43,7 @@ const GuidedSubmissionContent: React.FC = () => {
         isOpen={isBoundaryModalOpen}
         onClose={() => setIsBoundaryModalOpen(false)}
         title="Intake Steps 1 & 2 Complete"
-        description={`Application particulars for "${institutionDetails.institutionName || 'the institution'}" (Ref: ${institutionDetails.institutionApplicationReference || 'TCE/EOA/2026/019'}) and ${stagedDocuments.length} statutory document(s) have been verified and staged locally. Step 3 (Multimodal VLM Extraction & Deterministic Scrutiny) is scheduled for the subsequent slice.`}
+        description={`Application particulars for "${institutionDetails.institutionName || 'the institution'}" (Ref: ${institutionDetails.applicationNumber || 'AICTE-2026-9041'}) and ${stagedDocuments.length} statutory document(s) have been verified and staged locally. Step 3 (Multimodal VLM Extraction & Deterministic Scrutiny) is scheduled for the subsequent slice.`}
         scheduledSlice="Frontend Slice 3 (Extraction & Validation)"
       />
 

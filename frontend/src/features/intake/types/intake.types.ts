@@ -4,13 +4,9 @@
 
 export interface InstitutionDetailsFormData {
   institutionName: string;
-  applicationCategory: string;
-  academicYear: string;
-  institutionId: string;
-  institutionApplicationReference: string;
-  state: string;
-  cityDistrict: string;
-  sponsoringBody: string;
+  applicationNumber: string;
+  programCategory: string;
+  proposedIntake: string;
 }
 
 export interface StagedDocument {
