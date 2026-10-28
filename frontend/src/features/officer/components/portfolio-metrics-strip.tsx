@@ -10,68 +10,73 @@ export const PortfolioMetricsStrip: React.FC<PortfolioMetricsStripProps> = ({
   overview,
   onMetricClick,
 }) => {
-  const metrics = [
-    {
-      id: "active",
-      value: overview.activeAssigned,
-      label: `Active of ${overview.totalAssigned} assigned →`,
-      color: "text-[#172E33]",
-      badgeColor: "text-[#165A60]",
-    },
+  const secondaryMetrics = [
     {
       id: "compliant",
       value: overview.compliantCount,
       label: "Computed compliant →",
-      color: "text-[#172E33]",
-      badgeColor: "text-[#376850]",
+      width: "w-[170px]",
     },
     {
       id: "deficient",
       value: overview.deficienciesCount,
       label: "Deficient →",
-      color: overview.deficienciesCount > 0 ? "text-[#A14637]" : "text-[#172E33]",
-      badgeColor: "text-[#A14637]",
+      width: "w-[170px]",
     },
     {
       id: "manual",
       value: overview.manualReviewCount,
       label: "Manual review →",
-      color: overview.manualReviewCount > 0 ? "text-[#94631F]" : "text-[#172E33]",
-      badgeColor: "text-[#94631F]",
+      width: "w-[170px]",
     },
     {
       id: "pending_bank",
       value: overview.pendingConfirmationsCount,
       label: "Pending bank →",
-      color: "text-[#172E33]",
-      badgeColor: "text-[#165A60]",
+      width: "w-[140px]",
     },
     {
       id: "unread",
       value: overview.unreadNotificationsCount,
       label: "Unread →",
-      color: "text-[#172E33]",
-      badgeColor: "text-[#165A60]",
+      width: "w-[140px]",
     },
   ];
 
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4 mb-8">
-      {metrics.map((m) => (
-        <button
-          key={m.id}
-          type="button"
-          onClick={() => onMetricClick(m.label)}
-          className="bg-white border border-[#D7DEDA] rounded-[3px] p-4 text-left hover:border-[#165A60] hover:shadow-subtle transition-all select-none group"
-        >
-          <div className={`text-2xl sm:text-3xl font-bold tracking-tight mb-1 font-mono ${m.color}`}>
-            {m.value}
-          </div>
-          <div className="text-[11px] sm:text-xs text-[#5C6F73] group-hover:text-[#172E33] transition-colors leading-tight font-medium flex items-center justify-between">
-            <span>{m.label}</span>
-          </div>
-        </button>
-      ))}
+    <div className="flex flex-wrap items-end my-8 select-none">
+      {/* Primary Metric: Active of assigned (Larger number & wider space per Figma 08) */}
+      <button
+        type="button"
+        onClick={() => onMetricClick(`Active of ${overview.totalAssigned} assigned`)}
+        className="text-left select-none group p-0 bg-transparent border-0 focus:outline-none cursor-pointer w-[240px] sm:w-[260px] mr-8 sm:mr-12 shrink-0"
+      >
+        <div className="text-[44px] font-bold font-mono text-[#000000] tracking-tight leading-none mb-2">
+          {overview.activeAssigned}
+        </div>
+        <div className="text-xs text-[#2B686D] group-hover:underline transition-colors leading-tight font-normal">
+          Active of {overview.totalAssigned} assigned →
+        </div>
+      </button>
+
+      {/* Secondary Metrics: Evenly distributed with exact Figma colors & typography */}
+      <div className="flex flex-wrap items-end gap-x-8 sm:gap-x-12 gap-y-4">
+        {secondaryMetrics.map((m) => (
+          <button
+            key={m.id}
+            type="button"
+            onClick={() => onMetricClick(m.label)}
+            className="text-left select-none group p-0 bg-transparent border-0 focus:outline-none cursor-pointer shrink-0"
+          >
+            <div className="text-[28px] font-bold font-mono text-[#000000] tracking-tight leading-none mb-2">
+              {m.value}
+            </div>
+            <div className="text-xs text-[#2B686D] group-hover:underline transition-colors leading-tight font-normal">
+              {m.label}
+            </div>
+          </button>
+        ))}
+      </div>
     </div>
   );
 };

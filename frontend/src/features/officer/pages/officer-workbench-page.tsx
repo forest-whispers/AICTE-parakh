@@ -80,23 +80,26 @@ export const OfficerWorkbenchPage: React.FC = () => {
 
   if (isDashboardLoading) {
     return (
-      <div className="p-6 sm:p-8 max-w-7xl mx-auto w-full animate-pulse">
+      <div className="p-6 sm:p-9 max-w-[1440px] mx-auto w-full animate-pulse">
         {/* Header skeleton */}
-        <div className="h-6 w-48 bg-[#D7DEDA] rounded-[2px] mb-2" />
-        <div className="h-9 w-80 bg-[#D7DEDA] rounded-[2px] mb-2" />
-        <div className="h-4 w-96 bg-[#D7DEDA] rounded-[2px] mb-8" />
+        <div className="h-4 w-48 bg-[#D7DEDA] rounded-[2px] mb-2" />
+        <div className="h-8 w-72 bg-[#D7DEDA] rounded-[2px] mb-2" />
+        <div className="h-4 w-96 bg-[#D7DEDA] rounded-[2px] mb-6" />
 
-        {/* Metric strip skeleton */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
+        {/* Unboxed metric strip skeleton */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-6 sm:gap-8 my-6">
           {[...Array(6)].map((_, i) => (
-            <div key={i} className="h-20 bg-white border border-[#D7DEDA] rounded-[3px] p-4" />
+            <div key={i} className="h-14 flex flex-col justify-between">
+              <div className="h-7 w-12 bg-[#D7DEDA] rounded-[2px]" />
+              <div className="h-3 w-28 bg-[#D7DEDA] rounded-[2px]" />
+            </div>
           ))}
         </div>
 
         {/* Body skeleton */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 mb-8">
-          <div className="lg:col-span-8 h-96 bg-white border border-[#D7DEDA] rounded-[3px]" />
-          <div className="lg:col-span-4 h-96 bg-white border border-[#D7DEDA] rounded-[3px]" />
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 mb-6">
+          <div className="lg:col-span-8 h-80 bg-white border border-[#D7DEDA] rounded-[2px]" />
+          <div className="lg:col-span-4 h-80 bg-white border border-[#D7DEDA] rounded-[2px]" />
         </div>
       </div>
     );
@@ -104,7 +107,7 @@ export const OfficerWorkbenchPage: React.FC = () => {
 
   if (isDashboardError || !dashboard) {
     return (
-      <div className="p-6 sm:p-8 max-w-2xl mx-auto w-full my-auto">
+      <div className="p-6 sm:p-9 max-w-2xl mx-auto w-full my-auto">
         <Alert variant="error" title="Failed to load Officer Workbench">
           {dashboardError?.message || "An unexpected error occurred while loading dashboard metrics."}
         </Alert>
@@ -121,7 +124,7 @@ export const OfficerWorkbenchPage: React.FC = () => {
   const unreadList = notifications ?? [];
 
   return (
-    <div className="p-6 sm:p-8 max-w-[1440px] mx-auto w-full">
+    <div className="p-6 sm:p-9 max-w-[1440px] mx-auto w-full">
       {/* Planned Feature Feedback Modal */}
       <PlannedFeatureDialog
         isOpen={plannedModal.isOpen}
@@ -133,7 +136,7 @@ export const OfficerWorkbenchPage: React.FC = () => {
 
       {/* Top Header */}
       <WorkbenchHeader
-        officerName={user?.name || "Scrutiny Officer"}
+        officerName={user?.name || "Ananya Rao"}
         onGuidedSubmissionClick={() =>
           showPlannedModal(
             "Guided Submission",
@@ -143,7 +146,7 @@ export const OfficerWorkbenchPage: React.FC = () => {
         }
       />
 
-      {/* Metric Tiles Row */}
+      {/* Unboxed Metric Strip */}
       <PortfolioMetricsStrip
         overview={overview}
         onMetricClick={(label) =>
@@ -156,8 +159,8 @@ export const OfficerWorkbenchPage: React.FC = () => {
       />
 
       {/* Main Two-Column Layout (Figma 08 layout) */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-start mb-8">
-        {/* Left Column: Next actions queue (~68% width) */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-start mb-6">
+        {/* Left Column: Next actions queue (~67% width) */}
         <div className="lg:col-span-8">
           <ActionQueueTable
             items={actionQueue}
@@ -165,7 +168,7 @@ export const OfficerWorkbenchPage: React.FC = () => {
           />
         </div>
 
-        {/* Right Column: Review buckets & Notifications preview (~32% width) */}
+        {/* Right Column: Review buckets & Notifications preview (~33% width) */}
         <div className="lg:col-span-4 space-y-6">
           <ReviewBucketsCard
             buckets={reviewBuckets}
@@ -214,8 +217,8 @@ export const OfficerWorkbenchPage: React.FC = () => {
         />
       </div>
 
-      {/* Legal & Regulatory Disclaimer */}
-      <div className="border-t border-[#D7DEDA] pt-4 text-[11px] text-[#5C6F73] text-center leading-relaxed">
+      {/* Legal & Regulatory Disclaimer matching Figma reference 08 */}
+      <div className="border-t border-[#D7DEDA] pt-6 pb-12 text-[11px] text-[#5C6F73] text-left leading-relaxed">
         Decision support only. Computed findings do not constitute approval or rejection. All
         institutions and records shown are synthetic.
       </div>
