@@ -4,6 +4,8 @@ import fs from "node:fs/promises";
 import { prisma } from "../lib/prisma.js";
 import { vlmService } from "../services/vlm.service.js";
 import { complianceService } from "../services/compliance.service.js";
+import { auditService } from "../services/audit.service.js";
+import { notificationService } from "../services/notification.service.js";
 
 export const createApplication = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -78,6 +80,11 @@ export const createApplication = async (req: Request, res: Response): Promise<vo
 
     const parsedIntake = proposedIntake ? parseInt(String(proposedIntake), 10) : null;
 
+    // Assignment policy: default to creating officer if authenticated
+    const assignedOfficerId = req.user && req.user.role === "OFFICER" ? req.user.id : null;
+    const assignedById = req.user ? req.user.id : null;
+    const assignedAt = assignedOfficerId ? new Date() : null;
+
     const application = await prisma.application.create({
       data: {
         institutionName: String(institutionName).trim(),
@@ -85,14 +92,43 @@ export const createApplication = async (req: Request, res: Response): Promise<vo
         programCategory: programCategory ? String(programCategory).trim() : null,
         proposedIntake: Number.isFinite(parsedIntake) ? parsedIntake : null,
         status: "PROCESSING_EXTRACTION",
+        assignedOfficerId,
+        assignedById,
+        assignedAt,
         documents: {
           create: documentsData,
         },
       },
       include: {
         documents: true,
+        assignedOfficer: {
+          select: { id: true, name: true, email: true, designation: true },
+        },
       },
     });
+
+    // Audit log application creation
+    await auditService.logEvent({
+      applicationId: application.id,
+      actorId: req.user?.id || null,
+      actorName: req.user?.name || "PUBLIC_INTAKE",
+      actorRole: req.user?.role || "UNAUTHENTICATED",
+      action: "APPLICATION_CREATED",
+      resourceType: "APPLICATION",
+      resourceId: application.id,
+      status: "SUCCESS",
+      details: `Created application ${application.applicationNumber} for ${application.institutionName} with ${documentsData.length} document(s). Assigned: ${application.assignedOfficer?.name || "Unassigned Exception"}`,
+      metadata: {
+        applicationNumber: application.applicationNumber,
+        assignedOfficerId,
+        programCategory: application.programCategory,
+      },
+    });
+
+    // If unassigned, notify ministry administration oversight
+    if (!assignedOfficerId) {
+      await notificationService.notifyUnassignedException(application);
+    }
 
     // Immediate extraction trigger in single multimodal call
     const docItems = application.documents.map((d) => ({
@@ -105,20 +141,69 @@ export const createApplication = async (req: Request, res: Response): Promise<vo
     // Trigger extraction and await completion
     const extractionResult = await vlmService.processApplicationDocuments(application.id, docItems);
 
+    if (!extractionResult.success) {
+      await auditService.logEvent({
+        applicationId: application.id,
+        actorName: "SYSTEM",
+        actorRole: "SYSTEM",
+        action: "EXTRACTION_FAILED",
+        resourceType: "APPLICATION",
+        resourceId: application.id,
+        status: "FAILURE",
+        details: `Multimodal extraction failed: ${extractionResult.error}`,
+      });
+      await notificationService.notifyExtractionFailure(
+        { ...application, assignedOfficerId },
+        extractionResult.error || "Multimodal extraction failed"
+      );
+    } else {
+      await auditService.logEvent({
+        applicationId: application.id,
+        actorName: "SYSTEM",
+        actorRole: "SYSTEM",
+        action: "EXTRACTION_COMPLETED",
+        resourceType: "APPLICATION",
+        resourceId: application.id,
+        status: "SUCCESS",
+        details: `Extracted data for ${docItems.length} document(s)`,
+      });
+    }
+
     // If extraction completed, trigger deterministic compliance scrutiny automatically
-    let scrutinyResult = null;
+    let scrutinyResult: any = null;
     if (extractionResult.success) {
       try {
         scrutinyResult = await complianceService.evaluateApplication(application.id);
+
+        if (scrutinyResult) {
+          await auditService.logEvent({
+            applicationId: application.id,
+            actorName: "SYSTEM",
+            actorRole: "SYSTEM",
+            action: "SCRUTINY_EVALUATED",
+            resourceType: "SCRUTINY_REPORT",
+            resourceId: application.id,
+            status: scrutinyResult.overallStatus === "DEFICIENCIES_DETECTED" ? "WARNING" : "SUCCESS",
+            details: `Auto-scrutiny evaluated: ${scrutinyResult.overallStatus} (${scrutinyResult.passedCount} passed, ${scrutinyResult.deficiencyCount} deficiencies, ${scrutinyResult.reviewCount} reviews)`,
+          });
+
+          await notificationService.notifyScrutinyFindings(
+            { ...application, assignedOfficerId },
+            scrutinyResult
+          );
+        }
       } catch (scrutinyErr: any) {
         console.error("Auto-scrutiny evaluation error:", scrutinyErr);
       }
     }
 
-    // Fetch the updated application with extracted data and scrutiny report
+    // Fetch updated application
     const updatedApplication = await prisma.application.findUnique({
       where: { id: application.id },
       include: {
+        assignedOfficer: {
+          select: { id: true, name: true, email: true, designation: true },
+        },
         documents: {
           orderBy: { createdAt: "asc" },
         },
@@ -164,6 +249,15 @@ export const runExtractionForApplication = async (req: Request, res: Response): 
       return;
     }
 
+    // Authorization: Officer must be assigned
+    if (req.user?.role === "OFFICER" && application.assignedOfficerId !== req.user.id) {
+      res.status(403).json({
+        success: false,
+        error: "Access denied: You are not assigned to this application.",
+      });
+      return;
+    }
+
     const docItems = application.documents.map((d) => ({
       id: d.id,
       filePath: d.filePath,
@@ -178,11 +272,61 @@ export const runExtractionForApplication = async (req: Request, res: Response): 
 
     const extractionResult = await vlmService.processApplicationDocuments(id, docItems);
 
+    if (!extractionResult.success) {
+      await auditService.logEvent({
+        applicationId: id,
+        actorId: req.user?.id,
+        actorName: req.user?.name || "OFFICER",
+        actorRole: req.user?.role || "OFFICER",
+        action: "EXTRACTION_FAILED",
+        resourceType: "APPLICATION",
+        resourceId: id,
+        status: "FAILURE",
+        details: `Re-extraction failed: ${extractionResult.error}`,
+      });
+
+      await notificationService.notifyExtractionFailure(
+        application,
+        extractionResult.error || "Re-extraction failed"
+      );
+    } else {
+      await auditService.logEvent({
+        applicationId: id,
+        actorId: req.user?.id,
+        actorName: req.user?.name || "OFFICER",
+        actorRole: req.user?.role || "OFFICER",
+        action: "EXTRACTION_COMPLETED",
+        resourceType: "APPLICATION",
+        resourceId: id,
+        status: "SUCCESS",
+        details: `Re-extracted data for ${docItems.length} document(s)`,
+      });
+    }
+
     // Automatically run scrutiny after re-extraction
     let scrutinyResult = null;
     if (extractionResult.success) {
       try {
         scrutinyResult = await complianceService.evaluateApplication(id);
+
+        if (scrutinyResult) {
+          await auditService.logEvent({
+            applicationId: id,
+            actorId: req.user?.id,
+            actorName: req.user?.name || "OFFICER",
+            actorRole: req.user?.role || "OFFICER",
+            action: "SCRUTINY_EVALUATED",
+            resourceType: "SCRUTINY_REPORT",
+            resourceId: id,
+            status: scrutinyResult.overallStatus === "DEFICIENCIES_DETECTED" ? "WARNING" : "SUCCESS",
+            details: `Scrutiny evaluated after re-extraction: ${scrutinyResult.overallStatus}`,
+          });
+
+          await notificationService.notifyScrutinyFindings(
+            application,
+            scrutinyResult
+          );
+        }
       } catch (scrutinyErr) {
         console.error("Scrutiny evaluation error:", scrutinyErr);
       }
@@ -191,6 +335,9 @@ export const runExtractionForApplication = async (req: Request, res: Response): 
     const updated = await prisma.application.findUnique({
       where: { id },
       include: {
+        assignedOfficer: {
+          select: { id: true, name: true, email: true, designation: true },
+        },
         documents: true,
         scrutinyReports: {
           orderBy: { createdAt: "desc" },
@@ -224,11 +371,70 @@ export const runScrutinyForApplication = async (req: Request, res: Response): Pr
       return;
     }
 
+    const application = await prisma.application.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        applicationNumber: true,
+        institutionName: true,
+        assignedOfficerId: true,
+      },
+    });
+
+    if (!application) {
+      res.status(404).json({ success: false, error: "Application not found." });
+      return;
+    }
+
+    // Authorization: Ministry Admin cannot execute regulatory decisions; Officer must be assigned
+    if (req.user?.role === "MINISTRY_ADMIN") {
+      res.status(403).json({
+        success: false,
+        error: "Access denied: Ministry Administrators have operational oversight only and cannot execute regulatory scrutiny.",
+      });
+      return;
+    }
+
+    if (req.user?.role === "OFFICER" && application.assignedOfficerId !== req.user.id) {
+      res.status(403).json({
+        success: false,
+        error: "Access denied: You are not assigned to this application.",
+      });
+      return;
+    }
+
     const scrutinyResult = await complianceService.evaluateApplication(id);
+
+    // Audit log scrutiny evaluation
+    await auditService.logEvent({
+      applicationId: id,
+      actorId: req.user?.id,
+      actorName: req.user?.name || "OFFICER",
+      actorRole: req.user?.role || "OFFICER",
+      action: "SCRUTINY_EVALUATED",
+      resourceType: "SCRUTINY_REPORT",
+      resourceId: id,
+      status: scrutinyResult.overallStatus === "DEFICIENCIES_DETECTED" ? "WARNING" : "SUCCESS",
+      details: `Scrutiny evaluated: ${scrutinyResult.overallStatus} (${scrutinyResult.passedCount} passed, ${scrutinyResult.deficiencyCount} deficiencies, ${scrutinyResult.reviewCount} reviews)`,
+      metadata: {
+        overallStatus: scrutinyResult.overallStatus,
+        deficiencyCount: scrutinyResult.deficiencyCount,
+        reviewCount: scrutinyResult.reviewCount,
+      },
+    });
+
+    // Notification routing
+    await notificationService.notifyScrutinyFindings(
+      application,
+      scrutinyResult
+    );
 
     const updated = await prisma.application.findUnique({
       where: { id },
       include: {
+        assignedOfficer: {
+          select: { id: true, name: true, email: true, designation: true },
+        },
         documents: true,
         scrutinyReports: {
           orderBy: { createdAt: "desc" },
@@ -257,6 +463,24 @@ export const getScrutinyReportForApplication = async (req: Request, res: Respons
     const id = Array.isArray(rawId) ? rawId[0] : rawId;
     if (!id) {
       res.status(400).json({ success: false, error: "Application ID is required." });
+      return;
+    }
+
+    const application = await prisma.application.findUnique({
+      where: { id },
+      select: { id: true, assignedOfficerId: true },
+    });
+
+    if (!application) {
+      res.status(404).json({ success: false, error: "Application not found." });
+      return;
+    }
+
+    if (req.user?.role === "OFFICER" && application.assignedOfficerId !== req.user.id) {
+      res.status(403).json({
+        success: false,
+        error: "Access denied: You are not assigned to this application.",
+      });
       return;
     }
 
@@ -295,6 +519,9 @@ export const getApplicationById = async (req: Request, res: Response): Promise<v
     const application = await prisma.application.findUnique({
       where: { id },
       include: {
+        assignedOfficer: {
+          select: { id: true, name: true, email: true, designation: true },
+        },
         documents: {
           orderBy: { createdAt: "asc" },
         },
@@ -307,6 +534,15 @@ export const getApplicationById = async (req: Request, res: Response): Promise<v
 
     if (!application) {
       res.status(404).json({ success: false, error: "Application not found." });
+      return;
+    }
+
+    // Role check: Officer can only access assigned application
+    if (req.user?.role === "OFFICER" && application.assignedOfficerId !== req.user.id) {
+      res.status(403).json({
+        success: false,
+        error: "Access denied: You are not assigned to this application.",
+      });
       return;
     }
 
@@ -323,11 +559,26 @@ export const getApplicationById = async (req: Request, res: Response): Promise<v
   }
 };
 
-export const listApplications = async (_req: Request, res: Response): Promise<void> => {
+export const listApplications = async (req: Request, res: Response): Promise<void> => {
   try {
+    if (!req.user) {
+      res.status(401).json({ success: false, error: "Authentication required." });
+      return;
+    }
+
+    // Officer only sees their assigned applications
+    // Ministry Admin sees all applications
+    const whereClause = req.user.role === "OFFICER"
+      ? { assignedOfficerId: req.user.id }
+      : {};
+
     const applications = await prisma.application.findMany({
+      where: whereClause,
       orderBy: { createdAt: "desc" },
       include: {
+        assignedOfficer: {
+          select: { id: true, name: true, email: true, designation: true },
+        },
         documents: {
           select: {
             id: true,
@@ -354,7 +605,7 @@ export const listApplications = async (_req: Request, res: Response): Promise<vo
           },
         },
       },
-      take: 20,
+      take: 50,
     });
 
     res.status(200).json({

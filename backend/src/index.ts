@@ -3,6 +3,9 @@ import express from "express";
 import cors from "cors";
 import path from "node:path";
 import applicationRoutes from "./routes/application.routes.js";
+import authRoutes from "./routes/auth.routes.js";
+import notificationRoutes from "./routes/notification.routes.js";
+import auditRoutes from "./routes/audit.routes.js";
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -22,14 +25,26 @@ const uploadsDir = path.resolve(process.cwd(), "uploads");
 app.use("/uploads", express.static(uploadsDir));
 
 // Routes
+app.use("/api/auth", authRoutes);
+app.use("/api/notifications", notificationRoutes);
+app.use("/api/audit", auditRoutes);
 app.use("/api/applications", applicationRoutes);
 
 app.get("/api/health", (_req, res) => {
   res.json({ status: "OK", timestamp: new Date().toISOString() });
 });
 
-app.listen(PORT, () => {
-  console.log(`Backend server running on http://localhost:${PORT}`);
-});
+const isDirectRun = Boolean(
+  process.argv[1] && (
+    process.argv[1].endsWith("index.ts") ||
+    process.argv[1].endsWith("index.js")
+  )
+);
+
+if (isDirectRun && process.env.NODE_ENV !== "test") {
+  app.listen(PORT, () => {
+    console.log(`Backend server running on http://localhost:${PORT}`);
+  });
+}
 
 export default app;

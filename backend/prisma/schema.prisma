@@ -7,6 +7,30 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model User {
+  id                    String        @id @default(cuid())
+  email                 String        @unique
+  passwordHash          String
+  salt                  String
+  name                  String
+  role                  String        // "OFFICER" | "MINISTRY_ADMIN"
+  designation           String
+  department            String?
+  isActive              Boolean       @default(true)
+  failedLoginAttempts   Int           @default(0)
+  lockedUntil           DateTime?
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
+
+  assignedApplications   Application[] @relation("AssignedOfficer")
+  assignedByApplications Application[] @relation("AssignedBy")
+  notifications          Notification[]
+  auditLogs              AuditLog[]
+
+  @@index([role])
+  @@index([email])
+}
+
 model Application {
   id                String           @id @default(cuid())
   institutionName   String
@@ -16,9 +40,21 @@ model Application {
   status            String           @default("SUBMITTED")
   createdAt         DateTime         @default(now())
   updatedAt         DateTime         @updatedAt
+
+  assignedOfficerId String?
+  assignedOfficer   User?            @relation("AssignedOfficer", fields: [assignedOfficerId], references: [id], onDelete: SetNull)
+  assignedById      String?
+  assignedBy        User?            @relation("AssignedBy", fields: [assignedById], references: [id], onDelete: SetNull)
+  assignedAt        DateTime?
+
   documents              Document[]
   scrutinyReports        ScrutinyReport[]
   authorityVerifications AuthorityVerification[]
+  notifications          Notification[]
+  auditLogs              AuditLog[]
+
+  @@index([assignedOfficerId])
+  @@index([status])
 }
 
 model Document {
@@ -76,4 +112,47 @@ model AuthorityVerification {
 
   @@index([applicationId, batchId])
   @@index([applicationId, createdAt])
+}
+
+model Notification {
+  id              String       @id @default(cuid())
+  recipientId     String
+  recipient       User         @relation(fields: [recipientId], references: [id], onDelete: Cascade)
+  applicationId   String?
+  application     Application? @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  type            String       // "APPLICATION_ASSIGNED" | "APPLICATION_REASSIGNED" | "EXTRACTION_FAILED" | "DEFICIENCY_DETECTED" | "ANOMALY_DETECTED" | "AUTHORITY_MISMATCH" | "AUTHORITY_EXPIRED" | "BANK_CONFIRMATION_PENDING" | "BANK_CONFIRMATION_RECORDED" | "UNASSIGNED_APPLICATION"
+  title           String
+  message         String
+  severity        String       @default("INFO") // "INFO" | "WARNING" | "CRITICAL"
+  isRead          Boolean      @default(false)
+  readAt          DateTime?
+  dedupKey        String?      // Distinct key to prevent uncontrolled duplicate notifications
+  metadata        Json?        // Contextual references
+  createdAt       DateTime     @default(now())
+
+  @@index([recipientId, isRead])
+  @@index([recipientId, createdAt])
+  @@index([dedupKey])
+  @@index([applicationId])
+}
+
+model AuditLog {
+  id            String       @id @default(cuid())
+  applicationId String?
+  application   Application? @relation(fields: [applicationId], references: [id], onDelete: SetNull)
+  actorId       String?
+  actor         User?        @relation(fields: [actorId], references: [id], onDelete: SetNull)
+  actorName     String
+  actorRole     String       // "MINISTRY_ADMIN" | "OFFICER" | "SYSTEM" | "UNAUTHENTICATED"
+  action        String       // "AUTH_LOGIN" | "APPLICATION_CREATED" | "APPLICATION_ASSIGNED" | "APPLICATION_REASSIGNED" | "DOCUMENT_UPLOADED" | "EXTRACTION_COMPLETED" | "EXTRACTION_FAILED" | "SCRUTINY_EVALUATED" | "AUTHORITY_VERIFICATION_EXECUTED" | "BANK_CONFIRMATION_RECORDED" | "NOTIFICATION_DISPATCHED"
+  resourceType  String       // "APPLICATION" | "DOCUMENT" | "SCRUTINY_REPORT" | "AUTHORITY_VERIFICATION" | "USER" | "NOTIFICATION"
+  resourceId    String?
+  status        String       @default("SUCCESS") // "SUCCESS" | "FAILURE" | "WARNING"
+  details       String
+  metadata      Json?
+  createdAt     DateTime     @default(now())
+
+  @@index([applicationId, createdAt])
+  @@index([actorId, createdAt])
+  @@index([action, createdAt])
 }

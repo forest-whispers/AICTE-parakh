@@ -1,15 +1,11 @@
 /**
- * Database Seeding Script for Synthetic Scenarios (Slice 4)
+ * Database Seeding Script for Synthetic Scenarios & Phase 1 Accounts
  * 
- * Populates the development database with 8 distinct synthetic applications,
- * their associated document records, valid storage file references, and mocked
- * VLM extraction outputs.
- * 
- * Rules & Guarantees:
- * - Idempotent: Can be run repeatedly without duplicating records.
- * - Safe: Only modifies applications with predictable prefix "AICTE-DEMO-".
- * - Deterministic: Stops immediately after persisting mocked extraction data.
- *   Does NOT call LLMs, run extraction, or create scrutiny reports.
+ * Populates the development database with:
+ * 1. Seeded Personnel: Ministry Administrator and Scrutiny Officers.
+ * 2. 8 distinct synthetic applications with explicit officer assignments (and an unassigned exception).
+ * 3. Associated document records with mocked VLM extraction outputs.
+ * 4. Audit trail records and internal officer notifications.
  */
 
 import "dotenv/config";
@@ -18,13 +14,92 @@ import path from "node:path";
 import crypto from "node:crypto";
 import { prisma } from "../lib/prisma.js";
 import { allSyntheticScenarios } from "../fixtures/mock-scenarios.fixture.js";
+import { authService } from "../services/auth.service.js";
 
 async function main() {
   console.log("==================================================================");
-  console.log("PARAKH: Seeding 8 Synthetic Scenarios with Mocked VLM Extractions");
+  console.log("PARAKH: Seeding Phase 1 Personnel & Synthetic Scenarios");
   console.log("==================================================================");
 
-  // 1. Verify or create shared placeholder PDF in uploads directory
+  // 1. Seed Personnel Accounts (Idempotent)
+  console.log("\n[1/3] Provisioning authorized personnel accounts...");
+  const accountsToSeed = [
+    {
+      email: "admin@aicte.gov.in",
+      password: "Admin@AICTE2026!",
+      name: "Dr. Sanjay Sharma",
+      role: "MINISTRY_ADMIN",
+      designation: "Director - Bureau of Approval",
+      department: "AICTE HQ, New Delhi",
+    },
+    {
+      email: "officer1@aicte.gov.in",
+      password: "Officer@AICTE2026!",
+      name: "Er. Rajiv Malhotra",
+      role: "OFFICER",
+      designation: "Senior Scrutiny Officer",
+      department: "Northern & Central Regional Office",
+    },
+    {
+      email: "officer2@aicte.gov.in",
+      password: "Officer@AICTE2026!",
+      name: "Dr. Sunita Deshmukh",
+      role: "OFFICER",
+      designation: "Regional Scrutiny Officer",
+      department: "Western Regional Office",
+    },
+  ];
+
+  const userMap: Record<string, string> = {};
+
+  for (const acc of accountsToSeed) {
+    const existing = await prisma.user.findUnique({
+      where: { email: acc.email },
+    });
+
+    if (existing) {
+      console.log(`  - Account ${acc.email} exists (${existing.id}), updating credentials...`);
+      const { hash, salt } = authService.hashPassword(acc.password);
+      const updated = await prisma.user.update({
+        where: { id: existing.id },
+        data: {
+          name: acc.name,
+          role: acc.role,
+          designation: acc.designation,
+          department: acc.department,
+          passwordHash: hash,
+          salt,
+          isActive: true,
+          failedLoginAttempts: 0,
+          lockedUntil: null,
+        },
+      });
+      userMap[acc.email] = updated.id;
+    } else {
+      console.log(`  - Creating account ${acc.email} (${acc.role})...`);
+      const { hash, salt } = authService.hashPassword(acc.password);
+      const created = await prisma.user.create({
+        data: {
+          email: acc.email,
+          passwordHash: hash,
+          salt,
+          name: acc.name,
+          role: acc.role,
+          designation: acc.designation,
+          department: acc.department,
+          isActive: true,
+        },
+      });
+      userMap[acc.email] = created.id;
+    }
+  }
+
+  const officer1Id = userMap["officer1@aicte.gov.in"]!;
+  const officer2Id = userMap["officer2@aicte.gov.in"]!;
+  const adminId = userMap["admin@aicte.gov.in"]!;
+
+  // 2. Storage Setup
+  console.log("\n[2/3] Preparing document storage directory...");
   const uploadsDir = path.resolve(process.cwd(), "uploads");
   await fs.mkdir(uploadsDir, { recursive: true });
 
@@ -35,7 +110,6 @@ async function main() {
   try {
     fileBuffer = await fs.readFile(placeholderFilePath);
   } catch {
-    // If not found, write standard minimal PDF
     const minimalPdf = `%PDF-1.4
 1 0 obj
 << /Type /Catalog /Pages 2 0 R >>
@@ -84,17 +158,40 @@ startxref
     fileBuffer = await fs.readFile(placeholderFilePath);
   }
 
-  const fileHash = crypto.createHash("sha256").update(fileBuffer).digest("hex");
-  const fileSize = fileBuffer.length;
-
-  console.log(`Using document storage reference: ${placeholderFilePath} (${fileSize} bytes, SHA-256: ${fileHash.substring(0, 12)}...)`);
-
-  // 2. Iterate and seed each of the 8 scenarios
+  // 3. Iterate and seed each of the 8 scenarios with sensible assignments
+  console.log("\n[3/3] Seeding applications with explicit officer ownership...");
   let totalAppsSeeded = 0;
   let totalDocsSeeded = 0;
 
+  // Assignment distribution across the 8 scenarios:
+  // Scenario 1: officer1 (Compliant baseline)
+  // Scenario 2: officer1 (Missing docs)
+  // Scenario 3: officer2 (Uncertain evidence)
+  // Scenario 4: officer1 (Identity mismatch)
+  // Scenario 5: officer2 (Land deficiencies)
+  // Scenario 6: officer2 (Expired Fire NOC)
+  // Scenario 7: officer1 (Infra deficit)
+  // Scenario 8: null (Unassigned Exception queue demonstration)
+  const assignmentMap: Array<string | null> = [
+    officer1Id, // Scenario 1 -> Rajiv Malhotra
+    officer1Id, // Scenario 2 -> Rajiv Malhotra
+    officer2Id, // Scenario 3 -> Sunita Deshmukh
+    officer1Id, // Scenario 4 -> Rajiv Malhotra
+    officer2Id, // Scenario 5 -> Sunita Deshmukh
+    officer2Id, // Scenario 6 -> Sunita Deshmukh
+    officer1Id, // Scenario 7 -> Rajiv Malhotra
+    null,       // Scenario 8 -> Unassigned Exception!
+  ];
+
   for (const [index, scenario] of allSyntheticScenarios.entries()) {
-    console.log(`\n[Scenario ${index + 1}/8] Seeding ${scenario.applicationNumber}: "${scenario.title}"`);
+    const assignedOfficerId = assignmentMap[index] ?? null;
+    const assignedOfficerName = assignedOfficerId === officer1Id
+      ? "Er. Rajiv Malhotra"
+      : assignedOfficerId === officer2Id
+      ? "Dr. Sunita Deshmukh"
+      : "UNASSIGNED (Exception)";
+
+    console.log(`\n[Scenario ${index + 1}/8] Seeding ${scenario.applicationNumber}: "${scenario.title}" (Assigned: ${assignedOfficerName})`);
 
     // Clean previous run of this specific synthetic application (idempotency)
     const existing = await prisma.application.findUnique({
@@ -116,22 +213,71 @@ startxref
         programCategory: scenario.programCategory,
         proposedIntake: scenario.proposedIntake,
         status: scenario.status, // "EXTRACTION_COMPLETED"
+        assignedOfficerId,
+        assignedById: assignedOfficerId ? adminId : null,
+        assignedAt: assignedOfficerId ? new Date() : null,
       },
     });
 
+    // Create Audit Log for Application Creation & Assignment
+    await prisma.auditLog.create({
+      data: {
+        applicationId: app.id,
+        actorId: adminId,
+        actorName: "Dr. Sanjay Sharma",
+        actorRole: "MINISTRY_ADMIN",
+        action: assignedOfficerId ? "APPLICATION_ASSIGNED" : "APPLICATION_CREATED",
+        resourceType: "APPLICATION",
+        resourceId: app.id,
+        status: "SUCCESS",
+        details: assignedOfficerId
+          ? `Application ${app.applicationNumber} intake completed and assigned to ${assignedOfficerName}`
+          : `Application ${app.applicationNumber} created in unassigned exception state`,
+        metadata: {
+          applicationNumber: app.applicationNumber,
+          assignedOfficerId,
+        },
+      },
+    });
+
+    // If assigned, create an initial assignment notification for the officer
+    if (assignedOfficerId) {
+      await prisma.notification.create({
+        data: {
+          recipientId: assignedOfficerId,
+          applicationId: app.id,
+          type: "APPLICATION_ASSIGNED",
+          title: `Application Assigned: ${app.applicationNumber}`,
+          message: `Application ${app.applicationNumber} (${app.institutionName}) has been assigned to you for scrutiny by Dr. Sanjay Sharma.`,
+          severity: "INFO",
+          dedupKey: `notif_assign_${assignedOfficerId}_${app.id}`,
+        },
+      });
+    } else {
+      // Unassigned exception notification for Ministry Admin
+      await prisma.notification.create({
+        data: {
+          recipientId: adminId,
+          applicationId: app.id,
+          type: "UNASSIGNED_APPLICATION",
+          title: `Unassigned Application: ${app.applicationNumber}`,
+          message: `Application ${app.applicationNumber} (${app.institutionName}) is currently unassigned and requires scrutiny officer allocation.`,
+          severity: "WARNING",
+          dedupKey: `notif_unassigned_${adminId}_${app.id}`,
+        },
+      });
+    }
+
     // Create Document records with mocked extraction data
     for (const [dIdx, doc] of scenario.documents.entries()) {
-      // Ensure each document in the envelope points to the created DB document ID
       const envelope = {
         ...doc.extractedData,
         documentId: `seed-doc-${index + 1}-${dIdx + 1}`,
       };
 
-      // Create distinct physical PDF file for each document to avoid payload hash collision
       const docFileName = `demo-app${index + 1}-doc${dIdx + 1}.pdf`;
       const docFilePath = path.join(uploadsDir, docFileName);
 
-      // Unique document comment preserves valid PDF while generating distinct SHA-256 hash
       const uniquePdf = fileBuffer.toString("latin1").replace(
         "%%EOF",
         `% Document: ${doc.originalName} [${doc.documentType}]\nstartxref\n665\n%%EOF`
@@ -158,14 +304,15 @@ startxref
     }
 
     totalAppsSeeded++;
-    console.log(`  - Created Application ${app.id} with ${scenario.documents.length} documents.`);
-    console.log(`  - Target Scrutiny Outcome: [${scenario.intendedScrutinyOutcome}]`);
+    console.log(`  - Created Application ${app.id} (${scenario.documents.length} docs, assigned: ${assignedOfficerName}).`);
   }
 
   console.log("\n==================================================================");
-  console.log(`Seeding complete: ${totalAppsSeeded} Applications, ${totalDocsSeeded} Documents persisted.`);
-  console.log("Mocked extraction data is ready. Scrutiny reports were NOT generated.");
-  console.log("Scrutiny can now be triggered independently via POST /api/applications/:id/scrutiny");
+  console.log(`Seeding complete: ${totalAppsSeeded} Applications, ${totalDocsSeeded} Documents, 3 Authorized Accounts.`);
+  console.log("Credentials available for prototype evaluation:");
+  console.log("  • Ministry Admin:  admin@aicte.gov.in    / Admin@AICTE2026!");
+  console.log("  • Officer 1:       officer1@aicte.gov.in / Officer@AICTE2026! (Rajiv Malhotra)");
+  console.log("  • Officer 2:       officer2@aicte.gov.in / Officer@AICTE2026! (Sunita Deshmukh)");
   console.log("==================================================================");
 }
 
