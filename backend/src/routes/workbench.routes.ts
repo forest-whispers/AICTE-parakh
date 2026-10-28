@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { authenticate, requireRole } from "../middlewares/auth.middleware.js";
 import {
+  getWorkbenchDashboard,
   getWorkbenchOverview,
   getWorkbenchApplications,
   getWorkbenchActionQueue,
@@ -13,6 +14,7 @@ const router = Router();
 // All Workbench routes require OFFICER role
 router.use(authenticate, requireRole("OFFICER"));
 
+router.get("/dashboard", getWorkbenchDashboard);
 router.get("/overview", getWorkbenchOverview);
 router.get("/applications", getWorkbenchApplications);
 router.get("/action-queue", getWorkbenchActionQueue);

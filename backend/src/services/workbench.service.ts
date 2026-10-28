@@ -23,6 +23,26 @@ export interface PrioritizedQueueItem {
   recommendedAction: string;
   relatedDocumentType: string | null;
   ruleIdOrSource: string | null;
+  detectedAt?: Date | string;
+}
+
+export interface WorkbenchOverviewData {
+  totalAssigned: number;
+  activeAssigned: number;
+  compliantCount: number;
+  deficienciesCount: number;
+  manualReviewCount: number;
+  pendingConfirmationsCount: number;
+  extractionFailedCount: number;
+  unreadNotificationsCount: number;
+}
+
+export interface WorkbenchDashboardData {
+  overview: WorkbenchOverviewData;
+  actionQueue: PrioritizedQueueItem[];
+  reviewBuckets: ReviewWorkBucket[];
+  assignedApplications: any[];
+  recentActivity: any[];
 }
 
 export interface ReviewWorkBucket {
@@ -43,25 +63,9 @@ export interface ReviewWorkBucket {
 
 export class WorkbenchService {
   /**
-   * Officer personal workbench executive overview.
+   * Computes officer workbench executive overview counters from applications and unread notifications.
    */
-  async getWorkbenchOverview(officerId: string): Promise<any> {
-    const apps = await prisma.application.findMany({
-      where: { assignedOfficerId: officerId },
-      include: {
-        documents: {
-          select: { id: true, extractionStatus: true },
-        },
-        scrutinyReports: {
-          orderBy: { createdAt: "desc" },
-          take: 1,
-        },
-        authorityVerifications: {
-          orderBy: { createdAt: "desc" },
-        },
-      },
-    });
-
+  computeOverview(apps: any[], unreadNotificationsCount: number): WorkbenchOverviewData {
     let compliantCount = 0;
     let deficienciesCount = 0;
     let manualReviewCount = 0;
@@ -69,9 +73,9 @@ export class WorkbenchService {
     let extractionFailedCount = 0;
 
     for (const app of apps) {
-      const scrutiny = app.scrutinyReports[0];
+      const scrutiny = app.scrutinyReports?.[0];
       const verifs = app.authorityVerifications || [];
-      const hasFailedDoc = app.documents.some((d) => d.extractionStatus === "FAILED");
+      const hasFailedDoc = app.documents?.some((d: any) => d.extractionStatus === "FAILED");
 
       if (app.status === "EXTRACTION_FAILED" || hasFailedDoc) {
         extractionFailedCount++;
@@ -83,14 +87,10 @@ export class WorkbenchService {
         if (scrutiny.reviewCount > 0 || scrutiny.overallStatus === "MANUAL_REVIEW_REQUIRED") manualReviewCount++;
       }
 
-      if (verifs.some((v) => v.status === "CONFIRMATION_PENDING")) {
+      if (verifs.some((v: any) => v.status === "CONFIRMATION_PENDING")) {
         pendingConfirmationsCount++;
       }
     }
-
-    const unreadNotificationsCount = await prisma.notification.count({
-      where: { recipientId: officerId, isRead: false },
-    });
 
     return {
       totalAssigned: apps.length,
@@ -102,6 +102,34 @@ export class WorkbenchService {
       extractionFailedCount,
       unreadNotificationsCount,
     };
+  }
+
+  /**
+   * Officer personal workbench executive overview.
+   */
+  async getWorkbenchOverview(officerId: string): Promise<WorkbenchOverviewData> {
+    const [apps, unreadNotificationsCount] = await Promise.all([
+      prisma.application.findMany({
+        where: { assignedOfficerId: officerId },
+        include: {
+          documents: {
+            select: { id: true, extractionStatus: true },
+          },
+          scrutinyReports: {
+            orderBy: { createdAt: "desc" },
+            take: 1,
+          },
+          authorityVerifications: {
+            orderBy: { createdAt: "desc" },
+          },
+        },
+      }),
+      prisma.notification.count({
+        where: { recipientId: officerId, isRead: false },
+      }),
+    ]);
+
+    return this.computeOverview(apps, unreadNotificationsCount);
   }
 
   /**
@@ -280,21 +308,10 @@ export class WorkbenchService {
   /**
    * Actionable prioritized queue of operational tasks for the officer's applications.
    */
-  async getPrioritizedActionQueue(officerId: string): Promise<PrioritizedQueueItem[]> {
-    const apps = await prisma.application.findMany({
-      where: { assignedOfficerId: officerId },
-      include: {
-        documents: true,
-        scrutinyReports: {
-          orderBy: { createdAt: "desc" },
-          take: 1,
-        },
-        authorityVerifications: {
-          orderBy: { createdAt: "desc" },
-        },
-      },
-    });
-
+  /**
+   * Computes the prioritized operational queue for a given list of applications.
+   */
+  computeActionQueue(apps: any[]): PrioritizedQueueItem[] {
     const queue: PrioritizedQueueItem[] = [];
 
     for (const app of apps) {
@@ -501,12 +518,13 @@ export class WorkbenchService {
   }
 
   /**
-   * Scrutiny & Authority review work broken down into distinct, unflattened categories.
+   * Actionable prioritized queue of operational tasks for the officer's applications.
    */
-  async getReviewAndVerificationWork(officerId: string): Promise<ReviewWorkBucket[]> {
+  async getPrioritizedActionQueue(officerId: string): Promise<PrioritizedQueueItem[]> {
     const apps = await prisma.application.findMany({
       where: { assignedOfficerId: officerId },
       include: {
+        documents: true,
         scrutinyReports: {
           orderBy: { createdAt: "desc" },
           take: 1,
@@ -516,6 +534,14 @@ export class WorkbenchService {
         },
       },
     });
+
+    return this.computeActionQueue(apps);
+  }
+
+  /**
+   * Computes scrutiny & authority review work broken down into distinct, unflattened categories.
+   */
+  computeReviewBuckets(apps: any[]): ReviewWorkBucket[] {
 
     type BucketKey =
       | "complianceDeficiencies"
@@ -655,6 +681,26 @@ export class WorkbenchService {
   }
 
   /**
+   * Scrutiny & Authority review work broken down into distinct, unflattened categories.
+   */
+  async getReviewAndVerificationWork(officerId: string): Promise<ReviewWorkBucket[]> {
+    const apps = await prisma.application.findMany({
+      where: { assignedOfficerId: officerId },
+      include: {
+        scrutinyReports: {
+          orderBy: { createdAt: "desc" },
+          take: 1,
+        },
+        authorityVerifications: {
+          orderBy: { createdAt: "desc" },
+        },
+      },
+    });
+
+    return this.computeReviewBuckets(apps);
+  }
+
+  /**
    * Audit activity affecting applications assigned strictly to the authenticated officer.
    */
   async getAssignedActivity(
@@ -725,6 +771,47 @@ export class WorkbenchService {
         limit,
         totalPages: Math.ceil(total / limit) || 1,
       },
+    };
+  }
+
+  /**
+   * Unified officer workbench dashboard: resolves overview metrics, prioritized queue,
+   * review buckets, assigned applications preview, and recent activity in a single
+   * optimized operation with concurrent database queries.
+   */
+  async getWorkbenchDashboard(officerId: string): Promise<WorkbenchDashboardData> {
+    const [apps, unreadNotificationsCount, assignedAppsResult, activityResult] = await Promise.all([
+      prisma.application.findMany({
+        where: { assignedOfficerId: officerId },
+        include: {
+          documents: true,
+          scrutinyReports: {
+            orderBy: { createdAt: "desc" },
+            take: 1,
+          },
+          authorityVerifications: {
+            orderBy: { createdAt: "desc" },
+          },
+        },
+        orderBy: { updatedAt: "desc" },
+      }),
+      prisma.notification.count({
+        where: { recipientId: officerId, isRead: false },
+      }),
+      this.getAssignedApplications(officerId, { limit: 5 }),
+      this.getAssignedActivity(officerId, { limit: 5 }),
+    ]);
+
+    const overview = this.computeOverview(apps, unreadNotificationsCount);
+    const actionQueue = this.computeActionQueue(apps);
+    const reviewBuckets = this.computeReviewBuckets(apps);
+
+    return {
+      overview,
+      actionQueue,
+      reviewBuckets,
+      assignedApplications: assignedAppsResult.data,
+      recentActivity: activityResult.activity,
     };
   }
 }

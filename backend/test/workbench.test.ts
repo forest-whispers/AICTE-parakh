@@ -302,4 +302,25 @@ describe("Phase 2: My Workbench Service & Security Boundaries", () => {
     assert.equal(result.activity[0].action, "SCRUTINY_EVALUATED");
     assert.equal(result.activity[0].actor.name, "Er. Rajiv Malhotra");
   });
+
+  it("consolidates overview, action queue, review buckets, assigned apps and activity into a single dashboard payload", async () => {
+    const dashboard = await workbenchService.getWorkbenchDashboard("usr-off-1");
+
+    assert.ok(dashboard);
+    assert.ok(dashboard.overview);
+    assert.equal(dashboard.overview.totalAssigned, 2);
+    assert.equal(dashboard.overview.activeAssigned, 1);
+    assert.equal(dashboard.overview.deficienciesCount, 1);
+
+    assert.ok(Array.isArray(dashboard.actionQueue));
+    assert.ok(dashboard.actionQueue.length >= 2);
+
+    assert.ok(Array.isArray(dashboard.reviewBuckets));
+    assert.ok(dashboard.reviewBuckets.length >= 7);
+
+    assert.ok(Array.isArray(dashboard.assignedApplications));
+    assert.ok(dashboard.assignedApplications.length <= 5);
+
+    assert.ok(Array.isArray(dashboard.recentActivity));
+  });
 });

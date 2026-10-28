@@ -1,6 +1,27 @@
 import type { Request, Response } from "express";
 import { workbenchService } from "../services/workbench.service.js";
 
+export const getWorkbenchDashboard = async (req: Request, res: Response): Promise<void> => {
+  try {
+    if (!req.user) {
+      res.status(401).json({ success: false, error: "Authentication required." });
+      return;
+    }
+
+    const dashboard = await workbenchService.getWorkbenchDashboard(req.user.id);
+    res.status(200).json({
+      success: true,
+      data: dashboard,
+    });
+  } catch (error: any) {
+    console.error("Error retrieving workbench dashboard:", error);
+    res.status(500).json({
+      success: false,
+      error: error.message || "Failed to retrieve workbench dashboard.",
+    });
+  }
+};
+
 export const getWorkbenchOverview = async (req: Request, res: Response): Promise<void> => {
   try {
     if (!req.user) {
