@@ -420,5 +420,64 @@ describe("Scrutiny Reports Register, Detail & PDF Export Tests", () => {
 
     assert.strictEqual(updateCalled, false, "Database mutation must NOT occur during report download");
   });
+
+  // Test 9: No Blank Pages or Overflow Duplication
+  it("9. Page Budget & Compactness: Multi-finding report does not spawn runaway blank pages", async () => {
+    const multiFindings = Array.from({ length: 15 }).map((_, i) => ({
+      ruleId: `RULE_${i + 1}`,
+      ruleName: `Regulatory Compliance Rule ${i + 1}`,
+      aphClause: `APH 2026-27 Clause 2.${i + 1}`,
+      outcome: i % 2 === 0 ? "PASS" : "FAIL_DEFICIENCY",
+      severity: "HIGH",
+      summary: `Finding observation for standard ${i + 1}`,
+      evidence: [
+        {
+          documentType: "LAND_DOC",
+          fieldName: "landArea",
+          extractedValue: "5.5 Acres",
+          pageNumber: 1,
+          isOfficerReviewed: true,
+          reviewedByName: "Dr. Ananya Rao",
+        },
+      ],
+    }));
+
+    const mockMultiReport = {
+      ...mockReports[0],
+      id: "rep-multi-15",
+      findings: multiFindings,
+    };
+
+    (prisma.scrutinyReport.findUnique as any) = async () => mockMultiReport;
+
+    const chunks: Buffer[] = [];
+    const mockWritable = new Writable({
+      write(chunk, _encoding, callback) {
+        chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+        callback();
+      },
+    });
+
+    const res: any = Object.assign(mockWritable, {
+      setHeader() {},
+      status() { return this; },
+      headersSent: false,
+    });
+
+    const req: any = {
+      user: officer1,
+      params: { id: "rep-multi-15" },
+    };
+
+    await downloadReportPdf(req, res);
+    await new Promise((resolve) => mockWritable.on("finish", resolve));
+
+    const fullPdf = Buffer.concat(chunks).toString("latin1");
+    const pageMatches = fullPdf.match(/\/Type\s*\/Page\b/g);
+    const pageCount = pageMatches ? pageMatches.length : 0;
+
+    // 15 findings should fit in 2 to 4 pages, never exploding into 15+ pages
+    assert.ok(pageCount >= 2 && pageCount <= 4, `Expected 2 to 4 pages for 15 findings, got ${pageCount}`);
+  });
 });
 

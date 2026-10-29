@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { apiClient } from "../../../shared/api/client";
+import { apiClient, buildUrl } from "../../../shared/api/client";
+import { tokenManager } from "../../../shared/api/token-manager";
 import { Button } from "../../../shared/ui/button";
 import { ReportSummaryCards } from "../components/report-summary-cards";
 import { ReportFindingsTable } from "../components/report-findings-table";
@@ -62,26 +63,36 @@ export const ScrutinyReportDetailPage: React.FC<ScrutinyReportDetailPageProps> =
     setDownloadError(null);
 
     try {
-      const token = localStorage.getItem("parakh_token");
+      const token = tokenManager.getToken();
       const headers: Record<string, string> = {};
       if (token) {
         headers["Authorization"] = `Bearer ${token}`;
       }
 
-      const res = await fetch(`/api/reports/${report.id}/pdf`, {
+      const url = buildUrl(`/reports/${report.id}/pdf`);
+      const res = await fetch(url, {
         method: "GET",
         headers,
       });
 
       if (!res.ok) {
-        const errorText = await res.text();
-        throw new Error(errorText || `Failed to download PDF (HTTP ${res.status})`);
+        let errorMsg = `Failed to download PDF (HTTP ${res.status})`;
+        try {
+          const errorJson = await res.json();
+          if (errorJson.error) {
+            errorMsg = errorJson.error;
+          }
+        } catch {
+          const rawText = await res.text();
+          if (rawText) errorMsg = rawText;
+        }
+        throw new Error(errorMsg);
       }
 
       const blob = await res.blob();
-      const url = window.URL.createObjectURL(blob);
+      const blobUrl = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
-      link.href = url;
+      link.href = blobUrl;
       const safeAppNumber = (report.application?.applicationNumber || "APP").replace(
         /[^a-zA-Z0-9-_]/g,
         "_"
@@ -90,7 +101,7 @@ export const ScrutinyReportDetailPage: React.FC<ScrutinyReportDetailPageProps> =
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
+      window.URL.revokeObjectURL(blobUrl);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "PDF generation failed.";
       setDownloadError(msg);

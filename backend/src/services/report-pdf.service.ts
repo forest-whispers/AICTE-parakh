@@ -30,13 +30,52 @@ export interface ReportPdfData {
 
 export class ReportPdfService {
   /**
+   * Pre-calculates the required vertical height for a single rule finding card
+   * to ensure page breaks only occur when a card cannot fit cleanly on the current page.
+   */
+  private estimateFindingHeight(doc: PDFKit.PDFDocument, finding: any): number {
+    let height = 24; // Header bar & spacing
+    if (finding.aphClause) {
+      height += 14;
+    }
+    if (finding.summary) {
+      height += doc.heightOfString(`Finding Observation: ${finding.summary}`, { width: 485 }) + 6;
+    }
+    if (finding.details && finding.details !== finding.summary) {
+      height += doc.heightOfString(`Details: ${finding.details}`, { width: 485 }) + 6;
+    }
+    if (finding.remediationNote) {
+      height += doc.heightOfString(`Remediation: ${finding.remediationNote}`, { width: 485 }) + 6;
+    }
+    if (Array.isArray(finding.evidence) && finding.evidence.length > 0) {
+      height += 14; // Section header
+      for (const ev of finding.evidence) {
+        let evText = `• [${ev.documentType || "DOCUMENT"}] ${ev.fieldName || "Field"}: `;
+        if (ev.extractedValue !== undefined && ev.extractedValue !== null) {
+          evText += typeof ev.extractedValue === "object" ? JSON.stringify(ev.extractedValue) : String(ev.extractedValue);
+        } else if (ev.rawText) {
+          evText += ev.rawText;
+        } else {
+          evText += "Value present in document";
+        }
+        if (ev.pageNumber) evText += ` (Page ${ev.pageNumber})`;
+        if (ev.isOfficerReviewed) evText += ` [✓ Officer Verified by ${ev.reviewedByName || "Officer"}]`;
+        height += doc.heightOfString(evText, { width: 475 }) + 4;
+      }
+    }
+    height += 12; // Bottom padding
+    return Math.ceil(height);
+  }
+
+  /**
    * Generates a multi-page, professionally styled PDF representation of a ScrutinyReport
    * and pipes it directly into the provided writable destination stream.
+   * Ensures zero blank pages by accurately budgeting page height and guarding footer renders.
    */
   generateReportPdf(report: ReportPdfData, destination: Writable): void {
     const doc = new PDFDocument({
       size: "A4",
-      margins: { top: 50, bottom: 50, left: 45, right: 45 },
+      margins: { top: 45, bottom: 50, left: 45, right: 45 },
       bufferPages: true,
       info: {
         Title: `PARAKH Scrutiny Report - ${report.application.applicationNumber}`,
@@ -58,98 +97,98 @@ export class ReportPdfService {
       .fontSize(18)
       .font("Helvetica-Bold")
       .fillColor(primaryColor)
-      .text("PARAKH", 45, 50, { characterSpacing: 1 });
+      .text("PARAKH", 45, 45, { characterSpacing: 1 });
 
     doc
       .fontSize(8)
       .font("Helvetica")
       .fillColor(mutedColor)
-      .text("MINISTRY OF EDUCATION & AICTE · STATUTORY COMPLIANCE DIVISION", 45, 72, {
+      .text("MINISTRY OF EDUCATION & AICTE · STATUTORY COMPLIANCE DIVISION", 45, 67, {
         characterSpacing: 0.5,
       });
 
-    doc
+        doc
       .fontSize(13)
-      .font("Helvetica-Bold")
-      .fillColor(tealColor)
-      .text("SCRUTINY EVALUATION REPORT", 45, 92);
+          .font("Helvetica-Bold")
+          .fillColor(tealColor)
+      .text("SCRUTINY EVALUATION REPORT", 45, 87);
 
-    // Metadata & Institution Details Box
-    const boxY = 114;
-    doc
+        // Metadata & Institution Details Box
+        const boxY = 108;
+        doc
       .rect(45, boxY, 505, 78)
-      .fillAndStroke(lightBg, borderColor);
+          .fillAndStroke(lightBg, borderColor);
 
-    const evalDateStr = report.evaluationDate
-      ? new Date(report.evaluationDate).toLocaleString("en-GB", {
-          day: "2-digit",
-          month: "short",
-          year: "numeric",
-          hour: "2-digit",
-          minute: "2-digit",
-        })
-      : "—";
+        const evalDateStr = report.evaluationDate
+          ? new Date(report.evaluationDate).toLocaleString("en-GB", {
+            day: "2-digit",
+            month: "short",
+            year: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+          })
+          : "—";
 
-    const progCategoryLabel = report.application.programCategory
-      ? report.application.programCategory.replace(/_/g, " ")
-      : "Not Specified";
+        const progCategoryLabel = report.application.programCategory
+          ? report.application.programCategory.replace(/_/g, " ")
+          : "Not Specified";
 
-    const officerName = report.application.assignedOfficer?.name
-      ? `${report.application.assignedOfficer.name} (${report.application.assignedOfficer.designation || "Desk Officer"})`
-      : "Unassigned";
+        const officerName = report.application.assignedOfficer?.name
+          ? `${report.application.assignedOfficer.name} (${report.application.assignedOfficer.designation || "Desk Officer"})`
+          : "Unassigned";
 
-    doc.fillColor("#172E33");
-    // Column 1
-    doc
+        doc.fillColor("#172E33");
+        // Column 1
+        doc
       .fontSize(8)
-      .font("Helvetica-Bold")
-      .text("INSTITUTION:", 55, boxY + 10)
-      .font("Helvetica")
-      .text(report.application.institutionName, 130, boxY + 10, { width: 220 })
-      .font("Helvetica-Bold")
-      .text("APPLICATION NO:", 55, boxY + 26)
-      .font("Helvetica")
-      .text(report.application.applicationNumber, 130, boxY + 26)
-      .font("Helvetica-Bold")
-      .text("PROGRAM CATEGORY:", 55, boxY + 42)
-      .font("Helvetica")
-      .text(progCategoryLabel, 130, boxY + 42)
-      .font("Helvetica-Bold")
-      .text("PROPOSED INTAKE:", 55, boxY + 58)
-      .font("Helvetica")
-      .text(
-        report.application.proposedIntake ? `${report.application.proposedIntake} Approved Seats` : "—",
-        130,
-        boxY + 58
-      );
+          .font("Helvetica-Bold")
+          .text("INSTITUTION:", 55, boxY + 10)
+          .font("Helvetica")
+          .text(report.application.institutionName, 130, boxY + 10, { width: 220 })
+          .font("Helvetica-Bold")
+          .text("APPLICATION NO:", 55, boxY + 26)
+          .font("Helvetica")
+          .text(report.application.applicationNumber, 130, boxY + 26)
+          .font("Helvetica-Bold")
+          .text("PROGRAM CATEGORY:", 55, boxY + 42)
+          .font("Helvetica")
+          .text(progCategoryLabel, 130, boxY + 42)
+          .font("Helvetica-Bold")
+          .text("PROPOSED INTAKE:", 55, boxY + 58)
+          .font("Helvetica")
+          .text(
+            report.application.proposedIntake ? `${report.application.proposedIntake} Approved Seats` : "—",
+            130,
+            boxY + 58
+          );
 
-    // Column 2
-    doc
+        // Column 2
+        doc
       .font("Helvetica-Bold")
-      .text("REPORT REF ID:", 360, boxY + 10)
-      .font("Helvetica")
-      .text(report.id, 430, boxY + 10, { width: 110 })
-      .font("Helvetica-Bold")
-      .text("EVALUATED AT:", 360, boxY + 26)
-      .font("Helvetica")
-      .text(evalDateStr, 430, boxY + 26)
-      .font("Helvetica-Bold")
-      .text("DESK OFFICER:", 360, boxY + 42)
-      .font("Helvetica")
-      .text(officerName, 430, boxY + 42, { width: 110 })
-      .font("Helvetica-Bold")
-      .text("LIFECYCLE STATE:", 360, boxY + 58)
-      .font("Helvetica")
-      .text(report.application.status.replace(/_/g, " "), 430, boxY + 58);
+          .text("REPORT REF ID:", 360, boxY + 10)
+          .font("Helvetica")
+          .text(report.id, 430, boxY + 10, { width: 110 })
+          .font("Helvetica-Bold")
+          .text("EVALUATED AT:", 360, boxY + 26)
+          .font("Helvetica")
+          .text(evalDateStr, 430, boxY + 26)
+          .font("Helvetica-Bold")
+          .text("DESK OFFICER:", 360, boxY + 42)
+          .font("Helvetica")
+          .text(officerName, 430, boxY + 42, { width: 110 })
+          .font("Helvetica-Bold")
+          .text("LIFECYCLE STATE:", 360, boxY + 58)
+          .font("Helvetica")
+          .text(report.application.status.replace(/_/g, " "), 430, boxY + 58);
 
-    // --- Executive Summary Box ---
-    const execY = boxY + 88;
-    let statusBg = "#EAF3EE";
-    let statusBorder = "#C8E6C9";
-    let statusTextColor = "#245E3F";
-    let statusLabel = "COMPLIANT — All statutory rules verified successfully";
+        // --- Executive Summary Box ---
+        const execY = boxY + 88;
+        let statusBg = "#EAF3EE";
+        let statusBorder = "#C8E6C9";
+        let statusTextColor = "#245E3F";
+        let statusLabel = "COMPLIANT — All statutory rules verified successfully";
 
-    if (report.overallStatus === "DEFICIENCIES_DETECTED") {
+        if(report.overallStatus === "DEFICIENCIES_DETECTED") {
       statusBg = "#FDF2F2";
       statusBorder = "#E8C5C5";
       statusTextColor = "#9E2A2B";
@@ -228,203 +267,231 @@ export class ReportPdfService {
         .text("No individual rule findings recorded in this report.", 45, currentY);
     } else {
       findings.forEach((finding: any, index: number) => {
-        // Estimate height for page break: roughly 75-110 points per finding card
-        if (currentY > 700) {
-          doc.addPage();
-          currentY = 55;
-        }
+          const estimatedHeight = this.estimateFindingHeight(doc, finding);
 
-        const findingStartY = currentY;
-        const findingOutcome = String(finding.outcome || "UNKNOWN").replace(/_/g, " ");
-        const severity = finding.severity || "MEDIUM";
+          // Content boundary check: A4 height is ~842. Usable content area ends at 740.
+          // If the card cannot fit on this page, start a clean new page.
+          if (currentY + estimatedHeight > 740 && currentY > 60) {
+            doc.addPage();
+            currentY = 55;
+          }
 
-        // Determine outcome pill colors
-        let pillColor = "#245E3F";
-        let pillBg = "#EAF3EE";
-        if (finding.outcome === "FAIL_DEFICIENCY" || finding.outcome === "DEFICIENCY" || finding.outcome === "MISMATCH_DETECTED" || finding.outcome === "EXPIRED") {
-          pillColor = "#9E2A2B";
-          pillBg = "#FDF2F2";
-        } else if (finding.outcome === "MANUAL_REVIEW_REQUIRED" || finding.outcome === "EXTRACTION_UNCERTAIN") {
-          pillColor = "#8D6B00";
-          pillBg = "#FFF9E6";
-        } else if (finding.outcome === "EVIDENCE_MISSING" || finding.outcome === "INSUFFICIENT_INPUT") {
-          pillColor = "#5C6F73";
-          pillBg = "#F0F2F2";
-        }
+          const findingStartY = currentY;
+          const findingOutcome = String(finding.outcome || "UNKNOWN").replace(/_/g, " ");
+          const severity = finding.severity || "MEDIUM";
 
-        // Card header background
-        doc
-          .rect(45, findingStartY, 505, 20)
-          .fillAndStroke(lightBg, borderColor);
-
-        // Header text: index + rule name + clause
-        doc
-          .fontSize(8)
-          .font("Helvetica-Bold")
-          .fillColor("#172E33")
-          .text(
-            `${index + 1}. [${finding.ruleId || "RULE"}] ${finding.ruleName || "Regulatory Standard"}`,
-            52,
-            findingStartY + 6,
-            { width: 340 }
-          );
-
-        // Outcome badge & Severity
-        doc
-          .fontSize(7.5)
-          .font("Helvetica-Bold")
-          .fillColor(pillColor)
-          .text(`${findingOutcome} · ${severity}`, 400, findingStartY + 6, {
-            width: 140,
-            align: "right",
-          });
-
-        let contentY = findingStartY + 25;
-
-        // Clause line
-        if (finding.aphClause) {
-          doc
-            .fontSize(7.5)
-            .font("Helvetica-Oblique")
-            .fillColor(mutedColor)
-            .text(`Regulatory Reference: ${finding.aphClause}`, 52, contentY);
-          contentY += 12;
-        }
-
-        // Summary / Details
-        if (finding.summary) {
-          doc
-            .fontSize(8)
-            .font("Helvetica-Bold")
-            .fillColor("#172E33")
-            .text("Finding Observation: ", 52, contentY, { continued: true })
-            .font("Helvetica")
-            .fillColor("#334155")
-            .text(finding.summary, { width: 485 });
-          contentY = doc.y + 4;
-        }
-
-        if (finding.details && finding.details !== finding.summary) {
-          doc
-            .fontSize(7.5)
-            .font("Helvetica")
-            .fillColor("#5C6F73")
-            .text(`Details: ${finding.details}`, 52, contentY, { width: 485 });
-          contentY = doc.y + 4;
-        }
-
-        if (finding.remediationNote) {
-          doc
-            .fontSize(7.5)
-            .font("Helvetica-Bold")
-            .fillColor("#9E2A2B")
-            .text("Remediation: ", 52, contentY, { continued: true })
-            .font("Helvetica")
-            .text(finding.remediationNote, { width: 485 });
-          contentY = doc.y + 4;
-        }
-
-        // Evidence list
-        if (Array.isArray(finding.evidence) && finding.evidence.length > 0) {
-          doc
-            .fontSize(7.5)
-            .font("Helvetica-Bold")
-            .fillColor(tealColor)
-            .text("Supporting Evidence & Provenance:", 52, contentY);
-          contentY += 10;
-
-          finding.evidence.forEach((ev: any) => {
-            let evText = `• [${ev.documentType || "DOCUMENT"}] ${ev.fieldName || "Field"}: `;
-            if (ev.extractedValue !== undefined && ev.extractedValue !== null) {
-              evText += typeof ev.extractedValue === "object" ? JSON.stringify(ev.extractedValue) : String(ev.extractedValue);
-            } else if (ev.rawText) {
-              evText += ev.rawText;
-            } else {
-              evText += "Value present in document";
+          // Determine outcome pill colors
+          let pillColor = "#245E3F";
+          let pillBg = "#EAF3EE";
+            if (
+              finding.outcome === "FAIL_DEFICIENCY" ||
+              finding.outcome === "DEFICIENCY" ||
+              finding.outcome === "MISMATCH_DETECTED" ||
+              finding.outcome === "EXPIRED"
+            ) {
+              pillColor = "#9E2A2B";
+              pillBg = "#FDF2F2";
+            } else if (
+              finding.outcome === "MANUAL_REVIEW_REQUIRED" ||
+              finding.outcome === "EXTRACTION_UNCERTAIN"
+            ) {
+              pillColor = "#8D6B00";
+              pillBg = "#FFF9E6";
+            } else if (
+              finding.outcome === "EVIDENCE_MISSING" ||
+              finding.outcome === "INSUFFICIENT_INPUT"
+            ) {
+              pillColor = "#5C6F73";
+              pillBg = "#F0F2F2";
             }
 
-            if (ev.pageNumber) {
-              evText += ` (Page ${ev.pageNumber})`;
-            }
-
-            if (ev.isOfficerReviewed) {
-              evText += ` [✓ Officer Verified by ${ev.reviewedByName || "Officer"}]`;
-            }
-
+            // Card header background
             doc
-              .fontSize(7)
-              .font("Helvetica")
-              .fillColor("#475569")
-              .text(evText, 60, contentY, { width: 475 });
-            contentY = doc.y + 2;
+              .rect(45, findingStartY, 505, 20)
+              .fillAndStroke(lightBg, borderColor);
+
+            // Header text: index + rule name + clause
+            doc
+              .fontSize(8)
+              .font("Helvetica-Bold")
+              .fillColor("#172E33")
+              .text(
+                `${index + 1}. [${finding.ruleId || "RULE"}] ${finding.ruleName || "Regulatory Standard"}`,
+                52,
+                findingStartY + 6,
+                { width: 340 }
+              );
+
+            // Outcome badge & Severity
+            doc
+              .fontSize(7.5)
+              .font("Helvetica-Bold")
+              .fillColor(pillColor)
+              .text(`${findingOutcome} · ${severity}`, 400, findingStartY + 6, {
+                width: 140,
+                align: "right",
+              });
+
+            let contentY = findingStartY + 25;
+
+            // Clause line
+            if (finding.aphClause) {
+              doc
+                .fontSize(7.5)
+                .font("Helvetica-Oblique")
+                .fillColor(mutedColor)
+                .text(`Regulatory Reference: ${finding.aphClause}`, 52, contentY);
+              contentY += 12;
+            }
+
+            // Summary / Details
+            if (finding.summary) {
+              doc
+                .fontSize(8)
+                .font("Helvetica-Bold")
+                .fillColor("#172E33")
+                .text("Finding Observation: ", 52, contentY, { continued: true })
+                .font("Helvetica")
+                .fillColor("#334155")
+                .text(finding.summary, { width: 485 });
+              contentY = doc.y + 4;
+            }
+
+            if (finding.details && finding.details !== finding.summary) {
+              doc
+                .fontSize(7.5)
+                .font("Helvetica")
+                .fillColor("#5C6F73")
+                .text(`Details: ${finding.details}`, 52, contentY, { width: 485 });
+              contentY = doc.y + 4;
+            }
+
+            if (finding.remediationNote) {
+              doc
+                .fontSize(7.5)
+                .font("Helvetica-Bold")
+                .fillColor("#9E2A2B")
+                .text("Remediation: ", 52, contentY, { continued: true })
+                .font("Helvetica")
+                .text(finding.remediationNote, { width: 485 });
+              contentY = doc.y + 4;
+            }
+
+            // Evidence list
+            if (Array.isArray(finding.evidence) && finding.evidence.length > 0) {
+              doc
+                .fontSize(7.5)
+                .font("Helvetica-Bold")
+                .fillColor(tealColor)
+                .text("Supporting Evidence & Provenance:", 52, contentY);
+              contentY += 10;
+
+              finding.evidence.forEach((ev: any) => {
+                let evText = `• [${ev.documentType || "DOCUMENT"}] ${ev.fieldName || "Field"}: `;
+                if (ev.extractedValue !== undefined && ev.extractedValue !== null) {
+                  evText +=
+                    typeof ev.extractedValue === "object"
+                      ? JSON.stringify(ev.extractedValue)
+                      : String(ev.extractedValue);
+                } else if (ev.rawText) {
+                  evText += ev.rawText;
+                } else {
+                  evText += "Value present in document";
+                }
+
+                if (ev.pageNumber) {
+                  evText += ` (Page ${ev.pageNumber})`;
+                }
+
+                if (ev.isOfficerReviewed) {
+                  evText += ` [✓ Officer Verified by ${ev.reviewedByName || "Officer"}]`;
+                }
+
+                doc
+                  .fontSize(7)
+                  .font("Helvetica")
+                  .fillColor("#475569")
+                  .text(evText, 60, contentY, { width: 475 });
+                contentY = doc.y + 2;
+              });
+            }
+
+            // Draw card border around content
+            const cardHeight = Math.max(contentY - findingStartY + 6, 32);
+            doc
+              .rect(45, findingStartY, 505, cardHeight)
+              .stroke(borderColor);
+
+            currentY = findingStartY + cardHeight + 8;
           });
-        }
-
-        // Draw card border around content
-        const cardHeight = Math.max(contentY - findingStartY + 6, 32);
-        doc
-          .rect(45, findingStartY, 505, cardHeight)
-          .stroke(borderColor);
-
-        currentY = findingStartY + cardHeight + 8;
-      });
     }
 
     // --- Footer & Running Headers on All Pages ---
     const pageRange = doc.bufferedPageRange();
-    for (let i = 0; i < pageRange.count; i++) {
-      doc.switchToPage(i);
+      const totalPages = pageRange.count;
 
-      // Top running sub-rule (only on page 2 onwards)
-      if (i > 0) {
-        doc
-          .fontSize(7.5)
-          .font("Helvetica")
-          .fillColor(mutedColor)
-          .text(
-            `PARAKH Scrutiny Report · Ref: ${report.application.applicationNumber} (${report.id})`,
-            45,
-            30
-          );
+      for (let i = 0; i < totalPages; i++) {
+        doc.switchToPage(i);
+
+        // Temporarily clear bottom margin so footer text never triggers an auto-page break
+        const origBottom = doc.page.margins.bottom;
+        doc.page.margins.bottom = 0;
+
+        // Top running sub-rule (only on page 2 onwards)
+        if (i > 0) {
+          doc
+            .fontSize(7.5)
+            .font("Helvetica")
+            .fillColor(mutedColor)
+            .text(
+              `PARAKH Scrutiny Report · Ref: ${report.application.applicationNumber} (${report.id})`,
+              45,
+            26,
+              { lineBreak: false }
+            );
+          doc
+            .strokeColor(borderColor)
+            .lineWidth(0.5)
+            .moveTo(45, 38)
+            .lineTo(550, 38)
+            .stroke();
+        }
+
+        // Bottom footer rule and page number
         doc
           .strokeColor(borderColor)
           .lineWidth(0.5)
-          .moveTo(45, 42)
-          .lineTo(550, 42)
+          .moveTo(45, 785)
+          .lineTo(550, 785)
           .stroke();
-      }
 
-      // Bottom footer rule and page number
-      doc
-        .strokeColor(borderColor)
-        .lineWidth(0.5)
-        .moveTo(45, 792)
-        .lineTo(550, 792)
-        .stroke();
+        doc
+          .fontSize(7)
+          .font("Helvetica")
+          .fillColor(mutedColor)
+          .text(
+            "STATUTORY AUDIT SNAPSHOT · CONFIDENTIAL · AICTE APPROVAL PROCESS 2026–27",
+            45,
+          794,
+            { lineBreak: false }
+          );
 
-      doc
-        .fontSize(7)
-        .font("Helvetica")
-        .fillColor(mutedColor)
-        .text(
-          "STATUTORY AUDIT SNAPSHOT · CONFIDENTIAL · AICTE APPROVAL PROCESS 2026–27",
-          45,
-          800
-        );
+        doc
+          .fontSize(7)
+          .font("Helvetica-Bold")
+          .fillColor(mutedColor)
+        .text(`Page ${i + 1} of ${totalPages}`, 45, 794, {
+            width: 505,
+            align: "right",
+            lineBreak: false,
+          });
 
-      doc
-        .fontSize(7)
-        .font("Helvetica-Bold")
-        .fillColor(mutedColor)
-        .text(`Page ${i + 1} of ${pageRange.count}`, 45, 800, {
-          width: 505,
-          align: "right",
-        });
-    }
+            // Restore bottom margin
+            doc.page.margins.bottom = origBottom;
+          }
 
     doc.end();
-  }
-}
+      }
+    }
 
-export const reportPdfService = new ReportPdfService();
-
+    export const reportPdfService = new ReportPdfService();
