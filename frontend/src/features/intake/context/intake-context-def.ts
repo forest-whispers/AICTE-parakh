@@ -47,12 +47,17 @@ export interface IntakeContextValue {
   runExtraction: () => Promise<boolean>;
   runScrutiny: () => Promise<boolean>;
   latestScrutinyReport: BackendScrutinyReport | null;
-  // Officer Regulatory Validation Override
+  isScrutinyStale: boolean;
+  // Officer Regulatory Validation & Evidence Correction
   updateDocumentStatus: (
     documentId: string,
     status: "PASS" | "DEFICIENCY" | "MANUAL_APPROVAL" | "RESET",
     notes?: string
   ) => Promise<boolean>;
+  reviewDocumentEvidence: (
+    documentId: string,
+    submission: import("../types/intake.types").DocumentReviewSubmission
+  ) => Promise<{ success: boolean; scrutinyReport?: BackendScrutinyReport | null; error?: string }>;
 }
 
 export const IntakeContext = createContext<IntakeContextValue | undefined>(undefined);

@@ -8,6 +8,9 @@ export interface NormalizedField<T> {
   excerpt: string | null;
   uncertaintyReason: string | null;
   sourceKey: string;
+  isOfficerReviewed?: boolean;
+  reviewedAt?: string;
+  reviewedByName?: string;
 }
 
 export function makeEmptyField<T>(sourceKey = "unknown"): NormalizedField<T> {
@@ -19,6 +22,7 @@ export function makeEmptyField<T>(sourceKey = "unknown"): NormalizedField<T> {
     excerpt: null,
     uncertaintyReason: null,
     sourceKey,
+    isOfficerReviewed: false,
   };
 }
 
@@ -71,6 +75,9 @@ export function extractField<T>(
             excerpt: fieldObj.excerpt ?? null,
             uncertaintyReason: fieldObj.uncertaintyReason ?? null,
             sourceKey: resolvedKey,
+            isOfficerReviewed: Boolean(fieldObj.isOfficerReviewed),
+            reviewedAt: fieldObj.reviewedAt,
+            reviewedByName: fieldObj.reviewedByName,
           };
         }
 
@@ -84,6 +91,7 @@ export function extractField<T>(
           excerpt: String(fieldObj),
           uncertaintyReason: null,
           sourceKey: resolvedKey,
+          isOfficerReviewed: false,
         };
       }
     }

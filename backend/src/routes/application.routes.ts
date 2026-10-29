@@ -52,6 +52,7 @@ router.post("/:id/extract", authenticate, requireApplicationAccess("write"), run
 router.post("/:id/scrutiny", authenticate, requireApplicationAccess("write"), runScrutinyForApplication);
 router.get("/:id/scrutiny", authenticate, requireApplicationAccess("read"), getScrutinyReportForApplication);
 router.patch("/:id/documents/:documentId/status", authenticate, requireApplicationAccess("write"), updateDocumentValidationStatus);
+router.patch("/:id/documents/:documentId/review", authenticate, requireApplicationAccess("write"), updateDocumentValidationStatus);
 
 // Authority Verification Workflow
 router.post("/:id/verify", authenticate, requireApplicationAccess("write"), runAuthorityVerification);

@@ -201,8 +201,13 @@ export const VlmExtractedFieldsDrawer: React.FC<VlmExtractedFieldsDrawerProps> =
 
                   {/* Extracted value or pending placeholder */}
                   <div className="pt-2 border-t border-[#D7DEDA]/60 text-[12px] bg-[#FAFAF8] p-2 rounded-[2px]">
-                    <div className="text-[10px] font-mono text-[#8A9B9D] uppercase">
-                      Extracted Value:
+                    <div className="flex items-center justify-between text-[10px] font-mono text-[#8A9B9D] uppercase">
+                      <span>Extracted Value:</span>
+                      {extracted?.isOfficerReviewed && (
+                        <span className="text-[9px] font-mono bg-[#EAF3EE] text-[#245E3F] px-1.5 py-0.2 rounded border border-[#C8E6C9] normal-case font-semibold">
+                          ✓ Officer Reviewed
+                        </span>
+                      )}
                     </div>
                     {isExtractionDone ? (
                       isPresent && extracted ? (

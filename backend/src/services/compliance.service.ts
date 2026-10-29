@@ -58,6 +58,9 @@ export interface FindingEvidence {
   extractedValue: any;
   pageNumber: number | null;
   excerpt: string | null;
+  isOfficerReviewed?: boolean;
+  reviewedAt?: string;
+  reviewedByName?: string;
 }
 
 export interface RuleFinding {
@@ -80,6 +83,7 @@ export interface ScrutinyEvaluationResult {
   deficiencyCount: number;
   reviewCount: number;
   missingCount: number;
+  reviewedEvidenceCount?: number;
   findings: RuleFinding[];
 }
 
@@ -178,7 +182,7 @@ export class ComplianceService {
       docsByType.set(type, list);
     }
 
-    // Helper to get first document and its container
+    // Helper to get first document and its container, incorporating officer reviewed fields if present
     const getFirstDoc = (type: string, blockName: string) => {
       const list = docsByType.get(type);
       if (list && list.length > 0) {
@@ -198,6 +202,36 @@ export class ComplianceService {
             }
           }
           container = container || item.rawData;
+
+          // Seamlessly overlay officer-reviewed fields onto effective evidence container
+          const officerReview = item.rawData.officerReview || item.rawData.officerCorrections;
+          if (officerReview?.fields && typeof officerReview.fields === "object") {
+            const effectiveContainer = { ...container };
+            for (const [fieldKey, reviewObj] of Object.entries(officerReview.fields)) {
+              if (reviewObj && typeof reviewObj === "object") {
+                const r = reviewObj as any;
+                effectiveContainer[fieldKey] = {
+                  ...(container[fieldKey] || {}),
+                  state: r.state || "PRESENT",
+                  value: r.value,
+                  rawText:
+                    r.rawText !== undefined
+                      ? r.rawText
+                      : r.value !== null && r.value !== undefined
+                      ? String(r.value)
+                      : null,
+                  pageNumber: r.pageNumber ?? container[fieldKey]?.pageNumber ?? null,
+                  excerpt: r.excerpt ?? r.notes ?? container[fieldKey]?.excerpt ?? null,
+                  uncertaintyReason: r.state === "AMBIGUOUS" ? (r.notes || "Ambiguous finding") : null,
+                  isOfficerReviewed: true,
+                  reviewedAt: officerReview.reviewedAt,
+                  reviewedByName: officerReview.reviewedByName,
+                };
+              }
+            }
+            return { id: item.id, container: effectiveContainer, rawData: item.rawData };
+          }
+
           return { id: item.id, container, rawData: item.rawData };
         }
       }
@@ -219,6 +253,9 @@ export class ComplianceService {
         extractedValue: field.value,
         pageNumber: field.pageNumber,
         excerpt: field.excerpt,
+        isOfficerReviewed: Boolean(field.isOfficerReviewed),
+        reviewedAt: field.reviewedAt,
+        reviewedByName: field.reviewedByName,
       };
     };
 
@@ -2547,6 +2584,17 @@ export class ComplianceService {
       overallStatus = "MANUAL_REVIEW_REQUIRED";
     }
 
+    let reviewedEvidenceCount = 0;
+    for (const f of findings) {
+      if (f.evidence && Array.isArray(f.evidence)) {
+        for (const ev of f.evidence) {
+          if (ev.isOfficerReviewed) {
+            reviewedEvidenceCount++;
+          }
+        }
+      }
+    }
+
     const evaluationResult: ScrutinyEvaluationResult = {
       evaluationDate: evalDateISO,
       overallStatus,
@@ -2555,6 +2603,7 @@ export class ComplianceService {
       deficiencyCount,
       reviewCount,
       missingCount,
+      reviewedEvidenceCount,
       findings,
     };
 

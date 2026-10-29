@@ -32,10 +32,43 @@ export interface OfficerValidationDecision {
   reviewedById?: string;
 }
 
+export interface OfficerFieldCorrection {
+  state: "PRESENT" | "NOT_FOUND" | "ILLEGIBLE" | "AMBIGUOUS" | "NOT_APPLICABLE";
+  value: unknown;
+  rawText?: string | null;
+  pageNumber?: number | null;
+  notes?: string;
+  reviewedAt?: string;
+  reviewedById?: string;
+  reviewedByName?: string;
+}
+
+export interface OfficerDocumentReview {
+  status: "PASS" | "DEFICIENCY" | "MANUAL_APPROVAL" | "RESET";
+  notes?: string;
+  reviewedAt: string;
+  reviewedById?: string;
+  reviewedByName?: string;
+  fields: Record<string, OfficerFieldCorrection>;
+}
+
+export interface DocumentReviewSubmission {
+  status: "PASS" | "DEFICIENCY" | "MANUAL_APPROVAL" | "RESET";
+  notes?: string;
+  fieldCorrections?: Record<string, {
+    state: "PRESENT" | "NOT_FOUND" | "ILLEGIBLE" | "AMBIGUOUS" | "NOT_APPLICABLE";
+    value: unknown;
+    rawText?: string | null;
+    pageNumber?: number | null;
+    notes?: string;
+  }>;
+}
+
 export interface DocumentExtractionData {
   status: "PENDING" | "EXTRACTING" | "SUCCESS" | "UNCERTAIN" | "FAILED" | "PARTIAL";
   extractedAt?: string;
   officerValidation?: OfficerValidationDecision | null;
+  officerReview?: OfficerDocumentReview | null;
   fields?: Record<string, {
     state: "present" | "absent" | "uncertain";
     backendState?: string;
@@ -44,6 +77,7 @@ export interface DocumentExtractionData {
     pageNumber?: number;
     excerpt?: string;
     uncertaintyReason?: string;
+    isOfficerReviewed?: boolean;
   }>;
   rawOutput?: unknown;
   failureReason?: string;
@@ -108,11 +142,13 @@ export interface BackendScrutinyFinding {
 
 export interface BackendScrutinyReport {
   id?: string;
+  evaluationDate?: string;
   overallStatus: string;
   passedCount: number;
   deficiencyCount: number;
   reviewCount: number;
   missingCount?: number;
+  reviewedEvidenceCount?: number;
   findings?: BackendScrutinyFinding[];
 }
 

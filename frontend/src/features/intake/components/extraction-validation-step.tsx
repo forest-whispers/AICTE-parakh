@@ -30,6 +30,8 @@ export const ExtractionValidationStep: React.FC<ExtractionValidationStepProps> =
     runScrutiny,
     latestScrutinyReport,
     updateDocumentStatus,
+    reviewDocumentEvidence,
+    isScrutinyStale,
   } = useIntake();
 
   // Drawer & Preview states
@@ -129,7 +131,7 @@ export const ExtractionValidationStep: React.FC<ExtractionValidationStepProps> =
         onClose={() => setSelectedDrawerDoc(null)}
       />
 
-      {/* Document In-Browser Preview Modal with Officer Regulatory Inspection Controls */}
+      {/* Document In-Browser Preview & Officer Evidence Review Modal */}
       <DocumentPreviewModal
         document={previewDoc}
         onClose={() => setPreviewDoc(null)}
@@ -142,10 +144,10 @@ export const ExtractionValidationStep: React.FC<ExtractionValidationStepProps> =
               )
             : undefined
         }
-        onUpdateStatus={
+        onSaveReview={
           createdApplication
-            ? async (status, notes) => {
-                if (!previewDoc) return false;
+            ? async (submission) => {
+                if (!previewDoc) return { success: false, error: "No document selected." };
                 const documentId =
                   previewDoc.backendDocId ||
                   createdApplication?.documents.find(
@@ -153,10 +155,10 @@ export const ExtractionValidationStep: React.FC<ExtractionValidationStepProps> =
                       bd.originalName === previewDoc.fileName ||
                       bd.documentType === previewDoc.categoryCode
                   )?.id;
-                if (!documentId) return false;
-                return await updateDocumentStatus(documentId, status, notes);
+                if (!documentId) return { success: false, error: "Document ID not resolved." };
+                return await reviewDocumentEvidence(documentId, submission);
               }
-            : undefined
+            : async () => ({ success: false, error: "Application not yet uploaded." })
         }
       />
 
@@ -305,6 +307,41 @@ export const ExtractionValidationStep: React.FC<ExtractionValidationStepProps> =
                     </>
                   ) : (
                     "Run scrutiny"
+                  )}
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* Conditional Alert: Scrutiny Out of Date due to Officer Review */}
+          {isScrutinyStale && !isScrutinyFailed && !isExtractionFailed && (
+            <div className="bg-[#FEF7EC] border border-[#FFE58F] rounded-[3px] p-4 text-[#8D6B00] shadow-sm">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="flex items-start gap-3">
+                  <span className="text-xl">⚠️</span>
+                  <div>
+                    <h4 className="text-[14px] font-bold m-0 text-[#172E33]">
+                      Scrutiny Report Out of Date
+                    </h4>
+                    <p className="text-[12px] text-[#5C6F73] mt-1 mb-0 leading-relaxed">
+                      Officer evidence review or correction has occurred since the last compliance scrutiny report.
+                      Re-run scrutiny to compute fresh statutory findings with reviewed evidence.
+                    </p>
+                  </div>
+                </div>
+                <Button
+                  type="button"
+                  onClick={runScrutiny}
+                  disabled={isEvaluatingScrutiny}
+                  className="bg-[#165A60] hover:bg-[#122B30] text-white text-[13px] font-medium px-4 py-2 rounded-[3px] inline-flex items-center gap-1.5 self-start sm:self-auto shrink-0 shadow-sm transition-colors"
+                >
+                  {isEvaluatingScrutiny ? (
+                    <>
+                      <span className="inline-block animate-spin mr-1">◌</span>
+                      Running scrutiny...
+                    </>
+                  ) : (
+                    "Re-run scrutiny"
                   )}
                 </Button>
               </div>

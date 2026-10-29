@@ -8,6 +8,8 @@ import type {
   BackendCreatedDocument,
   BackendScrutinyReport,
   OfficerValidationDecision,
+  OfficerDocumentReview,
+  DocumentReviewSubmission,
 } from "../types/intake.types";
 import {
   STATUTORY_DOCUMENT_CATEGORIES,
@@ -137,6 +139,35 @@ function extractFieldsFromEnvelope(extractedData: unknown, categoryCode: string)
       if (aliases) {
         for (const alias of aliases) {
           if (!result[alias]) {
+            result[alias] = entry;
+          }
+        }
+      }
+    }
+  }
+
+  // Overlay officer reviewed fields if present to reflect effective evidence
+  const officerReview = data.officerReview as OfficerDocumentReview | undefined;
+  if (officerReview?.fields && typeof officerReview.fields === "object") {
+    for (const [key, revField] of Object.entries(officerReview.fields)) {
+      if (revField && typeof revField === "object") {
+        const isPresent = revField.state === "PRESENT";
+        const isUncertain = revField.state === "ILLEGIBLE" || revField.state === "AMBIGUOUS";
+        const entry = {
+          state: isPresent ? ("present" as const) : isUncertain ? ("uncertain" as const) : ("absent" as const),
+          backendState: revField.state,
+          value: revField.value,
+          rawText: revField.rawText ?? (revField.value !== null && revField.value !== undefined ? String(revField.value) : undefined),
+          pageNumber: revField.pageNumber ?? undefined,
+          excerpt: revField.notes ?? undefined,
+          uncertaintyReason: revField.state === "AMBIGUOUS" ? (revField.notes || "Ambiguous evidence") : undefined,
+          isOfficerReviewed: true,
+        };
+        result[key] = entry;
+
+        const aliases = FIELD_ALIASES[key];
+        if (aliases) {
+          for (const alias of aliases) {
             result[alias] = entry;
           }
         }
@@ -467,6 +498,9 @@ export const IntakeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             const officerVal =
               ((backendDoc.extractedData as Record<string, unknown>)
                 ?.officerValidation as OfficerValidationDecision | null) || null;
+            const officerReview =
+              ((backendDoc.extractedData as Record<string, unknown>)
+                ?.officerReview as OfficerDocumentReview | null) || null;
 
             return {
               ...doc,
@@ -476,6 +510,7 @@ export const IntakeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
               extractionData: {
                 status: extractionStatus,
                 officerValidation: officerVal,
+                officerReview,
                 fields: Object.keys(extractedFields).length > 0 ? extractedFields : undefined,
                 rawOutput: backendDoc.extractedData,
               },
@@ -573,6 +608,9 @@ export const IntakeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             const officerVal =
               ((backendDoc.extractedData as Record<string, unknown>)
                 ?.officerValidation as OfficerValidationDecision | null) || null;
+            const officerReview =
+              ((backendDoc.extractedData as Record<string, unknown>)
+                ?.officerReview as OfficerDocumentReview | null) || null;
 
             return {
               ...doc,
@@ -582,6 +620,7 @@ export const IntakeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
               extractionData: {
                 status: extractionStatus,
                 officerValidation: officerVal,
+                officerReview,
                 fields: Object.keys(extractedFields).length > 0 ? extractedFields : undefined,
                 rawOutput: backendDoc.extractedData,
               },
@@ -652,7 +691,11 @@ export const IntakeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           data: {
             document: BackendCreatedDocument;
             officerValidation: OfficerValidationDecision | null;
+            officerReview?: OfficerDocumentReview | null;
+            scrutinyReport?: BackendScrutinyReport | null;
           };
+          scrutinyReevaluationFailed?: boolean;
+          scrutinyError?: string | null;
         }>(`/api/applications/${createdApplication.id}/documents/${documentId}/status`, {
           method: "PATCH",
           body: JSON.stringify({ status, notes }),
@@ -663,29 +706,39 @@ export const IntakeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
         if (response && response.success) {
           const updatedValidation = response.data.officerValidation;
+          const updatedReview = response.data.officerReview || null;
+
+          // Update latest scrutiny report if returned by server
+          if (response.data.scrutinyReport) {
+            setLatestScrutinyReport(response.data.scrutinyReport);
+            setScrutinyError(null);
+          } else if (response.scrutinyReevaluationFailed) {
+            setScrutinyError(response.scrutinyError || "Scrutiny re-evaluation failed.");
+          }
 
           // Update stagedDocuments
           setStagedDocuments((prev) =>
             prev.map((doc) => {
               if (doc.backendDocId === documentId || doc.id === documentId) {
+                const updatedExtractedData = response.data.document.extractedData;
+                const updatedFields = extractFieldsFromEnvelope(updatedExtractedData, doc.categoryCode);
+
                 return {
                   ...doc,
-                  extractionData: doc.extractionData
-                    ? {
-                        ...doc.extractionData,
-                        officerValidation: updatedValidation,
-                      }
-                    : {
-                        status: "PENDING",
-                        officerValidation: updatedValidation,
-                      },
+                  extractionData: {
+                    ...(doc.extractionData || { status: "PENDING" }),
+                    officerValidation: updatedValidation,
+                    officerReview: updatedReview,
+                    fields: Object.keys(updatedFields).length > 0 ? updatedFields : doc.extractionData?.fields,
+                    rawOutput: updatedExtractedData,
+                  },
                 };
               }
               return doc;
             })
           );
 
-          // Update createdApplication.documents
+          // Update createdApplication.documents & scrutinyReports
           setCreatedApplication((prev) => {
             if (!prev) return prev;
             return {
@@ -693,6 +746,9 @@ export const IntakeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
               documents: prev.documents.map((d) =>
                 d.id === documentId ? response.data.document : d
               ),
+              scrutinyReports: response.data.scrutinyReport
+                ? [response.data.scrutinyReport]
+                : prev.scrutinyReports,
             };
           });
 
@@ -706,6 +762,118 @@ export const IntakeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     },
     [createdApplication]
   );
+
+  const reviewDocumentEvidence = useCallback(
+    async (
+      documentId: string,
+      submission: DocumentReviewSubmission
+    ): Promise<{ success: boolean; scrutinyReport?: BackendScrutinyReport | null; error?: string }> => {
+      if (!createdApplication?.id) {
+        return { success: false, error: "Application is not yet uploaded." };
+      }
+
+      try {
+        const response = await apiClient<{
+          success: boolean;
+          data: {
+            document: BackendCreatedDocument;
+            officerValidation: OfficerValidationDecision | null;
+            officerReview: OfficerDocumentReview | null;
+            scrutinyReport?: BackendScrutinyReport | null;
+          };
+          scrutinyReevaluationFailed?: boolean;
+          scrutinyError?: string | null;
+          error?: string;
+        }>(`/api/applications/${createdApplication.id}/documents/${documentId}/review`, {
+          method: "PATCH",
+          body: JSON.stringify(submission),
+          headers: {
+            "Content-Type": "application/json",
+          },
+        });
+
+        if (response && response.success) {
+          const updatedValidation = response.data.officerValidation;
+          const updatedReview = response.data.officerReview;
+
+          if (response.data.scrutinyReport) {
+            setLatestScrutinyReport(response.data.scrutinyReport);
+            setScrutinyError(null);
+          } else if (response.scrutinyReevaluationFailed) {
+            setScrutinyError(response.scrutinyError || "Scrutiny re-evaluation failed.");
+          }
+
+          // Synchronize stagedDocuments
+          setStagedDocuments((prev) =>
+            prev.map((doc) => {
+              if (doc.backendDocId === documentId || doc.id === documentId) {
+                const updatedExtractedData = response.data.document.extractedData;
+                const updatedFields = extractFieldsFromEnvelope(updatedExtractedData, doc.categoryCode);
+
+                return {
+                  ...doc,
+                  extractionData: {
+                    ...(doc.extractionData || { status: "PENDING" }),
+                    officerValidation: updatedValidation,
+                    officerReview: updatedReview,
+                    fields: Object.keys(updatedFields).length > 0 ? updatedFields : doc.extractionData?.fields,
+                    rawOutput: updatedExtractedData,
+                  },
+                };
+              }
+              return doc;
+            })
+          );
+
+          // Synchronize createdApplication
+          setCreatedApplication((prev) => {
+            if (!prev) return prev;
+            return {
+              ...prev,
+              documents: prev.documents.map((d) =>
+                d.id === documentId ? response.data.document : d
+              ),
+              scrutinyReports: response.data.scrutinyReport
+                ? [response.data.scrutinyReport]
+                : prev.scrutinyReports,
+            };
+          });
+
+          return {
+            success: true,
+            scrutinyReport: response.data.scrutinyReport || null,
+          };
+        }
+
+        return {
+          success: false,
+          error: response?.error || "Failed to persist document review.",
+        };
+      } catch (err: unknown) {
+        const errorObj = err as { message?: string };
+        const msg = errorObj.message || "Failed to persist document review.";
+        console.error("reviewDocumentEvidence error:", err);
+        return { success: false, error: msg };
+      }
+    },
+    [createdApplication]
+  );
+
+  const isScrutinyStale = useMemo(() => {
+    const latestReviewMs = Math.max(
+      0,
+      ...stagedDocuments.map((d) => {
+        const t1 = d.extractionData?.officerReview?.reviewedAt;
+        const t2 = d.extractionData?.officerValidation?.reviewedAt;
+        const t = t1 || t2;
+        return t ? new Date(t).getTime() : 0;
+      })
+    );
+    if (latestReviewMs === 0) return false;
+    if (!latestScrutinyReport?.evaluationDate) return true;
+    const reportMs = new Date(latestScrutinyReport.evaluationDate).getTime();
+    return latestReviewMs > reportMs;
+  }, [stagedDocuments, latestScrutinyReport]);
 
   const resetIntake = useCallback(() => {
     stagedDocuments.forEach((doc) => {
@@ -762,7 +930,9 @@ export const IntakeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       runExtraction,
       runScrutiny,
       latestScrutinyReport,
+      isScrutinyStale,
       updateDocumentStatus,
+      reviewDocumentEvidence,
     }),
     [
       currentStep,
@@ -794,7 +964,9 @@ export const IntakeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       runExtraction,
       runScrutiny,
       latestScrutinyReport,
+      isScrutinyStale,
       updateDocumentStatus,
+      reviewDocumentEvidence,
     ]
   );
 

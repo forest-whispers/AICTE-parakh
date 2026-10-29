@@ -529,7 +529,7 @@ export const updateDocumentValidationStatus = async (req: Request, res: Response
       return;
     }
 
-    const { status, notes } = req.body;
+    const { status, notes, fieldCorrections } = req.body;
     const validStatuses = ["PASS", "DEFICIENCY", "MANUAL_APPROVAL", "RESET"];
 
     if (!status || !validStatuses.includes(status)) {
@@ -538,6 +538,26 @@ export const updateDocumentValidationStatus = async (req: Request, res: Response
         error: `Invalid status. Must be one of: ${validStatuses.join(", ")}`,
       });
       return;
+    }
+
+    const validFieldStates = ["PRESENT", "NOT_FOUND", "ILLEGIBLE", "AMBIGUOUS", "NOT_APPLICABLE"];
+    if (fieldCorrections && typeof fieldCorrections === "object") {
+      for (const [fKey, fVal] of Object.entries(fieldCorrections)) {
+        if (!fVal || typeof fVal !== "object" || !("state" in fVal)) {
+          res.status(400).json({
+            success: false,
+            error: `Invalid field correction for ${fKey}: missing state.`,
+          });
+          return;
+        }
+        if (!validFieldStates.includes((fVal as any).state)) {
+          res.status(400).json({
+            success: false,
+            error: `Invalid field state for ${fKey}: ${(fVal as any).state}. Must be one of: ${validFieldStates.join(", ")}`,
+          });
+          return;
+        }
+      }
     }
 
     // Role check: Officer can only modify assigned application; Ministry Admin has read oversight only
@@ -578,21 +598,60 @@ export const updateDocumentValidationStatus = async (req: Request, res: Response
     }
 
     const existingExtractedData = (document.extractedData as Record<string, any>) || {};
+    const nowIso = new Date().toISOString();
 
     let officerValidation: Record<string, any> | null = null;
     if (status !== "RESET") {
       officerValidation = {
         status,
         notes: typeof notes === "string" ? notes.trim() : "",
-        reviewedAt: new Date().toISOString(),
+        reviewedAt: nowIso,
         reviewedById: req.user?.id,
         reviewedByName: req.user?.name || "OFFICER",
+      };
+    }
+
+    let officerReview: Record<string, any> | null = existingExtractedData.officerReview || null;
+    if (status === "RESET" && (!fieldCorrections || Object.keys(fieldCorrections).length === 0)) {
+      officerReview = null;
+    } else if (fieldCorrections && typeof fieldCorrections === "object") {
+      const existingFields = existingExtractedData.officerReview?.fields || {};
+      const mergedFields = { ...existingFields };
+
+      for (const [key, corr] of Object.entries(fieldCorrections)) {
+        if (corr && typeof corr === "object") {
+          const c = corr as any;
+          mergedFields[key] = {
+            state: c.state || "PRESENT",
+            value: c.state === "PRESENT" ? c.value : null,
+            rawText:
+              c.rawText !== undefined
+                ? c.rawText
+                : c.value !== null && c.value !== undefined
+                ? String(c.value)
+                : null,
+            pageNumber: typeof c.pageNumber === "number" ? c.pageNumber : null,
+            notes: typeof c.notes === "string" ? c.notes.trim() : undefined,
+            reviewedAt: nowIso,
+            reviewedById: req.user?.id,
+            reviewedByName: req.user?.name || "OFFICER",
+          };
+        }
+      }
+
+      officerReview = {
+        reviewedAt: nowIso,
+        reviewedById: req.user?.id,
+        reviewedByName: req.user?.name || "OFFICER",
+        notes: typeof notes === "string" ? notes.trim() : "",
+        fields: mergedFields,
       };
     }
 
     const updatedExtractedData = {
       ...existingExtractedData,
       officerValidation,
+      officerReview,
     };
 
     const updatedDoc = await prisma.document.update({
@@ -602,25 +661,42 @@ export const updateDocumentValidationStatus = async (req: Request, res: Response
       },
     });
 
+    // Re-evaluate scrutiny deterministically to keep findings synchronized with reviewed evidence
+    let scrutinyResult = null;
+    let scrutinyError: string | null = null;
+    try {
+      scrutinyResult = await complianceService.evaluateApplication(id);
+    } catch (err: any) {
+      console.error("Error re-evaluating scrutiny after document review:", err);
+      scrutinyError = err?.message || "Failed to re-evaluate scrutiny.";
+    }
+
+    const hasCorrections = Boolean(fieldCorrections && Object.keys(fieldCorrections).length > 0);
+    const action = hasCorrections ? "DOCUMENT_REVIEWED_AND_CORRECTED" : "DOCUMENT_STATUS_UPDATED";
+
     // Audit log the status update event
     await auditService.logEvent({
       applicationId: id,
       actorId: req.user?.id,
       actorName: req.user?.name || "OFFICER",
       actorRole: req.user?.role || "OFFICER",
-      action: "DOCUMENT_STATUS_UPDATED",
+      action,
       resourceType: "DOCUMENT",
       resourceId: documentId,
-      status: "SUCCESS",
-      details: `Officer ${req.user?.name || "OFFICER"} updated validation status for ${
-        document.originalName || document.fileName
-      } to ${status}${notes ? ` (Notes: ${notes})` : ""}`,
+      status: scrutinyError ? "WARNING" : "SUCCESS",
+      details: `Officer ${req.user?.name || "OFFICER"} reviewed ${document.originalName || document.fileName}: status ${status}${
+        hasCorrections ? ` with ${Object.keys(fieldCorrections).length} field correction(s)` : ""
+      }${notes ? ` (Notes: ${notes})` : ""}`,
       metadata: {
         documentId,
         documentType: document.documentType,
         fileName: document.fileName,
         status,
+        correctedFieldsCount: hasCorrections ? Object.keys(fieldCorrections).length : 0,
         officerValidation,
+        officerReview,
+        scrutinyOverallStatus: scrutinyResult?.overallStatus,
+        scrutinyError,
       },
     });
 
@@ -629,7 +705,11 @@ export const updateDocumentValidationStatus = async (req: Request, res: Response
       data: {
         document: updatedDoc,
         officerValidation,
+        officerReview,
+        scrutinyReport: scrutinyResult,
       },
+      scrutinyReevaluationFailed: Boolean(scrutinyError),
+      scrutinyError,
     });
   } catch (error: any) {
     console.error("Error updating document validation status:", error);

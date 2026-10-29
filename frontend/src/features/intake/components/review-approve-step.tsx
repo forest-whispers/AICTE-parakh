@@ -12,6 +12,7 @@ export const ReviewApproveStep: React.FC = () => {
     missingRequiredCategories,
     createdApplication,
     latestScrutinyReport,
+    isScrutinyStale,
   } = useIntake();
 
   const [isAttested, setIsAttested] = useState(false);
@@ -42,6 +43,31 @@ export const ReviewApproveStep: React.FC = () => {
         applicationNumber={institutionDetails.applicationNumber}
         stagedDocumentCount={stagedDocuments.length}
       />
+
+      {/* Scrutiny Stale Warning Banner */}
+      {isScrutinyStale && (
+        <div className="mb-6 bg-[#FEF7EC] border border-[#FFE58F] rounded-[3px] p-4 text-[#8D6B00] shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-start gap-3">
+            <span className="text-xl">⚠️</span>
+            <div>
+              <h4 className="text-[14px] font-bold m-0 text-[#172E33]">
+                Scrutiny Evaluation Out of Date
+              </h4>
+              <p className="text-[12px] text-[#5C6F73] mt-1 mb-0 leading-relaxed">
+                One or more documents have officer-reviewed evidence that has not yet been re-evaluated by the statutory compliance engine. Return to Step 3 to refresh scrutiny before final approval.
+              </p>
+            </div>
+          </div>
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => setCurrentStep(3)}
+            className="text-[12px] font-medium border-[#FFE58F] bg-white text-[#8D6B00] hover:bg-[#FFF9E6] px-3.5 py-1.5 rounded-[2px] shrink-0 self-start sm:self-auto"
+          >
+            Go to Step 3 →
+          </Button>
+        </div>
+      )}
 
       {/* Main 2-Column Review Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">

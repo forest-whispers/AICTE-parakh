@@ -192,6 +192,12 @@ describe("Phase 1: API Route Security & Authorization Boundaries", () => {
       return mockApps.find((a) => a.id === where.id) || null;
     };
 
+    (prisma.application as any).update = async ({ where, data }: any) => {
+      const app = mockApps.find((a) => a.id === where.id);
+      if (app) Object.assign(app, data);
+      return app;
+    };
+
     (prisma.application as any).findMany = async ({ where }: any) => {
       if (where && "assignedOfficerId" in where) {
         return mockApps.filter((a) => a.assignedOfficerId === where.assignedOfficerId);
@@ -209,6 +215,16 @@ describe("Phase 1: API Route Security & Authorization Boundaries", () => {
 
     (prisma.auditLog as any).create = async ({ data }: any) => {
       return { id: "audit-test-id", ...data, createdAt: new Date() };
+    };
+
+    (prisma.scrutinyReport as any).create = async ({ data }: any) => {
+      const rep = { id: `rep-${Date.now()}`, ...data, createdAt: new Date() };
+      for (const app of mockApps) {
+        if (app.id === data.applicationId) {
+          app.scrutinyReports = [rep];
+        }
+      }
+      return rep;
     };
 
     (prisma.document as any).findFirst = async ({ where }: any) => {
