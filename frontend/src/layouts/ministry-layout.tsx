@@ -18,6 +18,14 @@ export const MinistryLayout: React.FC = () => {
 
   const navItems = [
     {
+      label: "Overview",
+      path: "/ministry/overview",
+      active:
+        location.pathname === "/ministry/overview" ||
+        location.pathname === "/ministry" ||
+        location.pathname === "/ministry/",
+    },
+    {
       label: "Portfolio",
       path: "/ministry/portfolio",
       active: location.pathname.startsWith("/ministry/portfolio"),

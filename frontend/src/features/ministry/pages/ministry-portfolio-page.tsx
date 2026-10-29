@@ -7,7 +7,7 @@ export const MinistryPortfolioPage: React.FC = () => {
       endpoint="/ministry/applications"
       userRole="MINISTRY_ADMIN"
       breadcrumb="MINISTRY / PORTFOLIO / 2026–27"
-      pageTitle="Portfolio overview"
+      pageTitle="Portfolio applications"
       pageSubtitle="Ministry-wide statutory applications portfolio, deterministic scrutiny findings, and officer allocation status."
       showOfficerColumn={true}
       showOfficerFilter={true}

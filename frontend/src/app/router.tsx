@@ -7,6 +7,7 @@ import { OfficerWorkbenchPage } from "../features/officer/pages/officer-workbenc
 import { MyApplicationsPage } from "../features/officer/pages/my-applications-page";
 import { ExistingApplicationWorkspacePage } from "../features/officer/pages/existing-application-workspace-page";
 import { GuidedSubmissionPage } from "../features/intake/pages/guided-submission-page";
+import { MinistryDashboardPage } from "../features/ministry/pages/ministry-dashboard-page";
 import { MinistryPortfolioPage } from "../features/ministry/pages/ministry-portfolio-page";
 import { MinistryAllocationPage } from "../features/ministry/pages/ministry-allocation-page";
 import { MinistryRegisterOfficerPage } from "../features/ministry/pages/ministry-register-officer-page";
@@ -38,6 +39,10 @@ export const router = createBrowserRouter([
     ),
     children: [
       {
+        path: "overview",
+        element: <MinistryDashboardPage />,
+      },
+      {
         path: "portfolio",
         element: <MinistryPortfolioPage />,
       },
@@ -59,7 +64,7 @@ export const router = createBrowserRouter([
       },
       {
         index: true,
-        element: <Navigate to="/ministry/portfolio" replace />,
+        element: <Navigate to="/ministry/overview" replace />,
       },
     ],
   },
