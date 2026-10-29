@@ -445,6 +445,8 @@ export const IntakeProvider: React.FC<IntakeProviderProps> = ({ children, existi
   const [createdApplication, setCreatedApplication] = useState<BackendCreatedApplication | null>(null);
   const [isUploading, setIsUploading] = useState<boolean>(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [isApproving, setIsApproving] = useState<boolean>(false);
+  const [approvalError, setApprovalError] = useState<string | null>(null);
   const [extractionError, setExtractionError] = useState<string | null>(null);
   const [scrutinyError, setScrutinyError] = useState<string | null>(null);
   const [isExtracting, setIsExtracting] = useState<boolean>(false);
@@ -720,6 +722,46 @@ export const IntakeProvider: React.FC<IntakeProviderProps> = ({ children, existi
       setIsUploading(false);
     }
   }, [institutionDetails, stagedDocuments, isExistingApplicationMode, setCurrentStep]);
+
+  const approveApplication = useCallback(async (): Promise<boolean> => {
+    if (!createdApplication?.id) {
+      setApprovalError("Submit the application documents before approving the application.");
+      return false;
+    }
+
+    if (createdApplication.status === "APPROVED") {
+      return true;
+    }
+
+    setIsApproving(true);
+    setApprovalError(null);
+    try {
+      const response = await apiClient<{
+        success: boolean;
+        data: Pick<
+          BackendCreatedApplication,
+          "id" | "applicationNumber" | "institutionName" | "status"
+        >;
+      }>(`/applications/${createdApplication.id}/approve`, {
+        method: "POST",
+      });
+
+      if (!response?.success || !response.data) {
+        throw new Error("The approval request returned an unsuccessful response.");
+      }
+
+      setCreatedApplication((previous) =>
+        previous ? { ...previous, ...response.data } : previous
+      );
+      return true;
+    } catch (error: unknown) {
+      const errorObject = error as { message?: string };
+      setApprovalError(errorObject.message || "Failed to approve the application. Please try again.");
+      return false;
+    } finally {
+      setIsApproving(false);
+    }
+  }, [createdApplication]);
 
   const runExtraction = useCallback(async (): Promise<boolean> => {
     if (!createdApplication?.id) {
@@ -1056,6 +1098,7 @@ export const IntakeProvider: React.FC<IntakeProviderProps> = ({ children, existi
     setFormErrors({});
     setActiveAlert(null);
     setCreatedApplication(null);
+    setApprovalError(null);
     setLatestScrutinyReport(null);
     setUploadError(null);
     setExtractionError(null);
@@ -1095,6 +1138,9 @@ export const IntakeProvider: React.FC<IntakeProviderProps> = ({ children, existi
       isUploading,
       uploadError,
       submitApplication,
+      isApproving,
+      approvalError,
+      approveApplication,
       extractionError,
       scrutinyError,
       isExtracting,
@@ -1133,6 +1179,9 @@ export const IntakeProvider: React.FC<IntakeProviderProps> = ({ children, existi
       isUploading,
       uploadError,
       submitApplication,
+      isApproving,
+      approvalError,
+      approveApplication,
       extractionError,
       scrutinyError,
       isExtracting,

@@ -18,6 +18,8 @@ function formatShortRef(appNumber: string, instName: string): string {
 
 function formatProcessingState(status: string): string {
   switch (status) {
+    case "APPROVED":
+      return "Application approved";
     case "COMPLIANT":
       return "Computed compliant";
     case "DEFICIENCIES_DETECTED":

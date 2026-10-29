@@ -8,6 +8,7 @@ import {
 } from "../middlewares/auth.middleware.js";
 import {
   createApplication,
+  approveApplication,
   getApplicationById,
   getCaseWorkspaceData,
   listApplications,
@@ -51,6 +52,7 @@ router.post("/:id/assign", authenticate, assignApplication);
 // Processing & Scrutiny (Officer regulatory execution only)
 router.post("/:id/extract", authenticate, requireApplicationAccess("write"), runExtractionForApplication);
 router.post("/:id/scrutiny", authenticate, requireApplicationAccess("write"), runScrutinyForApplication);
+router.post("/:id/approve", authenticate, requireApplicationAccess("write"), approveApplication);
 router.get("/:id/scrutiny", authenticate, requireApplicationAccess("read"), getScrutinyReportForApplication);
 router.get("/:id/documents/:documentId/file", authenticate, requireApplicationAccess("read"), getDocumentFile);
 router.patch("/:id/documents/:documentId/status", authenticate, requireApplicationAccess("write"), updateDocumentValidationStatus);

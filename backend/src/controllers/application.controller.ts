@@ -723,6 +723,55 @@ export const updateDocumentValidationStatus = async (req: Request, res: Response
   }
 };
 
+export const approveApplication = async (req: Request, res: Response): Promise<void> => {
+  const rawId = req.params.id;
+  const id = Array.isArray(rawId) ? rawId[0] : rawId;
+
+  if (!id) {
+    res.status(400).json({ success: false, error: "Application ID is required." });
+    return;
+  }
+
+  try {
+    const application = await prisma.application.update({
+      where: { id },
+      data: { status: "APPROVED" },
+      select: {
+        id: true,
+        applicationNumber: true,
+        institutionName: true,
+        status: true,
+      },
+    });
+
+    await auditService.logEvent({
+      applicationId: application.id,
+      actorId: req.user?.id,
+      actorName: req.user?.name || "OFFICER",
+      actorRole: req.user?.role || "OFFICER",
+      action: "APPLICATION_APPROVED",
+      resourceType: "APPLICATION",
+      resourceId: application.id,
+      status: "SUCCESS",
+      details: `Application ${application.applicationNumber} marked as approved.`,
+    });
+
+    res.status(200).json({ success: true, data: application });
+  } catch (error: unknown) {
+    const prismaError = error as { code?: string; message?: string };
+    if (prismaError.code === "P2025") {
+      res.status(404).json({ success: false, error: "Application not found." });
+      return;
+    }
+
+    console.error("Error approving application:", error);
+    res.status(500).json({
+      success: false,
+      error: prismaError.message || "Failed to approve application.",
+    });
+  }
+};
+
 export const getApplicationById = async (req: Request, res: Response): Promise<void> => {
   try {
     const rawId = req.params.id;

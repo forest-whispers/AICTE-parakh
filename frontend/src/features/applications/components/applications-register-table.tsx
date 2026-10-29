@@ -204,6 +204,9 @@ export const ApplicationsRegisterTable: React.FC<ApplicationsRegisterTableProps>
     ) {
       bg = "bg-[#EAF3EE] text-[#245E3F] border-[#C8E6C9]";
       label = status === "COMPLIANT" ? "✓ Compliant" : status.replace(/_/g, " ");
+    } else if (status === "APPROVED") {
+      bg = "bg-[#EAF3EE] text-[#245E3F] border-[#C8E6C9]";
+      label = "✓ Approved";
     } else if (
       status === "DEFICIENCIES_DETECTED" ||
       status === "EXTRACTION_FAILED" ||
@@ -342,6 +345,7 @@ export const ApplicationsRegisterTable: React.FC<ApplicationsRegisterTableProps>
               <option value="SCRUTINY_COMPLETED">Scrutiny Completed</option>
               <option value="SCRUTINY_FAILED">Scrutiny Failed</option>
               <option value="COMPLIANT">Compliant</option>
+              <option value="APPROVED">Approved</option>
               <option value="DEFICIENCIES_DETECTED">Deficiencies Detected</option>
               <option value="MANUAL_REVIEW_REQUIRED">Manual Review Required</option>
             </select>

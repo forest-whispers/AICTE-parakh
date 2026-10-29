@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useIntake } from "../hooks/use-intake";
 import { Button } from "../../../shared/ui/button";
-import { ApprovalBoundaryDialog } from "./approval-boundary-dialog";
+import { ApplicationApprovalDialog } from "./application-approval-dialog";
 import { computeDocumentValidationOutcome } from "../utils/validation-state";
 import { useAuth } from "../../auth/hooks/use-auth";
 
@@ -18,6 +18,9 @@ export const ReviewApproveStep: React.FC = () => {
     latestScrutinyReport,
     isScrutinyStale,
     isExistingApplicationMode,
+    approveApplication,
+    isApproving,
+    approvalError,
   } = useIntake();
 
   const [isAttested, setIsAttested] = useState(false);
@@ -25,6 +28,13 @@ export const ReviewApproveStep: React.FC = () => {
 
   const missingCount = missingRequiredCategories.length;
   const hasErrors = missingCount > 0;
+  const isAlreadyApproved = createdApplication?.status === "APPROVED";
+  const canApprove =
+    isAttested &&
+    !hasErrors &&
+    !isScrutinyStale &&
+    Boolean(createdApplication?.id) &&
+    !isAlreadyApproved;
 
   // Format program category human-readable
   const programCategoryLabel =
@@ -40,13 +50,15 @@ export const ReviewApproveStep: React.FC = () => {
 
   return (
     <div>
-      {/* Factually Accurate Approval Boundary Dialog */}
-      <ApprovalBoundaryDialog
+      {/* Confirm the final application status update */}
+      <ApplicationApprovalDialog
         isOpen={isApprovalModalOpen}
         onClose={() => setIsApprovalModalOpen(false)}
+        onConfirm={approveApplication}
+        isSubmitting={isApproving}
+        error={approvalError}
         institutionName={institutionDetails.institutionName}
         applicationNumber={institutionDetails.applicationNumber}
-        stagedDocumentCount={stagedDocuments.length}
       />
 
       {/* Scrutiny Stale Warning Banner */}
@@ -346,20 +358,22 @@ export const ReviewApproveStep: React.FC = () => {
           <span className="text-[12px] text-[#5C6F73]">
             {isMinistryAdmin
               ? "Ministry oversight inspection mode · Read-only"
-              : "Final review · Approval pending authorized intake authorization"}
+              : isAlreadyApproved
+              ? "Application status · APPROVED"
+              : "Final review · Application status update requires confirmation"}
           </span>
           {!isMinistryAdmin && (
             <Button
               type="button"
               onClick={() => setIsApprovalModalOpen(true)}
-              disabled={!isAttested || hasErrors}
+              disabled={!canApprove}
               className={`px-5 py-2.5 rounded-[3px] text-[13px] font-medium inline-flex items-center gap-1.5 transition-colors ${
-                isAttested && !hasErrors
+                canApprove
                   ? "bg-[#165A60] hover:bg-[#122B30] text-white cursor-pointer"
                   : "bg-[#D7DEDA] text-[#8A9B9D] cursor-not-allowed"
               }`}
             >
-              Approve application
+              {isAlreadyApproved ? "Application approved" : "Approve application"}
             </Button>
           )}
         </div>

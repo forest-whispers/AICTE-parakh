@@ -39,6 +39,9 @@ export interface IntakeContextValue {
   isUploading: boolean;
   uploadError: string | null;
   submitApplication: () => Promise<boolean>;
+  isApproving: boolean;
+  approvalError: string | null;
+  approveApplication: () => Promise<boolean>;
   // Re-run Extraction & Scrutiny
   extractionError: string | null;
   scrutinyError: string | null;

@@ -9,7 +9,11 @@ import {
 } from "../src/middlewares/auth.middleware.js";
 import { login } from "../src/controllers/auth.controller.js";
 import { getMyNotifications } from "../src/controllers/notification.controller.js";
-import { getCaseWorkspaceData, updateDocumentValidationStatus } from "../src/controllers/application.controller.js";
+import {
+  approveApplication,
+  getCaseWorkspaceData,
+  updateDocumentValidationStatus,
+} from "../src/controllers/application.controller.js";
 
 // Helper to create mock Express request and response objects
 function createMockContext(options: {
@@ -371,6 +375,31 @@ describe("Phase 1: API Route Security & Authorization Boundaries", () => {
     assert.ok(
       getData().error.includes("Ministry Administrators have operational oversight only")
     );
+  });
+
+  it("marks an assigned officer's application as approved and records the action", async () => {
+    const application = mockApps.find((app) => app.id === "app-1")!;
+    const previousStatus = application.status;
+    const officer = mockUsers[1];
+    const { req, res, getStatusCode, getData } = createMockContext({
+      params: { id: application.id },
+      user: {
+        id: officer.id,
+        name: officer.name,
+        role: "OFFICER",
+      },
+    });
+
+    try {
+      await approveApplication(req, res);
+
+      assert.equal(getStatusCode(), 200);
+      assert.equal(getData().success, true);
+      assert.equal(getData().data.status, "APPROVED");
+      assert.equal(application.status, "APPROVED");
+    } finally {
+      application.status = previousStatus;
+    }
   });
 
   it("restricts unassigned queue to Ministry Admin and rejects Officer access with 403", async () => {
