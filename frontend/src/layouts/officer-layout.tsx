@@ -3,7 +3,7 @@ import { Outlet, useNavigate, useLocation, Link } from "react-router-dom";
 import { useAuth } from "../features/auth/hooks/use-auth";
 import { Button } from "../shared/ui/button";
 import { PlannedFeatureDialog } from "../shared/ui/planned-feature-dialog";
-import { useOfficerNotifications } from "../features/officer/hooks/use-officer-notifications";
+import { NotificationBell } from "../features/notifications/components/notification-bell";
 import { LogOut, ChevronDown } from "lucide-react";
 import { MinistryLayout } from "./ministry-layout";
 
@@ -11,7 +11,6 @@ export const OfficerLayout: React.FC = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const { data: notifications } = useOfficerNotifications({ unreadOnly: true });
 
   const [plannedFeature, setPlannedFeature] = useState<{
     isOpen: boolean;
@@ -31,8 +30,6 @@ export const OfficerLayout: React.FC = () => {
   if (user?.role === "MINISTRY_ADMIN") {
     return <MinistryLayout />;
   }
-
-  const unreadCount = notifications?.length ?? 4;
 
   const handleLogout = async () => {
     await logout();
@@ -76,10 +73,8 @@ export const OfficerLayout: React.FC = () => {
     {
       label: "Notifications",
       path: "/officer/notifications",
-      active: location.pathname === "/officer/notifications",
-      planned: true,
-      slice: "Slice 7 (Notifications Center)",
-      description: "Comprehensive notification archive and delivery preferences.",
+      active: location.pathname.startsWith("/officer/notifications"),
+      planned: false,
     },
     {
       label: "Audit history",
@@ -92,7 +87,7 @@ export const OfficerLayout: React.FC = () => {
   ];
 
   return (
-    <div className="min-h-screen flex bg-[#F6F5F0]">
+    <div className="h-screen w-screen flex bg-[#F6F5F0] overflow-hidden">
       {/* Planned Feature Feedback Modal */}
       <PlannedFeatureDialog
         isOpen={plannedFeature.isOpen}
@@ -103,7 +98,7 @@ export const OfficerLayout: React.FC = () => {
       />
 
       {/* Left Navigation Rail (216px per Foundations / 10 & Figma 08) */}
-      <aside className="w-[216px] shrink-0 bg-[#122B30] text-white flex flex-col justify-between select-none">
+      <aside className="w-[216px] shrink-0 bg-[#122B30] text-white flex flex-col justify-between select-none h-full overflow-y-auto">
         <div>
           {/* Brand Header */}
           <div className="px-6 pt-6 pb-5">
@@ -159,7 +154,7 @@ export const OfficerLayout: React.FC = () => {
       </aside>
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden">
         {/* Top Context Header (66px, per Foundations reference 01/10 & 08) */}
         <header className="h-[66px] shrink-0 bg-white border-b border-[#D7DEDA] px-6 sm:px-8 flex items-center justify-between select-none">
           <div className="flex items-center gap-4">
@@ -168,24 +163,9 @@ export const OfficerLayout: React.FC = () => {
             </span>
           </div>
 
-          {/* Right Controls: Notification indicator & Officer identity matching Figma 08 */}
+          {/* Right Controls: Notification bell & Officer identity */}
           <div className="flex items-center gap-4">
-            {/* Unboxed Notification Indicator (◉ 4) */}
-            <button
-              type="button"
-              onClick={() =>
-                openPlannedModal(
-                  "Notification Center",
-                  "Full recipient notification archive and notification dispatch log.",
-                  "Slice 7 (Notifications)"
-                )
-              }
-              className="flex items-center gap-1.5 text-xs font-mono text-[#172E33] hover:text-[#165A60] transition-colors p-1"
-              title={`${unreadCount} unread notification(s)`}
-            >
-              <span className="text-[#172E33] text-sm leading-none">◉</span>
-              <span className="font-bold text-xs">{unreadCount}</span>
-            </button>
+            <NotificationBell userRole="OFFICER" />
 
             {/* Officer Profile & Dropdown */}
             <div className="relative">
@@ -230,7 +210,7 @@ export const OfficerLayout: React.FC = () => {
         </header>
 
         {/* Dynamic Page Outlet */}
-        <main className="flex-1 overflow-y-auto">
+        <main className="flex-1 min-h-0 overflow-y-auto">
           <Outlet />
         </main>
       </div>

@@ -64,12 +64,16 @@ export const ScrutinyReportDetailPage: React.FC<ScrutinyReportDetailPageProps> =
 
     try {
       const token = tokenManager.getToken();
-      const headers: Record<string, string> = {};
-      if (token) {
-        headers["Authorization"] = `Bearer ${token}`;
+      if (!token) {
+        throw new Error("Active session token not found. Please sign in again.");
       }
 
-      const url = buildUrl(`/reports/${report.id}/pdf`);
+      const headers: Record<string, string> = {
+        Authorization: `Bearer ${token}`,
+      };
+
+      // Supply token via header and URL parameter for resilient transport across reverse proxies
+      const url = buildUrl(`/reports/${report.id}/pdf?token=${encodeURIComponent(token)}`);
       const res = await fetch(url, {
         method: "GET",
         headers,
@@ -78,13 +82,25 @@ export const ScrutinyReportDetailPage: React.FC<ScrutinyReportDetailPageProps> =
       if (!res.ok) {
         let errorMsg = `Failed to download PDF (HTTP ${res.status})`;
         try {
-          const errorJson = await res.json();
-          if (errorJson.error) {
-            errorMsg = errorJson.error;
+          const rawText = await res.text();
+          try {
+            const parsed = JSON.parse(rawText);
+            if (parsed.error) {
+              errorMsg = parsed.error;
+            } else if (parsed.message) {
+              errorMsg = parsed.message;
+            } else {
+              errorMsg = rawText;
+            }
+          } catch {
+            if (rawText) errorMsg = rawText;
           }
         } catch {
-          const rawText = await res.text();
-          if (rawText) errorMsg = rawText;
+          // ignore stream read error
+        }
+        if (res.status === 401) {
+          tokenManager.clearToken();
+          errorMsg = "Your session has expired. Please sign in again to download the PDF.";
         }
         throw new Error(errorMsg);
       }

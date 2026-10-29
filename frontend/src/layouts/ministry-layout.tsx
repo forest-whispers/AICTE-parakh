@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Outlet, useNavigate, useLocation, Link } from "react-router-dom";
 import { useAuth } from "../features/auth/hooks/use-auth";
 import { Button } from "../shared/ui/button";
+import { NotificationBell } from "../features/notifications/components/notification-bell";
 import { LogOut, ChevronDown } from "lucide-react";
 
 export const MinistryLayout: React.FC = () => {
@@ -41,6 +42,16 @@ export const MinistryLayout: React.FC = () => {
       active: location.pathname.startsWith("/ministry/allocation"),
     },
     {
+      label: "Notifications",
+      path: "/ministry/notifications",
+      active: location.pathname.startsWith("/ministry/notifications"),
+    },
+    {
+      label: "Audit history",
+      path: "/ministry/audit",
+      active: location.pathname.startsWith("/ministry/audit"),
+    },
+    {
       label: "Register officer",
       path: "/ministry/register-officer",
       active: location.pathname.startsWith("/ministry/register-officer"),
@@ -48,9 +59,9 @@ export const MinistryLayout: React.FC = () => {
   ];
 
   return (
-    <div className="min-h-screen flex bg-[#F6F5F0]">
+    <div className="h-screen w-screen flex bg-[#F6F5F0] overflow-hidden">
       {/* Left Navigation Rail (216px) */}
-      <aside className="w-[216px] shrink-0 bg-[#122B30] text-white flex flex-col justify-between select-none">
+      <aside className="w-[216px] shrink-0 bg-[#122B30] text-white flex flex-col justify-between select-none h-full overflow-y-auto">
         <div>
           {/* Brand Header */}
           <div className="px-6 pt-6 pb-5">
@@ -62,7 +73,7 @@ export const MinistryLayout: React.FC = () => {
             </Link>
           </div>
 
-          {/* Navigation Items (Strictly Portfolio only per design scope) */}
+          {/* Navigation Items */}
           <nav className="px-3 py-2 space-y-1">
             {navItems.map((item) => (
               <Link
@@ -91,7 +102,7 @@ export const MinistryLayout: React.FC = () => {
       </aside>
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden">
         {/* Top Context Header (66px) */}
         <header className="h-[66px] shrink-0 bg-white border-b border-[#D7DEDA] px-6 sm:px-8 flex items-center justify-between select-none">
           <div className="flex items-center gap-4">
@@ -100,8 +111,10 @@ export const MinistryLayout: React.FC = () => {
             </span>
           </div>
 
-          {/* Right Controls: Ministry Admin profile & Dropdown */}
+          {/* Right Controls: Notification Bell & Ministry Admin profile */}
           <div className="flex items-center gap-4">
+            <NotificationBell userRole="MINISTRY_ADMIN" />
+
             <div className="relative">
               <button
                 type="button"
@@ -144,7 +157,7 @@ export const MinistryLayout: React.FC = () => {
         </header>
 
         {/* Dynamic Page Outlet */}
-        <main className="flex-1 overflow-y-auto">
+        <main className="flex-1 min-h-0 overflow-y-auto">
           <Outlet />
         </main>
       </div>

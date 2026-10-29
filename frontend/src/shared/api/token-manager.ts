@@ -3,8 +3,8 @@
  * 
  * Manages the Bearer authentication token for API communication.
  * Keeps an in-memory reference for fast synchronous retrieval,
- * and maintains session-level persistence so authenticated sessions
- * survive page reloads within the same browser tab.
+ * and maintains dual session & local persistence so authenticated sessions
+ * survive page reloads and cross-tab/new-window navigations within the browser.
  */
 
 const TOKEN_KEY = "parakh_auth_session_token";
@@ -17,10 +17,19 @@ export const tokenManager = {
       return inMemoryToken;
     }
     try {
-      const stored = sessionStorage.getItem(TOKEN_KEY);
-      if (stored) {
-        inMemoryToken = stored;
-        return stored;
+      const storedSession = sessionStorage.getItem(TOKEN_KEY);
+      if (storedSession) {
+        inMemoryToken = storedSession;
+        return storedSession;
+      }
+    } catch {
+      // In non-browser or restricted environments
+    }
+    try {
+      const storedLocal = localStorage.getItem(TOKEN_KEY);
+      if (storedLocal) {
+        inMemoryToken = storedLocal;
+        return storedLocal;
       }
     } catch {
       // In non-browser or restricted environments
@@ -35,12 +44,22 @@ export const tokenManager = {
     } catch {
       // Ignore storage errors
     }
+    try {
+      localStorage.setItem(TOKEN_KEY, token);
+    } catch {
+      // Ignore storage errors
+    }
   },
 
   clearToken(): void {
     inMemoryToken = null;
     try {
       sessionStorage.removeItem(TOKEN_KEY);
+    } catch {
+      // Ignore storage errors
+    }
+    try {
+      localStorage.removeItem(TOKEN_KEY);
     } catch {
       // Ignore storage errors
     }

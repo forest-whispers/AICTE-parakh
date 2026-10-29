@@ -13,6 +13,8 @@ import { MinistryAllocationPage } from "../features/ministry/pages/ministry-allo
 import { MinistryRegisterOfficerPage } from "../features/ministry/pages/ministry-register-officer-page";
 import { ScrutinyReportsRegisterPage } from "../features/reports/pages/scrutiny-reports-register-page";
 import { ScrutinyReportDetailPage } from "../features/reports/pages/scrutiny-report-detail-page";
+import { MinistryAuditHistoryPage } from "../features/audit/pages/ministry-audit-history-page";
+import { NotificationsPage } from "../features/notifications/pages/notifications-page";
 import { ProtectedRoute } from "../shared/components/protected-route";
 import { RootRedirect } from "../shared/components/root-redirect";
 import { OfficerOnly } from "../shared/components/officer-only";
@@ -61,6 +63,14 @@ export const router = createBrowserRouter([
       {
         path: "register-officer",
         element: <MinistryRegisterOfficerPage />,
+      },
+      {
+        path: "audit",
+        element: <MinistryAuditHistoryPage />,
+      },
+      {
+        path: "notifications",
+        element: <NotificationsPage userRole="MINISTRY_ADMIN" />,
       },
       {
         index: true,
@@ -119,6 +129,14 @@ export const router = createBrowserRouter([
         element: (
           <OfficerOnly>
             <GuidedSubmissionPage />
+          </OfficerOnly>
+        ),
+      },
+      {
+        path: "notifications",
+        element: (
+          <OfficerOnly>
+            <NotificationsPage userRole="OFFICER" />
           </OfficerOnly>
         ),
       },
