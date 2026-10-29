@@ -4,15 +4,19 @@ import { SignInForm } from "../components/sign-in-form";
 import { useAuth } from "../hooks/use-auth";
 
 export const SignInPage: React.FC = () => {
-  const { isAuthenticated, isInitialLoading } = useAuth();
+  const { user, isAuthenticated, isInitialLoading } = useAuth();
   const navigate = useNavigate();
 
-  // If already authenticated, redirect to protected officer workbench
+  // If already authenticated, redirect to appropriate role area
   useEffect(() => {
     if (!isInitialLoading && isAuthenticated) {
-      navigate("/officer/workbench", { replace: true });
+      if (user?.role === "MINISTRY_ADMIN") {
+        navigate("/ministry/portfolio", { replace: true });
+      } else {
+        navigate("/officer/workbench", { replace: true });
+      }
     }
-  }, [isAuthenticated, isInitialLoading, navigate]);
+  }, [isAuthenticated, isInitialLoading, user, navigate]);
 
   return (
     <div className="min-h-screen w-full flex flex-col lg:flex-row bg-[#F6F5F0]">

@@ -14,6 +14,7 @@ interface DocumentReviewModalProps {
   isOpen: boolean;
   onClose: () => void;
   validationBadge?: DocumentValidationBadge;
+  isReadOnly?: boolean;
   onSaveReview: (
     submission: DocumentReviewSubmission
   ) => Promise<{ success: boolean; scrutinyReport?: BackendScrutinyReport | null; error?: string }>;
@@ -41,6 +42,7 @@ interface DialogContentProps {
   document: StagedDocument;
   onClose: () => void;
   validationBadge?: DocumentValidationBadge;
+  isReadOnly?: boolean;
   onSaveReview: (
     submission: DocumentReviewSubmission
   ) => Promise<{ success: boolean; scrutinyReport?: BackendScrutinyReport | null; error?: string }>;
@@ -50,6 +52,7 @@ const DocumentReviewContent: React.FC<DialogContentProps> = ({
   document,
   onClose,
   validationBadge,
+  isReadOnly = false,
   onSaveReview,
 }) => {
   const expectedFields = useMemo(() => {
@@ -350,6 +353,13 @@ const DocumentReviewContent: React.FC<DialogContentProps> = ({
 
             {/* Scrollable Form Body */}
             <div className="flex-1 overflow-y-auto p-5 space-y-6">
+              {/* Ministry Oversight Read-Only Notice */}
+              {isReadOnly && (
+                <div className="p-3 bg-[#EAEFEF] border border-[#165A60]/30 rounded-[2px] text-[#165A60] text-[12px] leading-relaxed">
+                  <strong>Ministry Oversight Mode:</strong> You are inspecting source document evidence in read-only mode. All original extractions and officer reviews are visible. Document modifications and validation status changes are restricted to assigned processing officers.
+                </div>
+              )}
+
               {/* Section 1: Regulatory Document Status Decision */}
               <div className="bg-white border border-[#D7DEDA] rounded-[2px] p-4 shadow-xs">
                 <div className="flex items-center justify-between mb-2">
@@ -368,8 +378,9 @@ const DocumentReviewContent: React.FC<DialogContentProps> = ({
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3">
                   <button
                     type="button"
+                    disabled={isReadOnly}
                     onClick={() => setSelectedStatus("PASS")}
-                    className={`text-[12px] font-medium py-2 px-2.5 rounded-[2px] border transition-colors text-center ${
+                    className={`text-[12px] font-medium py-2 px-2.5 rounded-[2px] border transition-colors text-center disabled:opacity-60 disabled:cursor-not-allowed ${
                       selectedStatus === "PASS"
                         ? "bg-[#EAF3EE] text-[#245E3F] border-[#245E3F] font-bold shadow-xs"
                         : "bg-white text-[#172E33] border-[#D7DEDA] hover:bg-[#F4F6F5]"
@@ -379,8 +390,9 @@ const DocumentReviewContent: React.FC<DialogContentProps> = ({
                   </button>
                   <button
                     type="button"
+                    disabled={isReadOnly}
                     onClick={() => setSelectedStatus("DEFICIENCY")}
-                    className={`text-[12px] font-medium py-2 px-2.5 rounded-[2px] border transition-colors text-center ${
+                    className={`text-[12px] font-medium py-2 px-2.5 rounded-[2px] border transition-colors text-center disabled:opacity-60 disabled:cursor-not-allowed ${
                       selectedStatus === "DEFICIENCY"
                         ? "bg-[#FDF2F2] text-[#9E2A2B] border-[#9E2A2B] font-bold shadow-xs"
                         : "bg-white text-[#172E33] border-[#D7DEDA] hover:bg-[#FDF6F6]"
@@ -390,8 +402,9 @@ const DocumentReviewContent: React.FC<DialogContentProps> = ({
                   </button>
                   <button
                     type="button"
+                    disabled={isReadOnly}
                     onClick={() => setSelectedStatus("MANUAL_APPROVAL")}
-                    className={`text-[12px] font-medium py-2 px-2.5 rounded-[2px] border transition-colors text-center ${
+                    className={`text-[12px] font-medium py-2 px-2.5 rounded-[2px] border transition-colors text-center disabled:opacity-60 disabled:cursor-not-allowed ${
                       selectedStatus === "MANUAL_APPROVAL"
                         ? "bg-[#FFF9E6] text-[#8D6B00] border-[#8D6B00] font-bold shadow-xs"
                         : "bg-white text-[#172E33] border-[#D7DEDA] hover:bg-[#FFFDF5]"
@@ -401,8 +414,9 @@ const DocumentReviewContent: React.FC<DialogContentProps> = ({
                   </button>
                   <button
                     type="button"
+                    disabled={isReadOnly}
                     onClick={() => setSelectedStatus("RESET")}
-                    className={`text-[12px] font-medium py-2 px-2.5 rounded-[2px] border transition-colors text-center ${
+                    className={`text-[12px] font-medium py-2 px-2.5 rounded-[2px] border transition-colors text-center disabled:opacity-60 disabled:cursor-not-allowed ${
                       selectedStatus === "RESET"
                         ? "bg-[#EBEAE5] text-[#172E33] border-[#172E33] font-bold shadow-xs"
                         : "bg-white text-[#5C6F73] border-[#D7DEDA] hover:bg-[#F6F5F0]"
@@ -419,9 +433,10 @@ const DocumentReviewContent: React.FC<DialogContentProps> = ({
                   <textarea
                     rows={2}
                     value={generalNotes}
+                    disabled={isReadOnly}
                     onChange={(e) => setGeneralNotes(e.target.value)}
                     placeholder="Provide regulatory justification, evidence citations, or inspection findings..."
-                    className="w-full text-[12px] bg-white border border-[#D7DEDA] rounded-[2px] p-2 text-[#172E33] placeholder-[#8A9B9D] focus:outline-none focus:border-[#165A60]"
+                    className="w-full text-[12px] bg-white border border-[#D7DEDA] rounded-[2px] p-2 text-[#172E33] placeholder-[#8A9B9D] focus:outline-none focus:border-[#165A60] disabled:bg-[#F6F5F0] disabled:text-[#5C6F73]"
                   />
                 </div>
               </div>
@@ -512,12 +527,13 @@ const DocumentReviewContent: React.FC<DialogContentProps> = ({
                             </label>
                             <select
                               value={formState.state}
+                              disabled={isReadOnly}
                               onChange={(e) =>
                                 handleFieldChange(fieldDef.key, {
                                   state: e.target.value as FieldStateOption,
                                 })
                               }
-                              className="w-full text-[11px] font-mono bg-white border border-[#D7DEDA] rounded-[2px] px-2 py-1.5 text-[#172E33] focus:outline-none focus:border-[#165A60]"
+                              className="w-full text-[11px] font-mono bg-white border border-[#D7DEDA] rounded-[2px] px-2 py-1.5 text-[#172E33] focus:outline-none focus:border-[#165A60] disabled:bg-[#F6F5F0] disabled:text-[#5C6F73]"
                             >
                               <option value="PRESENT">PRESENT (Confirmed)</option>
                               <option value="NOT_FOUND">NOT_FOUND (Missing)</option>
@@ -542,6 +558,7 @@ const DocumentReviewContent: React.FC<DialogContentProps> = ({
                                   <input
                                     type="radio"
                                     name={`bool_${fieldDef.key}`}
+                                    disabled={isReadOnly}
                                     checked={Boolean(formState.value) === true}
                                     onChange={() => handleFieldChange(fieldDef.key, { value: true })}
                                     className="accent-[#165A60]"
@@ -552,6 +569,7 @@ const DocumentReviewContent: React.FC<DialogContentProps> = ({
                                   <input
                                     type="radio"
                                     name={`bool_${fieldDef.key}`}
+                                    disabled={isReadOnly}
                                     checked={Boolean(formState.value) === false}
                                     onChange={() => handleFieldChange(fieldDef.key, { value: false })}
                                     className="accent-[#165A60]"
@@ -563,25 +581,28 @@ const DocumentReviewContent: React.FC<DialogContentProps> = ({
                               <input
                                 type="number"
                                 step="any"
+                                disabled={isReadOnly}
                                 value={formState.value !== null && formState.value !== undefined ? String(formState.value) : ""}
                                 onChange={(e) => handleFieldChange(fieldDef.key, { value: e.target.value })}
                                 placeholder="e.g. 5.5"
-                                className="w-full text-[12px] font-mono bg-white border border-[#D7DEDA] rounded-[2px] px-2.5 py-1 text-[#172E33] focus:outline-none focus:border-[#165A60]"
+                                className="w-full text-[12px] font-mono bg-white border border-[#D7DEDA] rounded-[2px] px-2.5 py-1 text-[#172E33] focus:outline-none focus:border-[#165A60] disabled:bg-[#F6F5F0] disabled:text-[#5C6F73]"
                               />
                             ) : fieldDef.type === "date" ? (
                               <input
                                 type="date"
+                                disabled={isReadOnly}
                                 value={formState.value !== null && formState.value !== undefined ? String(formState.value) : ""}
                                 onChange={(e) => handleFieldChange(fieldDef.key, { value: e.target.value })}
-                                className="w-full text-[12px] font-mono bg-white border border-[#D7DEDA] rounded-[2px] px-2.5 py-1 text-[#172E33] focus:outline-none focus:border-[#165A60]"
+                                className="w-full text-[12px] font-mono bg-white border border-[#D7DEDA] rounded-[2px] px-2.5 py-1 text-[#172E33] focus:outline-none focus:border-[#165A60] disabled:bg-[#F6F5F0] disabled:text-[#5C6F73]"
                               />
                             ) : (
                               <input
                                 type="text"
+                                disabled={isReadOnly}
                                 value={formState.value !== null && formState.value !== undefined ? String(formState.value) : ""}
                                 onChange={(e) => handleFieldChange(fieldDef.key, { value: e.target.value })}
                                 placeholder={`Enter verified ${fieldDef.label.toLowerCase()}...`}
-                                className="w-full text-[12px] bg-white border border-[#D7DEDA] rounded-[2px] px-2.5 py-1 text-[#172E33] focus:outline-none focus:border-[#165A60]"
+                                className="w-full text-[12px] bg-white border border-[#D7DEDA] rounded-[2px] px-2.5 py-1 text-[#172E33] focus:outline-none focus:border-[#165A60] disabled:bg-[#F6F5F0] disabled:text-[#5C6F73]"
                               />
                             )}
                           </div>
@@ -593,6 +614,7 @@ const DocumentReviewContent: React.FC<DialogContentProps> = ({
                             <input
                               type="number"
                               min={1}
+                              disabled={isReadOnly}
                               value={formState.pageNumber ?? ""}
                               onChange={(e) =>
                                 handleFieldChange(fieldDef.key, {
@@ -600,17 +622,18 @@ const DocumentReviewContent: React.FC<DialogContentProps> = ({
                                 })
                               }
                               placeholder="Page #"
-                              className="w-full text-[11px] font-mono bg-white border border-[#D7DEDA] rounded-[2px] px-2 py-1 text-[#172E33] focus:outline-none focus:border-[#165A60]"
+                              className="w-full text-[11px] font-mono bg-white border border-[#D7DEDA] rounded-[2px] px-2 py-1 text-[#172E33] focus:outline-none focus:border-[#165A60] disabled:bg-[#F6F5F0] disabled:text-[#5C6F73]"
                               title="Source page number where verified"
                             />
                           </div>
                           <div className="sm:col-span-9">
                             <input
                               type="text"
+                              disabled={isReadOnly}
                               value={formState.notes}
                               onChange={(e) => handleFieldChange(fieldDef.key, { notes: e.target.value })}
                               placeholder="Officer inspection note (e.g. verified registrar seal)..."
-                              className="w-full text-[11px] bg-white border border-[#D7DEDA] rounded-[2px] px-2 py-1 text-[#172E33] placeholder-[#8A9B9D] focus:outline-none focus:border-[#165A60]"
+                              className="w-full text-[11px] bg-white border border-[#D7DEDA] rounded-[2px] px-2 py-1 text-[#172E33] placeholder-[#8A9B9D] focus:outline-none focus:border-[#165A60] disabled:bg-[#F6F5F0] disabled:text-[#5C6F73]"
                             />
                           </div>
                         </div>
@@ -638,7 +661,9 @@ const DocumentReviewContent: React.FC<DialogContentProps> = ({
             {/* Right Panel Footer */}
             <div className="px-5 py-3 border-t border-[#D7DEDA] bg-white flex items-center justify-between shrink-0">
               <span className="text-[11px] text-[#5C6F73]">
-                Decisions &amp; field corrections are logged in the regulatory audit trail.
+                {isReadOnly
+                  ? "Ministry Oversight: Read-only inspection of source document and evidence findings."
+                  : "Decisions & field corrections are logged in the regulatory audit trail."}
               </span>
               <div className="flex items-center gap-2">
                 <Button
@@ -650,21 +675,23 @@ const DocumentReviewContent: React.FC<DialogContentProps> = ({
                 >
                   Close
                 </Button>
-                <Button
-                  type="button"
-                  onClick={handleSaveReview}
-                  disabled={isSubmitting}
-                  className="bg-[#165A60] hover:bg-[#122B30] text-white text-[12px] font-medium px-4 py-1.5 rounded-[3px] inline-flex items-center gap-1.5 shadow-sm"
-                >
-                  {isSubmitting ? (
-                    <>
-                      <span className="inline-block animate-spin mr-1">◌</span>
-                      Saving &amp; Re-evaluating...
-                    </>
-                  ) : (
-                    "Save review & re-evaluate →"
-                  )}
-                </Button>
+                {!isReadOnly && (
+                  <Button
+                    type="button"
+                    onClick={handleSaveReview}
+                    disabled={isSubmitting}
+                    className="bg-[#165A60] hover:bg-[#122B30] text-white text-[12px] font-medium px-4 py-1.5 rounded-[3px] inline-flex items-center gap-1.5 shadow-sm"
+                  >
+                    {isSubmitting ? (
+                      <>
+                        <span className="inline-block animate-spin mr-1">◌</span>
+                        Saving &amp; Re-evaluating...
+                      </>
+                    ) : (
+                      "Save review & re-evaluate →"
+                    )}
+                  </Button>
+                )}
               </div>
             </div>
           </div>
@@ -679,6 +706,7 @@ export const DocumentReviewModal: React.FC<DocumentReviewModalProps> = ({
   isOpen,
   onClose,
   validationBadge,
+  isReadOnly,
   onSaveReview,
 }) => {
   if (!isOpen || !document) return null;
@@ -689,6 +717,7 @@ export const DocumentReviewModal: React.FC<DocumentReviewModalProps> = ({
       document={document}
       onClose={onClose}
       validationBadge={validationBadge}
+      isReadOnly={isReadOnly}
       onSaveReview={onSaveReview}
     />
   );

@@ -1,5 +1,6 @@
 import type { Request, Response } from "express";
 import { ministryService } from "../services/ministry.service.js";
+import { applicationListingService } from "../services/application-listing.service.js";
 
 export const getMinistryDashboard = async (_req: Request, res: Response): Promise<void> => {
   try {
@@ -35,29 +36,12 @@ export const getMinistryOverview = async (_req: Request, res: Response): Promise
 
 export const getMinistryApplications = async (req: Request, res: Response): Promise<void> => {
   try {
-    const {
-      metric,
-      search,
-      status,
-      officerId,
-      programCategory,
-      page,
-      limit,
-      sortBy,
-      sortOrder,
-    } = req.query;
+    if (!req.user) {
+      res.status(401).json({ success: false, error: "Authentication required." });
+      return;
+    }
 
-    const result = await ministryService.getPortfolioApplications({
-      metric: metric ? String(metric) : undefined,
-      search: search ? String(search) : undefined,
-      status: status ? String(status) : undefined,
-      officerId: officerId ? String(officerId) : undefined,
-      programCategory: programCategory ? String(programCategory) : undefined,
-      page: page ? Number(page) : undefined,
-      limit: limit ? Number(limit) : undefined,
-      sortBy: sortBy ? String(sortBy) : undefined,
-      sortOrder: sortOrder === "asc" ? "asc" : "desc",
-    });
+    const result = await applicationListingService.listApplications(req.user, req.query);
 
     res.status(200).json({
       success: true,

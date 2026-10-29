@@ -37,7 +37,6 @@ export const SignInForm: React.FC = () => {
   const [serverErrorMessage, setServerErrorMessage] = useState<string>("");
 
   const locState = location.state as LocationState | null;
-  const from = locState?.from?.pathname || "/officer/workbench";
 
   const {
     register,
@@ -60,13 +59,20 @@ export const SignInForm: React.FC = () => {
         clearSessionExpired();
       }
 
-      await login(values);
+      const authResult = await login(values);
 
       setAuthState("SUCCESS");
 
+      const target =
+        locState?.from?.pathname && locState.from.pathname !== "/sign-in"
+          ? locState.from.pathname
+          : authResult.user.role === "MINISTRY_ADMIN"
+          ? "/ministry/portfolio"
+          : "/officer/workbench";
+
       // Smooth transition into protected area matching Figma state reference
       setTimeout(() => {
-        navigate(from, { replace: true });
+        navigate(target, { replace: true });
       }, 750);
     } catch (err: unknown) {
       const apiErr = err as ApiError | undefined;

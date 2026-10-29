@@ -1,12 +1,16 @@
 import { createBrowserRouter, Navigate } from "react-router-dom";
 import { AuthLayout } from "../layouts/auth-layout";
 import { OfficerLayout } from "../layouts/officer-layout";
+import { MinistryLayout } from "../layouts/ministry-layout";
 import { SignInPage } from "../features/auth/pages/sign-in-page";
 import { OfficerWorkbenchPage } from "../features/officer/pages/officer-workbench-page";
 import { MyApplicationsPage } from "../features/officer/pages/my-applications-page";
 import { ExistingApplicationWorkspacePage } from "../features/officer/pages/existing-application-workspace-page";
 import { GuidedSubmissionPage } from "../features/intake/pages/guided-submission-page";
+import { MinistryPortfolioPage } from "../features/ministry/pages/ministry-portfolio-page";
 import { ProtectedRoute } from "../shared/components/protected-route";
+import { RootRedirect } from "../shared/components/root-redirect";
+import { OfficerOnly } from "../shared/components/officer-only";
 
 export const router = createBrowserRouter([
   // Public auth routes
@@ -20,22 +24,50 @@ export const router = createBrowserRouter([
     ],
   },
 
-  // Protected officer routes
+  // Protected ministry admin routes
+  {
+    path: "/ministry",
+    element: (
+      <ProtectedRoute allowedRoles={["MINISTRY_ADMIN"]}>
+        <MinistryLayout />
+      </ProtectedRoute>
+    ),
+    children: [
+      {
+        path: "portfolio",
+        element: <MinistryPortfolioPage />,
+      },
+      {
+        index: true,
+        element: <Navigate to="/ministry/portfolio" replace />,
+      },
+    ],
+  },
+
+  // Protected workspace routes (accessible to OFFICER and MINISTRY_ADMIN)
   {
     path: "/officer",
     element: (
-      <ProtectedRoute>
+      <ProtectedRoute allowedRoles={["OFFICER", "MINISTRY_ADMIN"]}>
         <OfficerLayout />
       </ProtectedRoute>
     ),
     children: [
       {
         path: "workbench",
-        element: <OfficerWorkbenchPage />,
+        element: (
+          <OfficerOnly>
+            <OfficerWorkbenchPage />
+          </OfficerOnly>
+        ),
       },
       {
         path: "applications",
-        element: <MyApplicationsPage />,
+        element: (
+          <OfficerOnly>
+            <MyApplicationsPage />
+          </OfficerOnly>
+        ),
       },
       {
         path: "applications/:applicationId",
@@ -43,11 +75,15 @@ export const router = createBrowserRouter([
       },
       {
         path: "submit",
-        element: <GuidedSubmissionPage />,
+        element: (
+          <OfficerOnly>
+            <GuidedSubmissionPage />
+          </OfficerOnly>
+        ),
       },
       {
         index: true,
-        element: <Navigate to="/officer/workbench" replace />,
+        element: <RootRedirect />,
       },
     ],
   },
@@ -55,7 +91,7 @@ export const router = createBrowserRouter([
   // Root redirect
   {
     path: "/",
-    element: <Navigate to="/officer/workbench" replace />,
+    element: <RootRedirect />,
   },
 
   // Catch-all 404 redirect

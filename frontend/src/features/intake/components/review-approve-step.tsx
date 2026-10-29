@@ -3,8 +3,12 @@ import { useIntake } from "../hooks/use-intake";
 import { Button } from "../../../shared/ui/button";
 import { ApprovalBoundaryDialog } from "./approval-boundary-dialog";
 import { computeDocumentValidationOutcome } from "../utils/validation-state";
+import { useAuth } from "../../auth/hooks/use-auth";
 
 export const ReviewApproveStep: React.FC = () => {
+  const { user } = useAuth();
+  const isMinistryAdmin = user?.role === "MINISTRY_ADMIN";
+
   const {
     setCurrentStep,
     institutionDetails,
@@ -283,31 +287,46 @@ export const ReviewApproveStep: React.FC = () => {
             </p>
           </div>
 
-          {/* Card 2: Officer Attestation & Approval */}
+          {/* Card 2: Officer Attestation & Approval OR Ministry Oversight Notice */}
           <div className="bg-white border border-[#D7DEDA] rounded-[2px] shadow-sm p-5 space-y-4">
             <div className="text-[14px] font-bold text-[#172E33]">
-              Officer authorization &amp; submission
+              {isMinistryAdmin
+                ? "Ministry oversight & segregation of duties"
+                : "Officer authorization & submission"}
             </div>
 
-            <p className="text-[12px] text-[#5C6F73] m-0 leading-relaxed">
-              As an authorized processing officer, certify that the institution particulars and document
-              manifest have been collected in accordance with AICTE Approval Process Handbook (APH)
-              2026–27.
-            </p>
+            {isMinistryAdmin ? (
+              <div className="space-y-3">
+                <p className="text-[12px] text-[#5C6F73] m-0 leading-relaxed">
+                  Under statutory regulatory governance, application approval and intake certification are strictly reserved for the authorized processing officer assigned to this case. Ministry administrators have full visibility to audit all findings and evidence.
+                </p>
+                <div className="p-3 bg-[#EAEFEF] border border-[#165A60]/20 rounded-[2px] text-[11px] text-[#165A60] font-mono">
+                  ◉ Mode: Oversight Inspection Only (Approval controls disabled)
+                </div>
+              </div>
+            ) : (
+              <>
+                <p className="text-[12px] text-[#5C6F73] m-0 leading-relaxed">
+                  As an authorized processing officer, certify that the institution particulars and document
+                  manifest have been collected in accordance with AICTE Approval Process Handbook (APH)
+                  2026–27.
+                </p>
 
-            {/* Attestation Checkbox */}
-            <label className="flex items-start gap-3 p-3 bg-[#FAFAF8] border border-[#D7DEDA] rounded-[2px] cursor-pointer hover:bg-[#F4F6F5] transition-colors select-none">
-              <input
-                type="checkbox"
-                checked={isAttested}
-                onChange={(e) => setIsAttested(e.target.checked)}
-                className="mt-0.5 rounded-[2px] border-[#D7DEDA] text-[#165A60] focus:ring-[#165A60]"
-              />
-              <span className="text-[12px] text-[#172E33] leading-snug">
-                I have reviewed the entered particulars and source document manifest for authorized
-                submission.
-              </span>
-            </label>
+                {/* Attestation Checkbox */}
+                <label className="flex items-start gap-3 p-3 bg-[#FAFAF8] border border-[#D7DEDA] rounded-[2px] cursor-pointer hover:bg-[#F4F6F5] transition-colors select-none">
+                  <input
+                    type="checkbox"
+                    checked={isAttested}
+                    onChange={(e) => setIsAttested(e.target.checked)}
+                    className="mt-0.5 rounded-[2px] border-[#D7DEDA] text-[#165A60] focus:ring-[#165A60]"
+                  />
+                  <span className="text-[12px] text-[#172E33] leading-snug">
+                    I have reviewed the entered particulars and source document manifest for authorized
+                    submission.
+                  </span>
+                </label>
+              </>
+            )}
           </div>
         </div>
       </div>
@@ -325,20 +344,24 @@ export const ReviewApproveStep: React.FC = () => {
 
         <div className="w-full sm:w-auto flex items-center justify-between sm:justify-end gap-4">
           <span className="text-[12px] text-[#5C6F73]">
-            Final review · Approval pending authorized intake authorization
+            {isMinistryAdmin
+              ? "Ministry oversight inspection mode · Read-only"
+              : "Final review · Approval pending authorized intake authorization"}
           </span>
-          <Button
-            type="button"
-            onClick={() => setIsApprovalModalOpen(true)}
-            disabled={!isAttested || hasErrors}
-            className={`px-5 py-2.5 rounded-[3px] text-[13px] font-medium inline-flex items-center gap-1.5 transition-colors ${
-              isAttested && !hasErrors
-                ? "bg-[#165A60] hover:bg-[#122B30] text-white cursor-pointer"
-                : "bg-[#D7DEDA] text-[#8A9B9D] cursor-not-allowed"
-            }`}
-          >
-            Approve application
-          </Button>
+          {!isMinistryAdmin && (
+            <Button
+              type="button"
+              onClick={() => setIsApprovalModalOpen(true)}
+              disabled={!isAttested || hasErrors}
+              className={`px-5 py-2.5 rounded-[3px] text-[13px] font-medium inline-flex items-center gap-1.5 transition-colors ${
+                isAttested && !hasErrors
+                  ? "bg-[#165A60] hover:bg-[#122B30] text-white cursor-pointer"
+                  : "bg-[#D7DEDA] text-[#8A9B9D] cursor-not-allowed"
+              }`}
+            >
+              Approve application
+            </Button>
+          )}
         </div>
       </div>
     </div>

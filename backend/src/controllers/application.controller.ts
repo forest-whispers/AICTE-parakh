@@ -8,6 +8,7 @@ import { vlmService } from "../services/vlm.service.js";
 import { complianceService } from "../services/compliance.service.js";
 import { auditService } from "../services/audit.service.js";
 import { notificationService } from "../services/notification.service.js";
+import { applicationListingService } from "../services/application-listing.service.js";
 
 export const createApplication = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -866,52 +867,12 @@ export const listApplications = async (req: Request, res: Response): Promise<voi
       return;
     }
 
-    // Officer only sees their assigned applications
-    // Ministry Admin sees all applications
-    const whereClause = req.user.role === "OFFICER"
-      ? { assignedOfficerId: req.user.id }
-      : {};
-
-    const applications = await prisma.application.findMany({
-      where: whereClause,
-      orderBy: { createdAt: "desc" },
-      include: {
-        assignedOfficer: {
-          select: { id: true, name: true, email: true, designation: true },
-        },
-        documents: {
-          select: {
-            id: true,
-            fileName: true,
-            originalName: true,
-            documentType: true,
-            mimeType: true,
-            fileSize: true,
-            extractionStatus: true,
-            extractedData: true,
-          },
-        },
-        scrutinyReports: {
-          orderBy: { createdAt: "desc" },
-          take: 1,
-          select: {
-            id: true,
-            overallStatus: true,
-            totalRulesRun: true,
-            passedCount: true,
-            deficiencyCount: true,
-            reviewCount: true,
-            missingCount: true,
-            evaluationDate: true,
-          },
-        },
-      },
-      take: 50,
-    });
+    const result = await applicationListingService.listApplications(req.user, req.query);
 
     res.status(200).json({
       success: true,
-      data: applications,
+      data: result.data,
+      pagination: result.pagination,
     });
   } catch (error: any) {
     console.error("Error listing applications:", error);

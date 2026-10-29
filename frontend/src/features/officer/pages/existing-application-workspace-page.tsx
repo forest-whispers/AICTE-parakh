@@ -6,9 +6,13 @@ import { IntakeStepper } from "../../intake/components/intake-stepper";
 import { ExtractionValidationStep } from "../../intake/components/extraction-validation-step";
 import { ReviewApproveStep } from "../../intake/components/review-approve-step";
 import { Button } from "../../../shared/ui/button";
+import { useAuth } from "../../auth/hooks/use-auth";
 
 const ExistingApplicationWorkspaceContent: React.FC = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const isMinistryAdmin = user?.role === "MINISTRY_ADMIN";
+
   const {
     currentStep,
     setCurrentStep,
@@ -17,6 +21,14 @@ const ExistingApplicationWorkspaceContent: React.FC = () => {
     isLoadingExistingApplication,
     existingApplicationError,
   } = useIntake();
+
+  const handleReturnListing = () => {
+    if (isMinistryAdmin) {
+      navigate("/ministry/portfolio");
+    } else {
+      navigate("/officer/applications");
+    }
+  };
 
   // 1. Loading State
   if (isLoadingExistingApplication) {
@@ -67,19 +79,21 @@ const ExistingApplicationWorkspaceContent: React.FC = () => {
               <div className="mt-5 flex items-center gap-3">
                 <Button
                   type="button"
-                  onClick={() => navigate("/officer/applications")}
+                  onClick={handleReturnListing}
                   className="bg-[#165A60] hover:bg-[#122B30] text-white text-[12px] font-medium px-4 py-2 rounded-[3px] shadow-sm"
                 >
-                  ← Return to My Applications
+                  {isMinistryAdmin ? "← Return to Portfolio" : "← Return to My Applications"}
                 </Button>
-                <Button
-                  type="button"
-                  variant="secondary"
-                  onClick={() => navigate("/officer/workbench")}
-                  className="text-[12px] font-medium px-4 py-2 border-[#D7DEDA]"
-                >
-                  My Workbench
-                </Button>
+                {!isMinistryAdmin && (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={() => navigate("/officer/workbench")}
+                    className="text-[12px] font-medium px-4 py-2 border-[#D7DEDA]"
+                  >
+                    My Workbench
+                  </Button>
+                )}
               </div>
             </div>
           </div>
@@ -112,9 +126,15 @@ const ExistingApplicationWorkspaceContent: React.FC = () => {
       <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <div className="text-[10px] font-mono tracking-wider uppercase text-[#5C6F73] mb-1 flex items-center gap-1.5">
-            <Link to="/officer/applications" className="hover:underline text-[#165A60]">
-              MY APPLICATIONS
-            </Link>
+            {isMinistryAdmin ? (
+              <Link to="/ministry/portfolio" className="hover:underline text-[#165A60]">
+                PORTFOLIO
+              </Link>
+            ) : (
+              <Link to="/officer/applications" className="hover:underline text-[#165A60]">
+                MY APPLICATIONS
+              </Link>
+            )}
             <span>/</span>
             <span className="font-semibold text-[#172E33]">
               {institutionDetails.applicationNumber || createdApplication?.applicationNumber || "APPLICATION"}
@@ -141,12 +161,27 @@ const ExistingApplicationWorkspaceContent: React.FC = () => {
         <Button
           type="button"
           variant="secondary"
-          onClick={() => navigate("/officer/applications")}
+          onClick={handleReturnListing}
           className="self-start sm:self-center text-[12px] bg-white border-[#D7DEDA] text-[#172E33] px-3.5 py-1.5"
         >
-          ← All applications
+          {isMinistryAdmin ? "← Back to Portfolio" : "← All applications"}
         </Button>
       </div>
+
+      {/* Ministry Oversight Informational Notice */}
+      {isMinistryAdmin && (
+        <div className="mb-6 p-4 bg-[#EAEFEF] border border-[#165A60]/30 rounded-[3px] text-[#165A60] flex items-start gap-3">
+          <span className="text-xl">👁️</span>
+          <div>
+            <div className="text-[13px] font-bold text-[#172E33]">
+              Ministry Oversight &amp; Statutory Audit Mode
+            </div>
+            <div className="text-[12px] text-[#5C6F73] mt-0.5 leading-relaxed">
+              You are inspecting this statutory application with ministry-wide administrative read permissions. All source documents, VLM extraction results, scrutiny outcomes, and audit histories are available for review. In accordance with statutory segregation of duties, evidence corrections, validation status overrides, and approval sign-offs are restricted to assigned processing officers.
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 5-Stage Stepper Strip: Steps 1 & 2 Visibly Disabled and Locked */}
       <IntakeStepper

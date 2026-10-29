@@ -7,6 +7,7 @@ import { VlmExtractedFieldsDrawer } from "./vlm-extracted-fields-drawer";
 import { DocumentPreviewModal } from "./document-preview-modal";
 import { computeDocumentValidationOutcome } from "../utils/validation-state";
 import type { StagedDocument } from "../types/intake.types";
+import { useAuth } from "../../auth/hooks/use-auth";
 
 interface ExtractionValidationStepProps {
   onProceedToReview: () => void;
@@ -16,6 +17,8 @@ export const ExtractionValidationStep: React.FC<ExtractionValidationStepProps> =
   onProceedToReview,
 }) => {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const isMinistryAdmin = user?.role === "MINISTRY_ADMIN";
   const {
     setCurrentStep,
     goToPreviousStep,
@@ -138,6 +141,7 @@ export const ExtractionValidationStep: React.FC<ExtractionValidationStepProps> =
       <DocumentPreviewModal
         document={previewDoc}
         onClose={() => setPreviewDoc(null)}
+        isReadOnly={isMinistryAdmin}
         validationBadge={
           previewDoc
             ? computeDocumentValidationOutcome(
@@ -262,21 +266,27 @@ export const ExtractionValidationStep: React.FC<ExtractionValidationStepProps> =
                     </p>
                   </div>
                 </div>
-                <Button
-                  type="button"
-                  onClick={runExtraction}
-                  disabled={isExtracting}
-                  className="bg-[#165A60] hover:bg-[#122B30] text-white text-[13px] font-medium px-4 py-2 rounded-[3px] inline-flex items-center gap-1.5 self-start sm:self-auto shrink-0 shadow-sm transition-colors"
-                >
-                  {isExtracting ? (
-                    <>
-                      <span className="inline-block animate-spin mr-1">◌</span>
-                      Running extraction...
-                    </>
-                  ) : (
-                    "Run extraction"
-                  )}
-                </Button>
+                {!isMinistryAdmin ? (
+                  <Button
+                    type="button"
+                    onClick={runExtraction}
+                    disabled={isExtracting}
+                    className="bg-[#165A60] hover:bg-[#122B30] text-white text-[13px] font-medium px-4 py-2 rounded-[3px] inline-flex items-center gap-1.5 self-start sm:self-auto shrink-0 shadow-sm transition-colors"
+                  >
+                    {isExtracting ? (
+                      <>
+                        <span className="inline-block animate-spin mr-1">◌</span>
+                        Running extraction...
+                      </>
+                    ) : (
+                      "Run extraction"
+                    )}
+                  </Button>
+                ) : (
+                  <span className="text-[11px] font-mono text-[#8A9B9D] italic self-start sm:self-auto shrink-0">
+                    Oversight mode: extraction triggers restricted to assigned officer
+                  </span>
+                )}
               </div>
             </div>
           )}
@@ -297,21 +307,27 @@ export const ExtractionValidationStep: React.FC<ExtractionValidationStepProps> =
                     </p>
                   </div>
                 </div>
-                <Button
-                  type="button"
-                  onClick={runScrutiny}
-                  disabled={isEvaluatingScrutiny}
-                  className="bg-[#165A60] hover:bg-[#122B30] text-white text-[13px] font-medium px-4 py-2 rounded-[3px] inline-flex items-center gap-1.5 self-start sm:self-auto shrink-0 shadow-sm transition-colors"
-                >
-                  {isEvaluatingScrutiny ? (
-                    <>
-                      <span className="inline-block animate-spin mr-1">◌</span>
-                      Running scrutiny...
-                    </>
-                  ) : (
-                    "Run scrutiny"
-                  )}
-                </Button>
+                {!isMinistryAdmin ? (
+                  <Button
+                    type="button"
+                    onClick={runScrutiny}
+                    disabled={isEvaluatingScrutiny}
+                    className="bg-[#165A60] hover:bg-[#122B30] text-white text-[13px] font-medium px-4 py-2 rounded-[3px] inline-flex items-center gap-1.5 self-start sm:self-auto shrink-0 shadow-sm transition-colors"
+                  >
+                    {isEvaluatingScrutiny ? (
+                      <>
+                        <span className="inline-block animate-spin mr-1">◌</span>
+                        Running scrutiny...
+                      </>
+                    ) : (
+                      "Run scrutiny"
+                    )}
+                  </Button>
+                ) : (
+                  <span className="text-[11px] font-mono text-[#8A9B9D] italic self-start sm:self-auto shrink-0">
+                    Oversight mode: scrutiny evaluation restricted to assigned officer
+                  </span>
+                )}
               </div>
             </div>
           )}
@@ -332,21 +348,27 @@ export const ExtractionValidationStep: React.FC<ExtractionValidationStepProps> =
                     </p>
                   </div>
                 </div>
-                <Button
-                  type="button"
-                  onClick={runScrutiny}
-                  disabled={isEvaluatingScrutiny}
-                  className="bg-[#165A60] hover:bg-[#122B30] text-white text-[13px] font-medium px-4 py-2 rounded-[3px] inline-flex items-center gap-1.5 self-start sm:self-auto shrink-0 shadow-sm transition-colors"
-                >
-                  {isEvaluatingScrutiny ? (
-                    <>
-                      <span className="inline-block animate-spin mr-1">◌</span>
-                      Running scrutiny...
-                    </>
-                  ) : (
-                    "Re-run scrutiny"
-                  )}
-                </Button>
+                {!isMinistryAdmin ? (
+                  <Button
+                    type="button"
+                    onClick={runScrutiny}
+                    disabled={isEvaluatingScrutiny}
+                    className="bg-[#165A60] hover:bg-[#122B30] text-white text-[13px] font-medium px-4 py-2 rounded-[3px] inline-flex items-center gap-1.5 self-start sm:self-auto shrink-0 shadow-sm transition-colors"
+                  >
+                    {isEvaluatingScrutiny ? (
+                      <>
+                        <span className="inline-block animate-spin mr-1">◌</span>
+                        Running scrutiny...
+                      </>
+                    ) : (
+                      "Re-run scrutiny"
+                    )}
+                  </Button>
+                ) : (
+                  <span className="text-[11px] font-mono text-[#8A9B9D] italic self-start sm:self-auto shrink-0">
+                    Oversight mode: scrutiny re-evaluation restricted to assigned officer
+                  </span>
+                )}
               </div>
             </div>
           )}
@@ -469,7 +491,17 @@ export const ExtractionValidationStep: React.FC<ExtractionValidationStepProps> =
 
                           {/* Col 5: Status Control (Officer decision override) */}
                           <td className="py-3 px-3 whitespace-nowrap">
-                            {isManualApprovalRequired ? (
+                            {isMinistryAdmin ? (
+                              doc.extractionData?.officerValidation ? (
+                                <span className="text-[11px] font-mono px-2 py-0.5 rounded-[2px] bg-[#EAEFEF] text-[#165A60] border border-[#165A60]/20 font-medium">
+                                  Officer: {doc.extractionData.officerValidation.status}
+                                </span>
+                              ) : (
+                                <span className="text-[11px] font-mono text-[#8A9B9D] italic">
+                                  Standard Computed
+                                </span>
+                              )
+                            ) : isManualApprovalRequired ? (
                               <Button
                                 type="button"
                                 variant="secondary"
@@ -704,10 +736,16 @@ export const ExtractionValidationStep: React.FC<ExtractionValidationStepProps> =
           <Button
             type="button"
             variant="secondary"
-            onClick={() => navigate("/officer/applications")}
+            onClick={() => {
+              if (isMinistryAdmin) {
+                navigate("/ministry/portfolio");
+              } else {
+                navigate("/officer/applications");
+              }
+            }}
             className="w-full sm:w-auto bg-white border-[#D7DEDA] text-[#172E33] hover:bg-neutral-50 px-4 py-2.5 rounded-[3px] text-[13px] font-medium inline-flex items-center gap-1.5"
           >
-            ← Back to My Applications
+            {isMinistryAdmin ? "← Back to Portfolio" : "← Back to My Applications"}
           </Button>
         ) : (
           <Button
@@ -731,8 +769,8 @@ export const ExtractionValidationStep: React.FC<ExtractionValidationStepProps> =
               : "Authorized intake · Ready for review"}
           </span>
 
-          {/* Conditional Action: Run Extraction */}
-          {isExtractionFailed && (
+          {/* Conditional Action: Run Extraction (Officer Only) */}
+          {isExtractionFailed && !isMinistryAdmin && (
             <Button
               type="button"
               onClick={runExtraction}
@@ -750,8 +788,8 @@ export const ExtractionValidationStep: React.FC<ExtractionValidationStepProps> =
             </Button>
           )}
 
-          {/* Conditional Action: Run Scrutiny */}
-          {isScrutinyFailed && (
+          {/* Conditional Action: Run Scrutiny (Officer Only) */}
+          {isScrutinyFailed && !isMinistryAdmin && (
             <Button
               type="button"
               onClick={runScrutiny}

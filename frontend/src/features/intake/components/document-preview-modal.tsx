@@ -12,6 +12,7 @@ export interface DocumentPreviewModalProps {
   isOpen?: boolean;
   onClose: () => void;
   validationBadge?: DocumentValidationBadge;
+  isReadOnly?: boolean;
   onUpdateStatus?: (
     status: "PASS" | "DEFICIENCY" | "MANUAL_APPROVAL" | "RESET",
     notes?: string
@@ -26,6 +27,7 @@ export const DocumentPreviewModal: React.FC<DocumentPreviewModalProps> = ({
   isOpen = Boolean(document),
   onClose,
   validationBadge,
+  isReadOnly,
   onUpdateStatus,
   onSaveReview,
 }) => {
@@ -46,6 +48,7 @@ export const DocumentPreviewModal: React.FC<DocumentPreviewModalProps> = ({
       isOpen={isOpen && Boolean(document)}
       onClose={onClose}
       validationBadge={validationBadge}
+      isReadOnly={isReadOnly}
       onSaveReview={handleSave}
     />
   );

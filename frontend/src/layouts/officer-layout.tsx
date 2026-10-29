@@ -5,6 +5,7 @@ import { Button } from "../shared/ui/button";
 import { PlannedFeatureDialog } from "../shared/ui/planned-feature-dialog";
 import { useOfficerNotifications } from "../features/officer/hooks/use-officer-notifications";
 import { LogOut, ChevronDown } from "lucide-react";
+import { MinistryLayout } from "./ministry-layout";
 
 export const OfficerLayout: React.FC = () => {
   const { user, logout } = useAuth();
@@ -25,6 +26,11 @@ export const OfficerLayout: React.FC = () => {
   });
 
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+
+  // If authenticated as Ministry Admin, render the Ministry Layout
+  if (user?.role === "MINISTRY_ADMIN") {
+    return <MinistryLayout />;
+  }
 
   const unreadCount = notifications?.length ?? 4;
 
