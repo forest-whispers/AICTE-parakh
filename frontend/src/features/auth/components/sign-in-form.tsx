@@ -340,24 +340,18 @@ export const SignInForm: React.FC = () => {
       </form>
 
       {/* Fast Personnel Sign-In for Seeded Accounts */}
-      <div className="mt-8 pt-6 border-t border-[#D7DEDA]">
-        <div className="flex items-center justify-between mb-2.5">
+      <div className="mt-6 pt-5 border-t border-[#D7DEDA]">
+        <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-1.5">
-            <Zap className="w-3.5 h-3.5 text-[#165A60]" />
-            <span className="text-[11px] font-mono uppercase tracking-[0.16em] text-[#172E33] font-semibold">
-              Fast Personnel Access
+            <Zap className="w-3 h-3 text-[#165A60]" />
+            <span className="text-[10px] font-mono uppercase tracking-[0.16em] text-[#5C6F73] font-semibold">
+              Fast Demo Sign-In
             </span>
           </div>
-          <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-mono font-medium bg-[#165A60]/10 text-[#165A60]">
-            1-CLICK DEMO AUTH
-          </span>
+          <span className="text-[9px] text-[#7E9FA1] font-mono">1-CLICK</span>
         </div>
 
-        <p className="text-[12px] text-[#5C6F73] mb-3 leading-relaxed">
-          Select a seeded personnel account to authenticate and enter immediately:
-        </p>
-
-        <div className="space-y-2">
+        <div className="grid grid-cols-3 gap-2">
           {SEEDED_ACCOUNTS.map((acc) => {
             const Icon = acc.icon;
             const isLoggingThis = isBusy && activeFastEmail === acc.email;
@@ -367,54 +361,19 @@ export const SignInForm: React.FC = () => {
                 type="button"
                 onClick={() => handleFastLogin(acc.email, acc.password)}
                 disabled={isBusy}
-                className={`w-full text-left p-3 rounded border transition-all duration-150 flex items-center justify-between group ${
+                title={`Fast Login as ${acc.name} (${acc.email})`}
+                className={`flex items-center justify-center gap-1.5 py-1.5 px-2 rounded border text-xs font-medium transition-all ${
                   isLoggingThis
-                    ? "bg-[#EBF4F5] border-[#165A60] shadow-sm"
-                    : "bg-white hover:bg-[#F2F7F7] border-[#D7DEDA] hover:border-[#165A60] shadow-[0_1px_2px_rgba(0,0,0,0.03)]"
+                    ? "bg-[#EBF4F5] border-[#165A60] text-[#165A60] shadow-sm"
+                    : "bg-white hover:bg-[#F2F7F7] border-[#D7DEDA] hover:border-[#165A60] text-[#172E33]"
                 } ${isBusy && !isLoggingThis ? "opacity-60 cursor-not-allowed" : "cursor-pointer"}`}
               >
-                <div className="flex items-center gap-3 min-w-0">
-                  <div
-                    className={`w-8 h-8 rounded flex items-center justify-center shrink-0 ${
-                      acc.role === "MINISTRY_ADMIN"
-                        ? "bg-[#165A60]/10 text-[#165A60]"
-                        : "bg-[#245D78]/10 text-[#245D78]"
-                    }`}
-                  >
-                    {isLoggingThis ? (
-                      <Loader2 className="w-4 h-4 animate-spin text-[#165A60]" />
-                    ) : (
-                      <Icon className="w-4 h-4" />
-                    )}
-                  </div>
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="text-[13px] font-semibold text-[#172E33] truncate group-hover:text-[#165A60]">
-                        {acc.name}
-                      </span>
-                      <span
-                        className={`text-[10px] font-mono font-medium px-1.5 py-0.5 rounded ${
-                          acc.role === "MINISTRY_ADMIN"
-                            ? "bg-[#165A60]/10 text-[#165A60]"
-                            : "bg-[#5C6F73]/10 text-[#5C6F73]"
-                        }`}
-                      >
-                        {acc.badge}
-                      </span>
-                    </div>
-                    <div className="text-[11px] text-[#5C6F73] truncate flex items-center gap-1.5 mt-0.5">
-                      <span className="font-mono text-[#7E9FA1]">{acc.email}</span>
-                      <span>·</span>
-                      <span className="truncate">{acc.scope}</span>
-                    </div>
-                  </div>
-                </div>
-                <div className="shrink-0 ml-3">
-                  <span className="text-xs font-medium text-[#165A60] opacity-0 group-hover:opacity-100 group-focus:opacity-100 transition-opacity flex items-center gap-0.5">
-                    <span>{isLoggingThis ? "Signing in..." : "Login"}</span>
-                    {!isLoggingThis && <ArrowRight className="w-3 h-3" />}
-                  </span>
-                </div>
+                {isLoggingThis ? (
+                  <Loader2 className="w-3 h-3 animate-spin text-[#165A60] shrink-0" />
+                ) : (
+                  <Icon className="w-3 h-3 text-[#165A60] shrink-0" />
+                )}
+                <span className="truncate">{acc.badge}</span>
               </button>
             );
           })}
