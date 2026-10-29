@@ -9,6 +9,7 @@ import { ExistingApplicationWorkspacePage } from "../features/officer/pages/exis
 import { GuidedSubmissionPage } from "../features/intake/pages/guided-submission-page";
 import { MinistryPortfolioPage } from "../features/ministry/pages/ministry-portfolio-page";
 import { MinistryAllocationPage } from "../features/ministry/pages/ministry-allocation-page";
+import { MinistryRegisterOfficerPage } from "../features/ministry/pages/ministry-register-officer-page";
 import { ProtectedRoute } from "../shared/components/protected-route";
 import { RootRedirect } from "../shared/components/root-redirect";
 import { OfficerOnly } from "../shared/components/officer-only";
@@ -41,6 +42,10 @@ export const router = createBrowserRouter([
       {
         path: "allocation",
         element: <MinistryAllocationPage />,
+      },
+      {
+        path: "register-officer",
+        element: <MinistryRegisterOfficerPage />,
       },
       {
         index: true,

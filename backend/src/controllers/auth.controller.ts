@@ -138,3 +138,118 @@ export const listOfficers = async (_req: Request, res: Response): Promise<void> 
     });
   }
 };
+
+export const registerOfficer = async (req: Request, res: Response): Promise<void> => {
+  try {
+    if (!req.user) {
+      res.status(401).json({ success: false, error: "Authentication required." });
+      return;
+    }
+
+    if (req.user.role !== "MINISTRY_ADMIN") {
+      res.status(403).json({
+        success: false,
+        error: "Access denied. Only Ministry Administrators can register new officers.",
+      });
+      return;
+    }
+
+    const { email, password, name, designation, department } = req.body;
+
+    if (!name || typeof name !== "string" || !name.trim()) {
+      res.status(400).json({ success: false, error: "Officer full name is required." });
+      return;
+    }
+
+    if (!email || typeof email !== "string" || !email.trim()) {
+      res.status(400).json({ success: false, error: "Official email address is required." });
+      return;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email.trim())) {
+      res.status(400).json({ success: false, error: "Invalid email address format." });
+      return;
+    }
+
+    if (!password || typeof password !== "string" || password.length < 8) {
+      res.status(400).json({
+        success: false,
+        error: "Initial password is required and must be at least 8 characters long.",
+      });
+      return;
+    }
+
+    if (!designation || typeof designation !== "string" || !designation.trim()) {
+      res.status(400).json({ success: false, error: "Officer designation is required." });
+      return;
+    }
+
+    const normalizedEmail = email.trim().toLowerCase();
+
+    // Check duplicate email
+    const existing = await prisma.user.findUnique({
+      where: { email: normalizedEmail },
+    });
+
+    if (existing) {
+      res.status(400).json({
+        success: false,
+        error: `An officer with email '${normalizedEmail}' is already registered.`,
+      });
+      return;
+    }
+
+    // Secure password hashing using scrypt
+    const { hash, salt } = authService.hashPassword(password);
+
+    // Force role strictly to OFFICER on the server
+    const newOfficer = await prisma.user.create({
+      data: {
+        email: normalizedEmail,
+        passwordHash: hash,
+        salt,
+        name: name.trim(),
+        role: "OFFICER", // Server-enforced role
+        designation: designation.trim(),
+        department: department && typeof department === "string" && department.trim() ? department.trim() : null,
+        isActive: true,
+      },
+    });
+
+    // Record audit event
+    await prisma.auditLog.create({
+      data: {
+        actorId: req.user.id,
+        actorName: req.user.name,
+        actorRole: req.user.role,
+        action: "OFFICER_REGISTERED",
+        resourceType: "USER",
+        resourceId: newOfficer.id,
+        status: "SUCCESS",
+        details: `Registered scrutiny officer ${newOfficer.name} <${newOfficer.email}> (${newOfficer.designation})`,
+        metadata: {
+          registeredEmail: newOfficer.email,
+          registeredRole: "OFFICER",
+          registeredDesignation: newOfficer.designation,
+          registeredDepartment: newOfficer.department,
+          registeredBy: req.user.name,
+        },
+      },
+    });
+
+    const sanitized = authService.sanitizeUser(newOfficer);
+
+    res.status(201).json({
+      success: true,
+      message: "Officer account registered successfully.",
+      data: sanitized,
+    });
+  } catch (error: any) {
+    console.error("Error registering officer:", error);
+    res.status(500).json({
+      success: false,
+      error: error.message || "Failed to register officer.",
+    });
+  }
+};

@@ -27,6 +27,11 @@ export const MinistryLayout: React.FC = () => {
       path: "/ministry/allocation",
       active: location.pathname.startsWith("/ministry/allocation"),
     },
+    {
+      label: "Register officer",
+      path: "/ministry/register-officer",
+      active: location.pathname.startsWith("/ministry/register-officer"),
+    },
   ];
 
   return (

@@ -9,7 +9,7 @@ import {
   getMinistryActivity,
 } from "../controllers/ministry.controller.js";
 import { getUnassignedApplications } from "../controllers/assignment.controller.js";
-import { listOfficers } from "../controllers/auth.controller.js";
+import { listOfficers, registerOfficer } from "../controllers/auth.controller.js";
 
 const router = Router();
 
@@ -24,6 +24,7 @@ router.get("/overview", getMinistryOverview);
 router.get("/applications", getMinistryApplications);
 router.get("/allocation-queue", getUnassignedApplications);
 router.get("/officers", listOfficers);
+router.post("/officers", registerOfficer);
 router.get("/workload", getMinistryWorkload);
 router.get("/issues", getMinistryIssues);
 router.get("/activity", getMinistryActivity);
