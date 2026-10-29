@@ -124,7 +124,12 @@ export const getAuthorityVerifications = async (
       return;
     }
 
-    const verifications = await authorityVerificationService.getLatestVerifications(id);
+    const batchId =
+      typeof req.query.batchId === "string" && req.query.batchId.trim().length > 0
+        ? req.query.batchId.trim()
+        : undefined;
+
+    const verifications = await authorityVerificationService.getLatestVerifications(id, batchId);
 
     res.status(200).json({
       success: true,

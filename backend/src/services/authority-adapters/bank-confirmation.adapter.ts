@@ -3,19 +3,11 @@ import {
   type BankBranchConfirmationRecord,
 } from "../../fixtures/mock-authority-registry.fixture.js";
 import type { AdapterVerificationResult, FieldDiscrepancy } from "./types.js";
-
-function normalizeString(val: any): string {
-  if (val === null || val === undefined) return "";
-  return String(val).toLowerCase().replace(/[^a-z0-9]/g, "");
-}
-
-function extractFieldValue(fieldObj: any): any {
-  if (fieldObj === null || fieldObj === undefined) return null;
-  if (typeof fieldObj === "object" && "value" in fieldObj) {
-    return fieldObj.value;
-  }
-  return fieldObj;
-}
+import {
+  resolveEffectiveField,
+  normalizeString,
+  extractFieldValue,
+} from "./evidence-resolver.js";
 
 export interface OfficerBankConfirmationPayload {
   letterReference: string;
@@ -33,15 +25,23 @@ export function verifyBankConfirmation(
 ): AdapterVerificationResult {
   const docData = document?.extractedData?.doc10BankFunds || document?.extractedData || {};
 
-  const fdrNumber = extractFieldValue(docData.accountOrFdrNumber) || extractFieldValue(docData.fdrNumber);
-  const bankName = extractFieldValue(docData.bankName);
-  const branchName = extractFieldValue(docData.branchName);
-  const accountHolder = extractFieldValue(docData.accountHolderName);
-  const amountLakhs = extractFieldValue(docData.amountInLakhsINR);
-  const isUnencumbered = extractFieldValue(docData.isUnencumbered);
-  const lienStatement = extractFieldValue(docData.lienStatement);
+  const fdrRes = resolveEffectiveField<string>(document, docData, "accountOrFdrNumber", "fdrNumber");
+  const bankRes = resolveEffectiveField<string>(document, docData, "bankName");
+  const branchRes = resolveEffectiveField<string>(document, docData, "branchName");
+  const holderRes = resolveEffectiveField<string>(document, docData, "accountHolderName");
+  const amountRes = resolveEffectiveField<number>(document, docData, "amountInLakhsINR", "amountLakhs");
+  const unencumberedRes = resolveEffectiveField<boolean>(document, docData, "isUnencumbered");
+  const lienRes = resolveEffectiveField<string>(document, docData, "lienStatement");
 
-  const submittedFields = {
+  const fdrNumber = fdrRes.value;
+  const bankName = bankRes.value;
+  const branchName = branchRes.value;
+  const accountHolder = holderRes.value;
+  const amountLakhs = amountRes.value;
+  const isUnencumbered = unencumberedRes.value;
+  const lienStatement = lienRes.value;
+
+  const submittedFields: Record<string, any> = {
     accountOrFdrNumber: fdrNumber,
     bankName,
     branchName,
@@ -50,6 +50,26 @@ export function verifyBankConfirmation(
     isUnencumbered,
     lienStatement,
   };
+
+  if (fdrRes.isOfficerReviewed || amountRes.isOfficerReviewed || unencumberedRes.isOfficerReviewed) {
+    submittedFields._provenance = {
+      accountOrFdrNumber: {
+        effective: fdrNumber,
+        originalExtracted: fdrRes.originalExtractedValue,
+        isOfficerReviewed: fdrRes.isOfficerReviewed,
+      },
+      amountInLakhsINR: {
+        effective: amountLakhs,
+        originalExtracted: amountRes.originalExtractedValue,
+        isOfficerReviewed: amountRes.isOfficerReviewed,
+      },
+      isUnencumbered: {
+        effective: isUnencumbered,
+        originalExtracted: unencumberedRes.originalExtractedValue,
+        isOfficerReviewed: unencumberedRes.isOfficerReviewed,
+      },
+    };
+  }
 
   const authorityName = "Scheduled Bank / Branch Management";
 

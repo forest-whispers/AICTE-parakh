@@ -3,32 +3,32 @@ import {
   type SponsoringBodyRegistryRecord,
 } from "../../fixtures/mock-authority-registry.fixture.js";
 import type { AdapterVerificationResult, FieldDiscrepancy } from "./types.js";
-
-function normalizeString(val: any): string {
-  if (val === null || val === undefined) return "";
-  return String(val).toLowerCase().replace(/[^a-z0-9]/g, "");
-}
-
-function extractFieldValue(fieldObj: any): any {
-  if (fieldObj === null || fieldObj === undefined) return null;
-  if (typeof fieldObj === "object" && "value" in fieldObj) {
-    return fieldObj.value;
-  }
-  return fieldObj;
-}
+import {
+  resolveEffectiveField,
+  normalizeString,
+  extractFieldValue,
+} from "./evidence-resolver.js";
 
 export function verifySocietyRegistrar(
   document: any
 ): AdapterVerificationResult {
   const docData = document?.extractedData?.doc01Registration || document?.extractedData || {};
-  const regNumber = extractFieldValue(docData.registrationNumber);
-  const applicantLegalName = extractFieldValue(docData.applicantLegalName);
-  const entityType = extractFieldValue(docData.entityType);
-  const registrationDate = extractFieldValue(docData.registrationDate);
-  const registeredAddress = extractFieldValue(docData.registeredAddress);
-  const hasNonProfitClause = extractFieldValue(docData.hasNonProfitClause);
 
-  const submittedFields = {
+  const regNumRes = resolveEffectiveField<string>(document, docData, "registrationNumber");
+  const nameRes = resolveEffectiveField<string>(document, docData, "applicantLegalName", "institutionName");
+  const entityTypeRes = resolveEffectiveField<string>(document, docData, "entityType", "sponsoringBodyType");
+  const regDateRes = resolveEffectiveField<string>(document, docData, "registrationDate");
+  const addrRes = resolveEffectiveField<string>(document, docData, "registeredAddress");
+  const nonProfitRes = resolveEffectiveField<any>(document, docData, "hasNonProfitClause");
+
+  const regNumber = regNumRes.value;
+  const applicantLegalName = nameRes.value;
+  const entityType = entityTypeRes.value;
+  const registrationDate = regDateRes.value;
+  const registeredAddress = addrRes.value;
+  const hasNonProfitClause = nonProfitRes.value;
+
+  const submittedFields: Record<string, any> = {
     registrationNumber: regNumber,
     applicantLegalName,
     entityType,
@@ -36,6 +36,26 @@ export function verifySocietyRegistrar(
     registeredAddress,
     hasNonProfitClause,
   };
+
+  if (regNumRes.isOfficerReviewed || nameRes.isOfficerReviewed || entityTypeRes.isOfficerReviewed) {
+    submittedFields._provenance = {
+      registrationNumber: {
+        effective: regNumber,
+        originalExtracted: regNumRes.originalExtractedValue,
+        isOfficerReviewed: regNumRes.isOfficerReviewed,
+      },
+      applicantLegalName: {
+        effective: applicantLegalName,
+        originalExtracted: nameRes.originalExtractedValue,
+        isOfficerReviewed: nameRes.isOfficerReviewed,
+      },
+      entityType: {
+        effective: entityType,
+        originalExtracted: entityTypeRes.originalExtractedValue,
+        isOfficerReviewed: entityTypeRes.isOfficerReviewed,
+      },
+    };
+  }
 
   const authorityName = "State Registrar of Public Trusts & Societies (Simulated)";
   const sourceName = "Simulated M.P. Public Trusts & Societies Portal";

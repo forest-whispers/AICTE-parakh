@@ -3,19 +3,11 @@ import {
   type LandRecordRegistryEntry,
 } from "../../fixtures/mock-authority-registry.fixture.js";
 import type { AdapterVerificationResult, FieldDiscrepancy } from "./types.js";
-
-function normalizeString(val: any): string {
-  if (val === null || val === undefined) return "";
-  return String(val).toLowerCase().replace(/[^a-z0-9]/g, "");
-}
-
-function extractFieldValue(fieldObj: any): any {
-  if (fieldObj === null || fieldObj === undefined) return null;
-  if (typeof fieldObj === "object" && "value" in fieldObj) {
-    return fieldObj.value;
-  }
-  return fieldObj;
-}
+import {
+  resolveEffectiveField,
+  normalizeString,
+  extractFieldValue,
+} from "./evidence-resolver.js";
 
 export function verifyLandRevenueRecord(
   document: any
@@ -29,19 +21,45 @@ export function verifyLandRevenueRecord(
   const sourceName = "Simulated Bhulekh Land Records & Registration Portal";
 
   if (isLandDeed) {
-    const deedRegNo = extractFieldValue(docData.deedRegistrationNumber) || extractFieldValue(docData.registrationNumber);
-    const transferee = extractFieldValue(docData.transfereeLesseeName) || extractFieldValue(docData.buyerTransferee);
-    const khasras = extractFieldValue(docData.khasraSurveyPlotNumbers) || extractFieldValue(docData.khasraNumbers);
-    const area = extractFieldValue(docData.landAreaAcres) || extractFieldValue(docData.parcelArea);
-    const location = extractFieldValue(docData.landRevenueLocation) || extractFieldValue(docData.landLocation);
+    const deedRes = resolveEffectiveField<string>(document, docData, "deedRegistrationNumber", "registrationNumber");
+    const transfereeRes = resolveEffectiveField<string>(document, docData, "transfereeLesseeName", "buyerTransferee");
+    const khasrasRes = resolveEffectiveField<any>(document, docData, "khasraSurveyPlotNumbers", "khasraNumbers");
+    const areaRes = resolveEffectiveField<number>(document, docData, "landAreaAcres", "parcelArea");
+    const locationRes = resolveEffectiveField<string>(document, docData, "landRevenueLocation", "landLocation");
 
-    const submittedFields = {
+    const deedRegNo = deedRes.value;
+    const transferee = transfereeRes.value;
+    const khasras = khasrasRes.value;
+    const area = areaRes.value;
+    const location = locationRes.value;
+
+    const submittedFields: Record<string, any> = {
       deedRegistrationNumber: deedRegNo,
       transfereeLesseeName: transferee,
       khasraSurveyPlotNumbers: khasras,
       landAreaAcres: area,
       landRevenueLocation: location,
     };
+
+    if (deedRes.isOfficerReviewed || transfereeRes.isOfficerReviewed || areaRes.isOfficerReviewed) {
+      submittedFields._provenance = {
+        deedRegistrationNumber: {
+          effective: deedRegNo,
+          originalExtracted: deedRes.originalExtractedValue,
+          isOfficerReviewed: deedRes.isOfficerReviewed,
+        },
+        transfereeLesseeName: {
+          effective: transferee,
+          originalExtracted: transfereeRes.originalExtractedValue,
+          isOfficerReviewed: transfereeRes.isOfficerReviewed,
+        },
+        landAreaAcres: {
+          effective: area,
+          originalExtracted: areaRes.originalExtractedValue,
+          isOfficerReviewed: areaRes.isOfficerReviewed,
+        },
+      };
+    }
 
     if (!deedRegNo || String(deedRegNo).trim().length === 0) {
       return {
@@ -169,19 +187,45 @@ export function verifyLandRevenueRecord(
     };
   } else {
     // DOC_05_LAND_USE conversion order
-    const orderRefNo = extractFieldValue(docData.orderReferenceNumber) || extractFieldValue(docData.orderNumber);
-    const applicantName = extractFieldValue(docData.landownerApplicantName) || extractFieldValue(docData.applicantName);
-    const khasras = extractFieldValue(docData.khasraSurveyPlotNumbers) || extractFieldValue(docData.khasraNumbers);
-    const area = extractFieldValue(docData.landAreaAcres);
-    const permittedUse = extractFieldValue(docData.permittedLandUse) || extractFieldValue(docData.permittedUse);
+    const orderRes = resolveEffectiveField<string>(document, docData, "orderReferenceNumber", "orderNumber", "conversionOrderNumber");
+    const applicantRes = resolveEffectiveField<string>(document, docData, "landownerApplicantName", "applicantName");
+    const khasrasRes = resolveEffectiveField<any>(document, docData, "khasraSurveyPlotNumbers", "khasraNumbers");
+    const areaRes = resolveEffectiveField<number>(document, docData, "landAreaAcres", "parcelArea");
+    const permittedUseRes = resolveEffectiveField<string>(document, docData, "permittedLandUse", "permittedUse");
 
-    const submittedFields = {
+    const orderRefNo = orderRes.value;
+    const applicantName = applicantRes.value;
+    const khasras = khasrasRes.value;
+    const area = areaRes.value;
+    const permittedUse = permittedUseRes.value;
+
+    const submittedFields: Record<string, any> = {
       orderReferenceNumber: orderRefNo,
       landownerApplicantName: applicantName,
       khasraSurveyPlotNumbers: khasras,
       landAreaAcres: area,
       permittedLandUse: permittedUse,
     };
+
+    if (orderRes.isOfficerReviewed || applicantRes.isOfficerReviewed || areaRes.isOfficerReviewed) {
+      submittedFields._provenance = {
+        orderReferenceNumber: {
+          effective: orderRefNo,
+          originalExtracted: orderRes.originalExtractedValue,
+          isOfficerReviewed: orderRes.isOfficerReviewed,
+        },
+        landownerApplicantName: {
+          effective: applicantName,
+          originalExtracted: applicantRes.originalExtractedValue,
+          isOfficerReviewed: applicantRes.isOfficerReviewed,
+        },
+        landAreaAcres: {
+          effective: area,
+          originalExtracted: areaRes.originalExtractedValue,
+          isOfficerReviewed: areaRes.isOfficerReviewed,
+        },
+      };
+    }
 
     if (!orderRefNo || String(orderRefNo).trim().length === 0) {
       return {

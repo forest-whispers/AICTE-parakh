@@ -3,32 +3,42 @@ import {
   type ArchitectCoaRecord,
 } from "../../fixtures/mock-authority-registry.fixture.js";
 import type { AdapterVerificationResult, FieldDiscrepancy } from "./types.js";
-
-function normalizeString(val: any): string {
-  if (val === null || val === undefined) return "";
-  return String(val).toLowerCase().replace(/[^a-z0-9]/g, "");
-}
-
-function extractFieldValue(fieldObj: any): any {
-  if (fieldObj === null || fieldObj === undefined) return null;
-  if (typeof fieldObj === "object" && "value" in fieldObj) {
-    return fieldObj.value;
-  }
-  return fieldObj;
-}
+import {
+  resolveEffectiveField,
+  normalizeString,
+  extractFieldValue,
+} from "./evidence-resolver.js";
 
 export function verifyArchitectCouncil(
   document: any
 ): AdapterVerificationResult {
   const docData = document?.extractedData?.doc06BuildingPlan || document?.extractedData || {};
 
-  const architectName = extractFieldValue(docData.architectName);
-  const coaRegNo = extractFieldValue(docData.architectCoaRegistrationNumber) || extractFieldValue(docData.architectCoaRegistration);
+  const nameRes = resolveEffectiveField<string>(document, docData, "architectName");
+  const regRes = resolveEffectiveField<string>(document, docData, "architectCoaRegistrationNumber", "architectCoaRegistration");
 
-  const submittedFields = {
+  const architectName = nameRes.value;
+  const coaRegNo = regRes.value;
+
+  const submittedFields: Record<string, any> = {
     architectName,
     architectCoaRegistrationNumber: coaRegNo,
   };
+
+  if (nameRes.isOfficerReviewed || regRes.isOfficerReviewed) {
+    submittedFields._provenance = {
+      architectName: {
+        effective: architectName,
+        originalExtracted: nameRes.originalExtractedValue,
+        isOfficerReviewed: nameRes.isOfficerReviewed,
+      },
+      architectCoaRegistrationNumber: {
+        effective: coaRegNo,
+        originalExtracted: regRes.originalExtractedValue,
+        isOfficerReviewed: regRes.isOfficerReviewed,
+      },
+    };
+  }
 
   const authorityName = "Council of Architecture (CoA) National Roll";
   const sourceName = "Simulated CoA Statutory Roll of Architects";

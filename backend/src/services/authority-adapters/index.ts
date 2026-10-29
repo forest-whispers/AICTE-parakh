@@ -37,6 +37,17 @@ export interface VerificationBatchSummary {
   verifications: any[];
 }
 
+function findDocumentByType(docs: any[], ...typeAliases: string[]): any | undefined {
+  return docs.find((d) => {
+    if (!d || !d.documentType) return false;
+    const dt = String(d.documentType).toUpperCase();
+    return typeAliases.some((alias) => {
+      const target = alias.toUpperCase();
+      return dt === target || dt.replace(/_/g, "") === target.replace(/_/g, "");
+    });
+  });
+}
+
 export class AuthorityVerificationService {
   /**
    * Run on-demand authority verification for an application across all supported document types.
@@ -60,41 +71,41 @@ export class AuthorityVerificationService {
     const batchId = `batch_${Date.now()}_${crypto.randomBytes(4).toString("hex")}`;
     const results: AdapterVerificationResult[] = [];
 
-    // Map documents by type
+    // Map documents by type with robust aliases
     const docs = application.documents;
 
     // 1. Sponsoring Body Registration (DOC_01)
-    const doc01 = docs.find((d) => d.documentType === "DOC_01_REGISTRATION");
+    const doc01 = findDocumentByType(docs, "DOC_01_REGISTRATION", "DOC01_REGISTRATION", "DOC_01");
     if (doc01) {
       results.push(verifySocietyRegistrar(doc01));
     }
 
     // 2. Land Deed (DOC_03)
-    const doc03 = docs.find((d) => d.documentType === "DOC_03_LAND_DEED");
+    const doc03 = findDocumentByType(docs, "DOC_03_LAND_DEED", "DOC03_LAND_DEED", "DOC_03");
     if (doc03) {
       results.push(verifyLandRevenueRecord(doc03));
     }
 
     // 3. Land Use Conversion Order (DOC_05)
-    const doc05 = docs.find((d) => d.documentType === "DOC_05_LAND_USE");
+    const doc05 = findDocumentByType(docs, "DOC_05_LAND_USE", "DOC05_LAND_USE", "DOC_05");
     if (doc05) {
       results.push(verifyLandRevenueRecord(doc05));
     }
 
     // 4. Approved Building Plan (DOC_06) - CoA Architect Verification
-    const doc06 = docs.find((d) => d.documentType === "DOC_06_BUILDING_PLAN");
+    const doc06 = findDocumentByType(docs, "DOC_06_BUILDING_PLAN", "DOC06_BUILDING_PLAN", "DOC_06");
     if (doc06) {
       results.push(verifyArchitectCouncil(doc06));
     }
 
     // 5. Fire Safety NOC (DOC_09)
-    const doc09 = docs.find((d) => d.documentType === "DOC_09_FIRE_SAFETY");
+    const doc09 = findDocumentByType(docs, "DOC_09_FIRE_SAFETY", "DOC09_FIRE_SAFETY", "DOC_09");
     if (doc09) {
       results.push(verifyFireServices(doc09));
     }
 
     // 6. Bank / FDR Funds (DOC_10)
-    const doc10 = docs.find((d) => d.documentType === "DOC_10_BANK_FUNDS");
+    const doc10 = findDocumentByType(docs, "DOC_10_BANK_FUNDS", "DOC10_BANK_FUNDS", "DOC_10");
     if (doc10) {
       results.push(verifyBankConfirmation(doc10, options?.officerBankConfirmation));
     }
@@ -128,24 +139,30 @@ export class AuthorityVerificationService {
   }
 
   /**
-   * Fetch the latest verification run for an application.
+   * Fetch the latest verification run or a specific historical batch for an application.
    */
   async getLatestVerifications(
-    applicationId: string
+    applicationId: string,
+    requestedBatchId?: string
   ): Promise<VerificationBatchSummary | null> {
-    const latestRecord = await prisma.authorityVerification.findFirst({
-      where: { applicationId },
-      orderBy: { createdAt: "desc" },
-    });
+    const targetRecord = requestedBatchId
+      ? await prisma.authorityVerification.findFirst({
+          where: { applicationId, batchId: requestedBatchId },
+          orderBy: { createdAt: "desc" },
+        })
+      : await prisma.authorityVerification.findFirst({
+          where: { applicationId },
+          orderBy: { createdAt: "desc" },
+        });
 
-    if (!latestRecord) {
+    if (!targetRecord) {
       return null;
     }
 
     const batchRecords = await prisma.authorityVerification.findMany({
       where: {
         applicationId,
-        batchId: latestRecord.batchId,
+        batchId: targetRecord.batchId,
       },
       orderBy: { createdAt: "asc" },
       include: {
@@ -160,7 +177,7 @@ export class AuthorityVerificationService {
       },
     });
 
-    return this.buildSummary(applicationId, latestRecord.batchId, batchRecords);
+    return this.buildSummary(applicationId, targetRecord.batchId, batchRecords);
   }
 
   /**
@@ -174,19 +191,28 @@ export class AuthorityVerificationService {
         batchId: true,
         verifiedAt: true,
         status: true,
+        authorityCategory: true,
       },
     });
 
-    const batchMap = new Map<string, { batchId: string; verifiedAt: Date; count: number }>();
+    const batchMap = new Map<
+      string,
+      { batchId: string; verifiedAt: Date; count: number; statuses: string[] }
+    >();
     for (const r of records) {
       if (!batchMap.has(r.batchId)) {
         batchMap.set(r.batchId, {
           batchId: r.batchId,
           verifiedAt: r.verifiedAt,
           count: 1,
+          statuses: [r.status],
         });
       } else {
-        batchMap.get(r.batchId)!.count += 1;
+        const item = batchMap.get(r.batchId)!;
+        item.count += 1;
+        if (!item.statuses.includes(r.status)) {
+          item.statuses.push(r.status);
+        }
       }
     }
 
@@ -207,9 +233,8 @@ export class AuthorityVerificationService {
     if (documentId) {
       doc = await prisma.document.findUnique({ where: { id: documentId } });
     } else {
-      doc = await prisma.document.findFirst({
-        where: { applicationId, documentType: "DOC_10_BANK_FUNDS" },
-      });
+      const allDocs = await prisma.document.findMany({ where: { applicationId } });
+      doc = findDocumentByType(allDocs, "DOC_10_BANK_FUNDS", "DOC10_BANK_FUNDS", "DOC_10") || null;
     }
 
     const result = verifyBankConfirmation(doc, payload);

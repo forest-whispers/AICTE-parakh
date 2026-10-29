@@ -5,10 +5,12 @@ import { useIntake } from "../../intake/hooks/use-intake";
 import { IntakeStepper } from "../../intake/components/intake-stepper";
 import { ExtractionValidationStep } from "../../intake/components/extraction-validation-step";
 import { ReviewApproveStep } from "../../intake/components/review-approve-step";
+import { AuthorityVerificationPanel } from "../../authority/components/authority-verification-panel";
 import { Button } from "../../../shared/ui/button";
 import { useAuth } from "../../auth/hooks/use-auth";
 
 const ExistingApplicationWorkspaceContent: React.FC = () => {
+  const { applicationId: routeAppId } = useParams<{ applicationId: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
   const isMinistryAdmin = user?.role === "MINISTRY_ADMIN";
@@ -21,6 +23,8 @@ const ExistingApplicationWorkspaceContent: React.FC = () => {
     isLoadingExistingApplication,
     existingApplicationError,
   } = useIntake();
+
+  const effectiveAppId = createdApplication?.id || routeAppId;
 
   const handleReturnListing = () => {
     if (isMinistryAdmin) {
@@ -195,6 +199,14 @@ const ExistingApplicationWorkspaceContent: React.FC = () => {
         <ExtractionValidationStep onProceedToReview={() => setCurrentStep(4)} />
       )}
       {currentStep === 4 && <ReviewApproveStep />}
+
+      {/* Dedicated Authority & Registry Cross-Verification Track (Separate from submission stepper) */}
+      {effectiveAppId && (
+        <AuthorityVerificationPanel
+          applicationId={effectiveAppId}
+          isMinistryAdmin={isMinistryAdmin}
+        />
+      )}
 
       {/* Fallback to Step 3 if state somehow drifted to Step 1 or 2 */}
       {currentStep < 3 && (

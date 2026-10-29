@@ -3,38 +3,56 @@ import {
   type FireNocRegistryRecord,
 } from "../../fixtures/mock-authority-registry.fixture.js";
 import type { AdapterVerificationResult, FieldDiscrepancy } from "./types.js";
-
-function normalizeString(val: any): string {
-  if (val === null || val === undefined) return "";
-  return String(val).toLowerCase().replace(/[^a-z0-9]/g, "");
-}
-
-function extractFieldValue(fieldObj: any): any {
-  if (fieldObj === null || fieldObj === undefined) return null;
-  if (typeof fieldObj === "object" && "value" in fieldObj) {
-    return fieldObj.value;
-  }
-  return fieldObj;
-}
+import {
+  resolveEffectiveField,
+  normalizeString,
+  extractFieldValue,
+} from "./evidence-resolver.js";
 
 export function verifyFireServices(
   document: any
 ): AdapterVerificationResult {
   const docData = document?.extractedData?.doc09FireSafety || document?.extractedData || {};
 
-  const certNumber = extractFieldValue(docData.certificateReferenceNumber) || extractFieldValue(docData.certificateNumber);
-  const instName = extractFieldValue(docData.institutionNameReferenced) || extractFieldValue(docData.institutionName);
-  const siteAddress = extractFieldValue(docData.campusPhysicalSiteAddress) || extractFieldValue(docData.siteAddress);
-  const issueDate = extractFieldValue(docData.issueDate);
-  const expiryDate = extractFieldValue(docData.expiryDate) || extractFieldValue(docData.validUntilDate);
+  const certRes = resolveEffectiveField<string>(document, docData, "certificateReferenceNumber", "certificateNumber");
+  const instRes = resolveEffectiveField<string>(document, docData, "institutionNameReferenced", "institutionName");
+  const siteRes = resolveEffectiveField<string>(document, docData, "campusPhysicalSiteAddress", "siteAddress");
+  const issueDateRes = resolveEffectiveField<string>(document, docData, "issueDate");
+  const expiryDateRes = resolveEffectiveField<string>(document, docData, "expiryDate", "validUntilDate");
 
-  const submittedFields = {
+  const certNumber = certRes.value;
+  const instName = instRes.value;
+  const siteAddress = siteRes.value;
+  const issueDate = issueDateRes.value;
+  const expiryDate = expiryDateRes.value;
+
+  const submittedFields: Record<string, any> = {
     certificateNumber: certNumber,
     institutionName: instName,
     siteAddress,
     issueDate,
     expiryDate,
   };
+
+  if (certRes.isOfficerReviewed || instRes.isOfficerReviewed || expiryDateRes.isOfficerReviewed) {
+    submittedFields._provenance = {
+      certificateNumber: {
+        effective: certNumber,
+        originalExtracted: certRes.originalExtractedValue,
+        isOfficerReviewed: certRes.isOfficerReviewed,
+      },
+      institutionName: {
+        effective: instName,
+        originalExtracted: instRes.originalExtractedValue,
+        isOfficerReviewed: instRes.isOfficerReviewed,
+      },
+      expiryDate: {
+        effective: expiryDate,
+        originalExtracted: expiryDateRes.originalExtractedValue,
+        isOfficerReviewed: expiryDateRes.isOfficerReviewed,
+      },
+    };
+  }
 
   const authorityName = "State Directorate of Fire & Emergency Services (Simulated)";
   const sourceName = "Simulated Fire Safety e-NOC Portal";
