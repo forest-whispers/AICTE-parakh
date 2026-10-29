@@ -2,13 +2,61 @@ import React, { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useNavigate, useLocation } from "react-router-dom";
-import { Eye, EyeOff, ArrowRight } from "lucide-react";
+import { Eye, EyeOff, ArrowRight, ShieldCheck, UserCheck, Zap, Loader2 } from "lucide-react";
 import { signInSchema, type SignInFormValues } from "../schemas/sign-in.schema";
 import { useAuth } from "../hooks/use-auth";
 import { Alert } from "../../../shared/ui/alert";
 import { Input } from "../../../shared/ui/input";
 import { Button } from "../../../shared/ui/button";
 import type { ApiError } from "../../../shared/types/api.types";
+
+interface SeededAccount {
+  id: string;
+  name: string;
+  roleLabel: string;
+  role: "MINISTRY_ADMIN" | "OFFICER";
+  email: string;
+  password: string;
+  badge: string;
+  scope: string;
+  icon: typeof ShieldCheck;
+}
+
+const SEEDED_ACCOUNTS: SeededAccount[] = [
+  {
+    id: "admin",
+    name: "Dr. Sanjay Sharma",
+    roleLabel: "Ministry Administrator",
+    role: "MINISTRY_ADMIN",
+    email: "admin@aicte.gov.in",
+    password: "Admin@AICTE2026!",
+    badge: "Ministry Admin",
+    scope: "National Portfolio Oversight",
+    icon: ShieldCheck,
+  },
+  {
+    id: "officer1",
+    name: "Er. Rajiv Malhotra",
+    roleLabel: "Senior Scrutiny Officer",
+    role: "OFFICER",
+    email: "officer1@aicte.gov.in",
+    password: "Officer@AICTE2026!",
+    badge: "Officer 1",
+    scope: "Northern & Central Region",
+    icon: UserCheck,
+  },
+  {
+    id: "officer2",
+    name: "Dr. Sunita Deshmukh",
+    roleLabel: "Regional Scrutiny Officer",
+    role: "OFFICER",
+    email: "officer2@aicte.gov.in",
+    password: "Officer@AICTE2026!",
+    badge: "Officer 2",
+    scope: "Western Regional Office",
+    icon: UserCheck,
+  },
+];
 
 type AuthStateView =
   | "IDLE"
@@ -35,12 +83,14 @@ export const SignInForm: React.FC = () => {
     sessionExpired ? "SESSION_EXPIRED" : "IDLE"
   );
   const [serverErrorMessage, setServerErrorMessage] = useState<string>("");
+  const [activeFastEmail, setActiveFastEmail] = useState<string | null>(null);
 
   const locState = location.state as LocationState | null;
 
   const {
     register,
     handleSubmit,
+    setValue,
     formState: { errors, isSubmitting },
   } = useForm<SignInFormValues>({
     resolver: zodResolver(signInSchema),
@@ -50,6 +100,16 @@ export const SignInForm: React.FC = () => {
     },
     mode: "onSubmit",
   });
+
+  const isBusy = isSubmitting || authState === "SUBMITTING" || authState === "SUCCESS";
+
+  const handleFastLogin = async (email: string, password: string) => {
+    if (isBusy) return;
+    setActiveFastEmail(email);
+    setValue("email", email, { shouldValidate: true });
+    setValue("password", password, { shouldValidate: true });
+    await onSubmit({ email, password });
+  };
 
   const onSubmit = async (values: SignInFormValues) => {
     try {
@@ -75,6 +135,7 @@ export const SignInForm: React.FC = () => {
         navigate(target, { replace: true });
       }, 750);
     } catch (err: unknown) {
+      setActiveFastEmail(null);
       const apiErr = err as ApiError | undefined;
       const status = apiErr?.status;
       const message = apiErr?.message || "";
@@ -277,6 +338,88 @@ export const SignInForm: React.FC = () => {
           )}
         </div>
       </form>
+
+      {/* Fast Personnel Sign-In for Seeded Accounts */}
+      <div className="mt-8 pt-6 border-t border-[#D7DEDA]">
+        <div className="flex items-center justify-between mb-2.5">
+          <div className="flex items-center gap-1.5">
+            <Zap className="w-3.5 h-3.5 text-[#165A60]" />
+            <span className="text-[11px] font-mono uppercase tracking-[0.16em] text-[#172E33] font-semibold">
+              Fast Personnel Access
+            </span>
+          </div>
+          <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-mono font-medium bg-[#165A60]/10 text-[#165A60]">
+            1-CLICK DEMO AUTH
+          </span>
+        </div>
+
+        <p className="text-[12px] text-[#5C6F73] mb-3 leading-relaxed">
+          Select a seeded personnel account to authenticate and enter immediately:
+        </p>
+
+        <div className="space-y-2">
+          {SEEDED_ACCOUNTS.map((acc) => {
+            const Icon = acc.icon;
+            const isLoggingThis = isBusy && activeFastEmail === acc.email;
+            return (
+              <button
+                key={acc.id}
+                type="button"
+                onClick={() => handleFastLogin(acc.email, acc.password)}
+                disabled={isBusy}
+                className={`w-full text-left p-3 rounded border transition-all duration-150 flex items-center justify-between group ${
+                  isLoggingThis
+                    ? "bg-[#EBF4F5] border-[#165A60] shadow-sm"
+                    : "bg-white hover:bg-[#F2F7F7] border-[#D7DEDA] hover:border-[#165A60] shadow-[0_1px_2px_rgba(0,0,0,0.03)]"
+                } ${isBusy && !isLoggingThis ? "opacity-60 cursor-not-allowed" : "cursor-pointer"}`}
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  <div
+                    className={`w-8 h-8 rounded flex items-center justify-center shrink-0 ${
+                      acc.role === "MINISTRY_ADMIN"
+                        ? "bg-[#165A60]/10 text-[#165A60]"
+                        : "bg-[#245D78]/10 text-[#245D78]"
+                    }`}
+                  >
+                    {isLoggingThis ? (
+                      <Loader2 className="w-4 h-4 animate-spin text-[#165A60]" />
+                    ) : (
+                      <Icon className="w-4 h-4" />
+                    )}
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[13px] font-semibold text-[#172E33] truncate group-hover:text-[#165A60]">
+                        {acc.name}
+                      </span>
+                      <span
+                        className={`text-[10px] font-mono font-medium px-1.5 py-0.5 rounded ${
+                          acc.role === "MINISTRY_ADMIN"
+                            ? "bg-[#165A60]/10 text-[#165A60]"
+                            : "bg-[#5C6F73]/10 text-[#5C6F73]"
+                        }`}
+                      >
+                        {acc.badge}
+                      </span>
+                    </div>
+                    <div className="text-[11px] text-[#5C6F73] truncate flex items-center gap-1.5 mt-0.5">
+                      <span className="font-mono text-[#7E9FA1]">{acc.email}</span>
+                      <span>·</span>
+                      <span className="truncate">{acc.scope}</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="shrink-0 ml-3">
+                  <span className="text-xs font-medium text-[#165A60] opacity-0 group-hover:opacity-100 group-focus:opacity-100 transition-opacity flex items-center gap-0.5">
+                    <span>{isLoggingThis ? "Signing in..." : "Login"}</span>
+                    {!isLoggingThis && <ArrowRight className="w-3 h-3" />}
+                  </span>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </div>
     </div>
   );
 };
