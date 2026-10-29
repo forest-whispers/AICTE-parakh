@@ -90,7 +90,7 @@ export interface StagedDocument {
   categoryLabel: string;
   shortLabel: string;
   issuingReference: string;
-  file: File; // in-memory file reference
+  file?: File; // in-memory file reference (optional for persisted server documents)
   fileName: string;
   fileSizeBytes: number;
   formattedSize: string;
@@ -144,12 +144,49 @@ export interface BackendScrutinyReport {
   id?: string;
   evaluationDate?: string;
   overallStatus: string;
+  totalRulesRun?: number;
   passedCount: number;
   deficiencyCount: number;
   reviewCount: number;
   missingCount?: number;
   reviewedEvidenceCount?: number;
   findings?: BackendScrutinyFinding[];
+}
+
+export interface ApplicationListItem {
+  id: string;
+  applicationNumber: string;
+  institutionName: string;
+  programCategory: string | null;
+  proposedIntake: number | null;
+  status: string;
+  createdAt: string;
+  updatedAt: string;
+  assignedOfficer?: {
+    id: string;
+    name: string;
+    email: string;
+    designation: string;
+  } | null;
+  documents?: Array<{
+    id: string;
+    fileName: string;
+    originalName: string;
+    documentType: string;
+    mimeType?: string;
+    fileSize?: number;
+    extractionStatus?: string;
+  }>;
+  scrutinyReports?: Array<{
+    id: string;
+    overallStatus: string;
+    totalRulesRun?: number;
+    passedCount: number;
+    deficiencyCount: number;
+    reviewCount: number;
+    missingCount: number;
+    evaluationDate: string;
+  }>;
 }
 
 export interface BackendCreatedApplication {

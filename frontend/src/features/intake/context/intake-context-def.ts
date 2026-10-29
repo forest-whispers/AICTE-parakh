@@ -58,6 +58,10 @@ export interface IntakeContextValue {
     documentId: string,
     submission: import("../types/intake.types").DocumentReviewSubmission
   ) => Promise<{ success: boolean; scrutinyReport?: BackendScrutinyReport | null; error?: string }>;
+  // Existing Application Mode
+  isExistingApplicationMode: boolean;
+  isLoadingExistingApplication: boolean;
+  existingApplicationError: { status: number; message: string } | null;
 }
 
 export const IntakeContext = createContext<IntakeContextValue | undefined>(undefined);

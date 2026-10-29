@@ -1,6 +1,8 @@
 import type { Request, Response } from "express";
 import crypto from "node:crypto";
 import fs from "node:fs/promises";
+import { existsSync } from "node:fs";
+import path from "node:path";
 import { prisma } from "../lib/prisma.js";
 import { vlmService } from "../services/vlm.service.js";
 import { complianceService } from "../services/compliance.service.js";
@@ -895,6 +897,7 @@ export const listApplications = async (req: Request, res: Response): Promise<voi
           select: {
             id: true,
             overallStatus: true,
+            totalRulesRun: true,
             passedCount: true,
             deficiencyCount: true,
             reviewCount: true,
@@ -916,5 +919,44 @@ export const listApplications = async (req: Request, res: Response): Promise<voi
       success: false,
       error: error.message || "Failed to list applications.",
     });
+  }
+};
+
+/**
+ * Stream an uploaded document file for in-browser preview under access guard.
+ */
+export const getDocumentFile = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const rawId = req.params.id;
+    const rawDocId = req.params.documentId;
+    const id = Array.isArray(rawId) ? rawId[0] : rawId;
+    const documentId = Array.isArray(rawDocId) ? rawDocId[0] : rawDocId;
+
+    if (!id || !documentId) {
+      res.status(400).json({ success: false, error: "Application ID and Document ID are required." });
+      return;
+    }
+
+    const doc = await prisma.document.findFirst({
+      where: { id: documentId, applicationId: id },
+    });
+
+    if (!doc) {
+      res.status(404).json({ success: false, error: "Document not found." });
+      return;
+    }
+
+    const resolvedPath = path.resolve(doc.filePath);
+    if (!existsSync(resolvedPath)) {
+      res.status(404).json({ success: false, error: "Document file not found on disk." });
+      return;
+    }
+
+    res.setHeader("Content-Type", doc.mimeType);
+    res.setHeader("Content-Disposition", `inline; filename="${doc.originalName || doc.fileName}"`);
+    res.sendFile(resolvedPath);
+  } catch (error: any) {
+    console.error("Error serving document file:", error);
+    res.status(500).json({ success: false, error: "Failed to serve document file." });
   }
 };

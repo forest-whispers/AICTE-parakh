@@ -52,10 +52,8 @@ export const OfficerLayout: React.FC = () => {
     {
       label: "My applications",
       path: "/officer/applications",
-      active: location.pathname === "/officer/applications",
-      planned: true,
-      slice: "Slice 3 (Application Register & Case Explorer)",
-      description: "Search, multi-attribute filtering, and complete register of assigned applications.",
+      active: location.pathname.startsWith("/officer/applications"),
+      planned: false,
     },
     {
       label: "Guided submission",

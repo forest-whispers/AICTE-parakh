@@ -3,6 +3,8 @@ import { AuthLayout } from "../layouts/auth-layout";
 import { OfficerLayout } from "../layouts/officer-layout";
 import { SignInPage } from "../features/auth/pages/sign-in-page";
 import { OfficerWorkbenchPage } from "../features/officer/pages/officer-workbench-page";
+import { MyApplicationsPage } from "../features/officer/pages/my-applications-page";
+import { ExistingApplicationWorkspacePage } from "../features/officer/pages/existing-application-workspace-page";
 import { GuidedSubmissionPage } from "../features/intake/pages/guided-submission-page";
 import { ProtectedRoute } from "../shared/components/protected-route";
 
@@ -30,6 +32,14 @@ export const router = createBrowserRouter([
       {
         path: "workbench",
         element: <OfficerWorkbenchPage />,
+      },
+      {
+        path: "applications",
+        element: <MyApplicationsPage />,
+      },
+      {
+        path: "applications/:applicationId",
+        element: <ExistingApplicationWorkspacePage />,
       },
       {
         path: "submit",

@@ -20,16 +20,21 @@ export const authenticate = async (
   next: NextFunction
 ): Promise<void> => {
   try {
+    let token: string | undefined;
     const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    if (authHeader && authHeader.startsWith("Bearer ")) {
+      token = authHeader.substring(7).trim();
+    } else if (typeof req.query.token === "string" && req.query.token.trim()) {
+      token = req.query.token.trim();
+    }
+
+    if (!token) {
       res.status(401).json({
         success: false,
         error: "Authentication required. Please provide a valid Bearer token.",
       });
       return;
     }
-
-    const token = authHeader.substring(7).trim();
     const payload = authService.verifyToken(token);
 
     if (!payload) {

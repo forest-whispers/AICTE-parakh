@@ -13,6 +13,7 @@ export const ReviewApproveStep: React.FC = () => {
     createdApplication,
     latestScrutinyReport,
     isScrutinyStale,
+    isExistingApplicationMode,
   } = useIntake();
 
   const [isAttested, setIsAttested] = useState(false);
@@ -79,13 +80,15 @@ export const ReviewApproveStep: React.FC = () => {
               <div className="text-[14px] font-bold text-[#172E33]">
                 Institution particulars
               </div>
-              <button
-                type="button"
-                onClick={() => setCurrentStep(1)}
-                className="text-[12px] font-medium text-[#165A60] hover:underline"
-              >
-                Edit step 1 →
-              </button>
+              {!isExistingApplicationMode && (
+                <button
+                  type="button"
+                  onClick={() => setCurrentStep(1)}
+                  className="text-[12px] font-medium text-[#165A60] hover:underline"
+                >
+                  Edit step 1 →
+                </button>
+              )}
             </div>
 
             <div className="p-5 grid grid-cols-1 sm:grid-cols-2 gap-4 text-[13px]">
@@ -145,13 +148,15 @@ export const ReviewApproveStep: React.FC = () => {
                   Source evidence files staged for authorized ingestion
                 </div>
               </div>
-              <button
-                type="button"
-                onClick={() => setCurrentStep(2)}
-                className="text-[12px] font-medium text-[#165A60] hover:underline"
-              >
-                Edit step 2 →
-              </button>
+              {!isExistingApplicationMode && (
+                <button
+                  type="button"
+                  onClick={() => setCurrentStep(2)}
+                  className="text-[12px] font-medium text-[#165A60] hover:underline"
+                >
+                  Edit step 2 →
+                </button>
+              )}
             </div>
 
             <div className="overflow-x-auto">

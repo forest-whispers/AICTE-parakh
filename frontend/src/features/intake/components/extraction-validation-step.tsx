@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useIntake } from "../hooks/use-intake";
 import { Button } from "../../../shared/ui/button";
 import { STATUTORY_DOCUMENT_CATEGORIES } from "../constants/statutory-documents";
@@ -14,6 +15,7 @@ interface ExtractionValidationStepProps {
 export const ExtractionValidationStep: React.FC<ExtractionValidationStepProps> = ({
   onProceedToReview,
 }) => {
+  const navigate = useNavigate();
   const {
     setCurrentStep,
     goToPreviousStep,
@@ -32,6 +34,7 @@ export const ExtractionValidationStep: React.FC<ExtractionValidationStepProps> =
     updateDocumentStatus,
     reviewDocumentEvidence,
     isScrutinyStale,
+    isExistingApplicationMode,
   } = useIntake();
 
   // Drawer & Preview states
@@ -697,14 +700,25 @@ export const ExtractionValidationStep: React.FC<ExtractionValidationStepProps> =
 
       {/* Action Bar */}
       <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-6 mt-8 border-t border-[#D7DEDA]">
-        <Button
-          type="button"
-          variant="secondary"
-          onClick={goToPreviousStep}
-          className="w-full sm:w-auto bg-white border-[#D7DEDA] text-[#172E33] hover:bg-neutral-50 px-4 py-2.5 rounded-[3px] text-[13px] font-medium inline-flex items-center gap-1.5"
-        >
-          ← Back
-        </Button>
+        {isExistingApplicationMode ? (
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => navigate("/officer/applications")}
+            className="w-full sm:w-auto bg-white border-[#D7DEDA] text-[#172E33] hover:bg-neutral-50 px-4 py-2.5 rounded-[3px] text-[13px] font-medium inline-flex items-center gap-1.5"
+          >
+            ← Back to My Applications
+          </Button>
+        ) : (
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={goToPreviousStep}
+            className="w-full sm:w-auto bg-white border-[#D7DEDA] text-[#172E33] hover:bg-neutral-50 px-4 py-2.5 rounded-[3px] text-[13px] font-medium inline-flex items-center gap-1.5"
+          >
+            ← Back
+          </Button>
+        )}
 
         <div className="w-full sm:w-auto flex flex-wrap items-center justify-between sm:justify-end gap-3">
           <span className="text-[12px] text-[#5C6F73]">

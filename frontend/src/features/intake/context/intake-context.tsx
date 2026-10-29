@@ -15,7 +15,8 @@ import {
   STATUTORY_DOCUMENT_CATEGORIES,
 } from "../constants/statutory-documents";
 import { IntakeContext } from "./intake-context-def";
-import { apiClient } from "../../../shared/api/client";
+import { apiClient, buildUrl } from "../../../shared/api/client";
+import { tokenManager } from "../../../shared/api/token-manager";
 
 const FIELD_ALIASES: Record<string, string[]> = {
   applicantLegalName: ["trustSocietyName"],
@@ -187,11 +188,32 @@ const initialStep1Data: InstitutionDetailsFormData = {
   proposedIntake: "",
 };
 
-export const IntakeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [currentStep, setCurrentStep] = useState<IntakeStepIndex>(1);
+interface IntakeProviderProps {
+  children: React.ReactNode;
+  existingApplicationId?: string;
+}
+
+export const IntakeProvider: React.FC<IntakeProviderProps> = ({ children, existingApplicationId }) => {
+  const isExistingApplicationMode = Boolean(existingApplicationId);
+  const [currentStep, setCurrentStepState] = useState<IntakeStepIndex>(() => (existingApplicationId ? 3 : 1));
+  const [isLoadingExistingApplication, setIsLoadingExistingApplication] = useState<boolean>(() => Boolean(existingApplicationId));
+  const [existingApplicationError, setExistingApplicationError] = useState<{ status: number; message: string } | null>(null);
+
+  const setCurrentStep = useCallback(
+    (step: IntakeStepIndex) => {
+      if (isExistingApplicationMode && step < 3) {
+        return; // Steps 1 and 2 are permanently locked for existing applications
+      }
+      setCurrentStepState(step);
+    },
+    [isExistingApplicationMode]
+  );
 
   // Initialize Step 1 from session storage (serializable form fields only)
   const [institutionDetails, setInstitutionDetails] = useState<InstitutionDetailsFormData>(() => {
+    if (existingApplicationId) {
+      return initialStep1Data;
+    }
     try {
       const stored = sessionStorage.getItem(STORAGE_KEY_STEP1);
       if (stored) {
@@ -209,20 +231,21 @@ export const IntakeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [stagedDocuments, setStagedDocuments] = useState<StagedDocument[]>([]);
   const [activeAlert, setActiveAlert] = useState<IntakeAlertNotice | null>(null);
 
-  // Persist Step 1 metadata to sessionStorage whenever it changes
+  // Persist Step 1 metadata to sessionStorage whenever it changes (intake creation mode only)
   useEffect(() => {
+    if (isExistingApplicationMode) return;
     try {
       sessionStorage.setItem(STORAGE_KEY_STEP1, JSON.stringify(institutionDetails));
     } catch {
       // Ignore storage quota errors
     }
-  }, [institutionDetails]);
+  }, [institutionDetails, isExistingApplicationMode]);
 
   // Clean up blob URLs when component unmounts or documents change
   useEffect(() => {
     return () => {
       stagedDocuments.forEach((doc) => {
-        if (doc.previewUrl) {
+        if (doc.previewUrl && doc.previewUrl.startsWith("blob:")) {
           URL.revokeObjectURL(doc.previewUrl);
         }
       });
@@ -390,23 +413,34 @@ export const IntakeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   }, []);
 
   const goToNextStep = useCallback((): boolean => {
+    if (isExistingApplicationMode) {
+      if (currentStep === 3) {
+        setCurrentStepState(4);
+        window.scrollTo({ top: 0, behavior: "smooth" });
+        return true;
+      }
+      return true;
+    }
     if (currentStep === 1) {
       if (validateStep1()) {
-        setCurrentStep(2);
+        setCurrentStepState(2);
         window.scrollTo({ top: 0, behavior: "smooth" });
         return true;
       }
       return false;
     }
     return true;
-  }, [currentStep, validateStep1]);
+  }, [isExistingApplicationMode, currentStep, validateStep1]);
 
   const goToPreviousStep = useCallback(() => {
+    if (isExistingApplicationMode && currentStep <= 3) {
+      return; // Cannot navigate to Steps 1 or 2 in existing application mode
+    }
     if (currentStep > 1) {
-      setCurrentStep((prev) => (prev - 1) as IntakeStepIndex);
+      setCurrentStepState((prev) => (prev - 1) as IntakeStepIndex);
       window.scrollTo({ top: 0, behavior: "smooth" });
     }
-  }, [currentStep]);
+  }, [isExistingApplicationMode, currentStep]);
 
   const [createdApplication, setCreatedApplication] = useState<BackendCreatedApplication | null>(null);
   const [isUploading, setIsUploading] = useState<boolean>(false);
@@ -417,7 +451,143 @@ export const IntakeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [isEvaluatingScrutiny, setIsEvaluatingScrutiny] = useState<boolean>(false);
   const [latestScrutinyReport, setLatestScrutinyReport] = useState<BackendScrutinyReport | null>(null);
 
+  // Load and hydrate existing application data
+  useEffect(() => {
+    if (!existingApplicationId) return;
+
+    let isMounted = true;
+
+    const loadApplication = async () => {
+      try {
+        const response = await apiClient<{ success: boolean; data: BackendCreatedApplication }>(
+          `/applications/${existingApplicationId}`
+        );
+
+        if (!isMounted) return;
+
+        const appData = response.data;
+        if (!appData) {
+          throw new Error("No application data returned.");
+        }
+
+        setCreatedApplication(appData);
+
+        // Populate institution particulars
+        const progCat =
+          (appData.programCategory as InstitutionDetailsFormData["programCategory"]) ||
+          "ENGINEERING_AND_TECHNOLOGY";
+        setInstitutionDetails({
+          institutionName: appData.institutionName || "",
+          applicationNumber: appData.applicationNumber || "",
+          programCategory: progCat,
+          proposedIntake: appData.proposedIntake ? String(appData.proposedIntake) : "",
+        });
+
+        // Map persisted documents to StagedDocument structure
+        const token = tokenManager.getToken();
+        const mappedDocs: StagedDocument[] = (appData.documents || []).map(
+          (doc: BackendCreatedDocument) => {
+            const catDef = STATUTORY_DOCUMENT_CATEGORIES.find((c) => c.code === doc.documentType);
+            const rawExtracted = (doc.extractedData || {}) as Record<string, unknown>;
+            const fields = extractFieldsFromEnvelope(rawExtracted, doc.documentType);
+            const ext = doc.fileName ? doc.fileName.split(".").pop()?.toUpperCase() || "PDF" : "PDF";
+
+            // Use authenticated backend streaming endpoint for preview (under access control)
+            const fileEndpoint = `/applications/${appData.id}/documents/${doc.id}/file`;
+            const previewUrl = token
+              ? `${buildUrl(fileEndpoint)}?token=${encodeURIComponent(token)}`
+              : buildUrl(fileEndpoint);
+
+            const sizeBytes = (doc as { fileSize?: number }).fileSize || 0;
+            let formattedSize = "Uploaded file";
+            if (sizeBytes > 0) {
+              if (sizeBytes < 1024) formattedSize = `${sizeBytes} B`;
+              else if (sizeBytes < 1024 * 1024)
+                formattedSize = `${(sizeBytes / 1024).toFixed(1)} KB`;
+              else formattedSize = `${(sizeBytes / (1024 * 1024)).toFixed(1)} MB`;
+            }
+
+            const hasExtraction = Boolean(fields && Object.keys(fields).length > 0);
+            const isFailed = doc.extractionStatus === "FAILED";
+
+            const officerValidation =
+              (rawExtracted.officerValidation as OfficerValidationDecision) || null;
+            const officerReview =
+              (rawExtracted.officerReview as OfficerDocumentReview) || null;
+
+            return {
+              id: doc.id,
+              backendDocId: doc.id,
+              categoryCode: doc.documentType,
+              categoryLabel: catDef?.label || doc.documentType.replace(/_/g, " "),
+              shortLabel: catDef?.shortLabel || doc.documentType,
+              issuingReference:
+                (rawExtracted.issuingReference as string) || "Persisted Statutory Evidence",
+              fileName: doc.originalName || doc.fileName,
+              fileSizeBytes: sizeBytes,
+              formattedSize: `${ext} · ${formattedSize}`,
+              mimeType:
+                (doc as { mimeType?: string }).mimeType ||
+                (ext === "PDF" ? "application/pdf" : "image/jpeg"),
+              formatExtension: ext,
+              stagedAt: new Date((doc as { createdAt?: string }).createdAt || Date.now()),
+              previewUrl,
+              processingState: isFailed
+                ? "FAILED"
+                : doc.extractionStatus === "COMPLETED" || hasExtraction
+                ? "SUCCESS"
+                : "STAGED",
+              processingNote: isFailed ? "Extraction failed" : "Statutory evidence file",
+              extractionData: {
+                status: isFailed ? "FAILED" : "SUCCESS",
+                fields,
+                rawOutput: rawExtracted,
+                officerValidation,
+                officerReview,
+              },
+            };
+          }
+        );
+
+        setStagedDocuments(mappedDocs);
+
+        if (appData.scrutinyReports && appData.scrutinyReports.length > 0) {
+          setLatestScrutinyReport(appData.scrutinyReports[0]);
+        } else {
+          setLatestScrutinyReport(null);
+        }
+
+        setCurrentStepState(3);
+      } catch (err: unknown) {
+        if (!isMounted) return;
+        const errObj = err as { status?: number; message?: string } | undefined;
+        const status =
+          errObj?.status ||
+          (errObj?.message?.includes("403") || errObj?.message?.includes("Access denied")
+            ? 403
+            : 500);
+        setExistingApplicationError({
+          status,
+          message: errObj?.message || "Failed to load application data.",
+        });
+      } finally {
+        if (isMounted) {
+          setIsLoadingExistingApplication(false);
+        }
+      }
+    };
+
+    void loadApplication();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [existingApplicationId]);
+
   const submitApplication = useCallback(async (): Promise<boolean> => {
+    if (isExistingApplicationMode) {
+      return false; // Prevent existing applications from re-creating intake
+    }
     if (stagedDocuments.length === 0) {
       setActiveAlert({
         type: "UPLOAD_ERROR",
@@ -444,8 +614,10 @@ export const IntakeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
       const documentTypes: string[] = [];
       stagedDocuments.forEach((doc) => {
-        formData.append("documents", doc.file, doc.fileName);
-        documentTypes.push(doc.categoryCode);
+        if (doc.file) {
+          formData.append("documents", doc.file, doc.fileName);
+          documentTypes.push(doc.categoryCode);
+        }
       });
       formData.append("documentTypes", JSON.stringify(documentTypes));
 
@@ -547,7 +719,7 @@ export const IntakeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     } finally {
       setIsUploading(false);
     }
-  }, [institutionDetails, stagedDocuments]);
+  }, [institutionDetails, stagedDocuments, isExistingApplicationMode, setCurrentStep]);
 
   const runExtraction = useCallback(async (): Promise<boolean> => {
     if (!createdApplication?.id) {
@@ -894,7 +1066,7 @@ export const IntakeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     } catch {
       // Ignore
     }
-  }, [stagedDocuments]);
+  }, [stagedDocuments, setCurrentStep]);
 
   const value = useMemo(
     () => ({
@@ -933,9 +1105,13 @@ export const IntakeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       isScrutinyStale,
       updateDocumentStatus,
       reviewDocumentEvidence,
+      isExistingApplicationMode,
+      isLoadingExistingApplication,
+      existingApplicationError,
     }),
     [
       currentStep,
+      setCurrentStep,
       goToNextStep,
       goToPreviousStep,
       institutionDetails,
@@ -967,6 +1143,9 @@ export const IntakeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       isScrutinyStale,
       updateDocumentStatus,
       reviewDocumentEvidence,
+      isExistingApplicationMode,
+      isLoadingExistingApplication,
+      existingApplicationError,
     ]
   );
 

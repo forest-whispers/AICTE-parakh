@@ -73,11 +73,7 @@ export const OfficerWorkbenchPage: React.FC = () => {
   };
 
   const handleApplicationClick = (app: AppPreview) => {
-    showPlannedModal(
-      `Case File: ${app.applicationNumber}`,
-      `Opening case workspace and multimodal evidence viewer for ${app.institutionName}.`,
-      "Slice 5 (Case Workspace & Evidence Viewer)"
-    );
+    navigate(`/officer/applications/${app.id}`);
   };
 
   if (isDashboardLoading) {
@@ -191,13 +187,7 @@ export const OfficerWorkbenchPage: React.FC = () => {
         <AssignedApplicationsPreview
           applications={assignedApplications}
           totalAssigned={overview.totalAssigned}
-          onViewAllClick={() =>
-            showPlannedModal(
-              "My Applications Register",
-              "Searchable, filterable register of all applications assigned to your scrutiny desk.",
-              "Slice 3 (Application Register & Case Explorer)"
-            )
-          }
+          onViewAllClick={() => navigate("/officer/applications")}
           onApplicationClick={handleApplicationClick}
         />
 
