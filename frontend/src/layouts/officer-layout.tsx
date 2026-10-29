@@ -62,6 +62,12 @@ export const OfficerLayout: React.FC = () => {
       planned: false,
     },
     {
+      label: "Scrutiny reports",
+      path: "/officer/reports",
+      active: location.pathname.startsWith("/officer/reports"),
+      planned: false,
+    },
+    {
       label: "Guided submission",
       path: "/officer/submit",
       active: location.pathname.startsWith("/officer/submit"),

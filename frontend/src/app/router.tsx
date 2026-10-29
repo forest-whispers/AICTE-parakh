@@ -10,6 +10,8 @@ import { GuidedSubmissionPage } from "../features/intake/pages/guided-submission
 import { MinistryPortfolioPage } from "../features/ministry/pages/ministry-portfolio-page";
 import { MinistryAllocationPage } from "../features/ministry/pages/ministry-allocation-page";
 import { MinistryRegisterOfficerPage } from "../features/ministry/pages/ministry-register-officer-page";
+import { ScrutinyReportsRegisterPage } from "../features/reports/pages/scrutiny-reports-register-page";
+import { ScrutinyReportDetailPage } from "../features/reports/pages/scrutiny-report-detail-page";
 import { ProtectedRoute } from "../shared/components/protected-route";
 import { RootRedirect } from "../shared/components/root-redirect";
 import { OfficerOnly } from "../shared/components/officer-only";
@@ -44,6 +46,14 @@ export const router = createBrowserRouter([
         element: <MinistryAllocationPage />,
       },
       {
+        path: "reports",
+        element: <ScrutinyReportsRegisterPage userRole="MINISTRY_ADMIN" />,
+      },
+      {
+        path: "reports/:reportId",
+        element: <ScrutinyReportDetailPage userRole="MINISTRY_ADMIN" />,
+      },
+      {
         path: "register-officer",
         element: <MinistryRegisterOfficerPage />,
       },
@@ -76,6 +86,22 @@ export const router = createBrowserRouter([
         element: (
           <OfficerOnly>
             <MyApplicationsPage />
+          </OfficerOnly>
+        ),
+      },
+      {
+        path: "reports",
+        element: (
+          <OfficerOnly>
+            <ScrutinyReportsRegisterPage userRole="OFFICER" />
+          </OfficerOnly>
+        ),
+      },
+      {
+        path: "reports/:reportId",
+        element: (
+          <OfficerOnly>
+            <ScrutinyReportDetailPage userRole="OFFICER" />
           </OfficerOnly>
         ),
       },

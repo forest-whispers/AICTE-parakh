@@ -23,6 +23,11 @@ export const MinistryLayout: React.FC = () => {
       active: location.pathname.startsWith("/ministry/portfolio"),
     },
     {
+      label: "Scrutiny reports",
+      path: "/ministry/reports",
+      active: location.pathname.startsWith("/ministry/reports"),
+    },
+    {
       label: "Allocation queue",
       path: "/ministry/allocation",
       active: location.pathname.startsWith("/ministry/allocation"),
