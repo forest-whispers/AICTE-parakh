@@ -8,6 +8,8 @@ import {
   getMinistryIssues,
   getMinistryActivity,
 } from "../controllers/ministry.controller.js";
+import { getUnassignedApplications } from "../controllers/assignment.controller.js";
+import { listOfficers } from "../controllers/auth.controller.js";
 
 const router = Router();
 
@@ -20,6 +22,8 @@ router.get("/dashboard", getMinistryDashboard);
 // Standalone endpoints preserved for detailed views, deep drill-downs, and pagination
 router.get("/overview", getMinistryOverview);
 router.get("/applications", getMinistryApplications);
+router.get("/allocation-queue", getUnassignedApplications);
+router.get("/officers", listOfficers);
 router.get("/workload", getMinistryWorkload);
 router.get("/issues", getMinistryIssues);
 router.get("/activity", getMinistryActivity);

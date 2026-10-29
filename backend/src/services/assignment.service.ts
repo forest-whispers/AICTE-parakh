@@ -11,7 +11,8 @@ export class AssignmentService {
     applicationId: string,
     targetOfficerId: string,
     actor: UserSanitized,
-    reason?: string
+    reason?: string,
+    options?: { enforceUnassigned?: boolean }
   ) {
     const application = await prisma.application.findUnique({
       where: { id: applicationId },
@@ -24,6 +25,14 @@ export class AssignmentService {
 
     if (!application) {
       throw new Error(`Application ${applicationId} not found.`);
+    }
+
+    // Protection against stale/concurrent allocation:
+    // If enforceUnassigned is enabled, reject any application that is already assigned
+    if (options?.enforceUnassigned && application.assignedOfficerId) {
+      throw new Error(
+        `Conflict: Application ${application.applicationNumber} has already been assigned to an officer. Reallocation is not permitted.`
+      );
     }
 
     // 1. Authorization check
@@ -65,14 +74,38 @@ export class AssignmentService {
     const previousOfficer = application.assignedOfficer;
     const isReassignment = !!previousOfficer;
 
-    // 3. Update application assignment
-    const updatedApplication = await prisma.application.update({
+    // 3. Update application assignment with concurrency check
+    if (options?.enforceUnassigned) {
+      const updateResult = await prisma.application.updateMany({
+        where: {
+          id: applicationId,
+          assignedOfficerId: null,
+        },
+        data: {
+          assignedOfficerId: targetOfficer.id,
+          assignedById: actor.id,
+          assignedAt: new Date(),
+        },
+      });
+
+      if (updateResult.count === 0) {
+        throw new Error(
+          `Conflict: Application ${application.applicationNumber} has already been assigned to an officer by a concurrent request.`
+        );
+      }
+    } else {
+      await prisma.application.update({
+        where: { id: applicationId },
+        data: {
+          assignedOfficerId: targetOfficer.id,
+          assignedById: actor.id,
+          assignedAt: new Date(),
+        },
+      });
+    }
+
+    const updatedApplication = await prisma.application.findUnique({
       where: { id: applicationId },
-      data: {
-        assignedOfficerId: targetOfficer.id,
-        assignedById: actor.id,
-        assignedAt: new Date(),
-      },
       include: {
         assignedOfficer: {
           select: {
@@ -85,6 +118,10 @@ export class AssignmentService {
         },
       },
     });
+
+    if (!updatedApplication) {
+      throw new Error(`Failed to retrieve updated application ${applicationId}.`);
+    }
 
     // 4. Audit trail & 5. Dispatch notifications concurrently
     const action = isReassignment ? "APPLICATION_REASSIGNED" : "APPLICATION_ASSIGNED";

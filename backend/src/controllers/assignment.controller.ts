@@ -1,10 +1,20 @@
 import type { Request, Response } from "express";
 import { assignmentService } from "../services/assignment.service.js";
+import { applicationListingService } from "../services/application-listing.service.js";
 
 export const assignApplication = async (req: Request, res: Response): Promise<void> => {
   try {
     if (!req.user) {
       res.status(401).json({ success: false, error: "Authentication required." });
+      return;
+    }
+
+    // Allocation is strictly authorized for Ministry Administrators
+    if (req.user.role !== "MINISTRY_ADMIN") {
+      res.status(403).json({
+        success: false,
+        error: "Access denied. Only Ministry Administrators can allocate statutory applications.",
+      });
       return;
     }
 
@@ -20,23 +30,26 @@ export const assignApplication = async (req: Request, res: Response): Promise<vo
       return;
     }
 
+    // Allocate officer with strict unassigned-only enforcement (no reallocation)
     const updated = await assignmentService.assignApplication(
       id,
       officerId,
       req.user,
-      reason
+      reason,
+      { enforceUnassigned: true }
     );
 
     res.status(200).json({
       success: true,
-      message: "Application assignment updated successfully.",
+      message: "Application allocated successfully.",
       data: updated,
     });
   } catch (error: any) {
     const isForbidden = error.message?.includes("Access denied");
-    res.status(isForbidden ? 403 : 400).json({
+    const isConflict = error.message?.includes("already been assigned");
+    res.status(isForbidden ? 403 : isConflict ? 409 : 400).json({
       success: false,
-      error: error.message || "Failed to assign application.",
+      error: error.message || "Failed to allocate application.",
     });
   }
 };
@@ -51,16 +64,21 @@ export const getUnassignedApplications = async (req: Request, res: Response): Pr
     if (req.user.role !== "MINISTRY_ADMIN") {
       res.status(403).json({
         success: false,
-        error: "Access denied. Only Ministry Administrators can view unassigned application exceptions.",
+        error: "Access denied. Only Ministry Administrators can view the unassigned allocation queue.",
       });
       return;
     }
 
-    const applications = await assignmentService.getUnassignedApplications();
+    // Force officerId: "unassigned" to strictly enforce unassigned-only scope at the query level
+    const result = await applicationListingService.listApplications(req.user, {
+      ...req.query,
+      officerId: "unassigned",
+    });
 
     res.status(200).json({
       success: true,
-      data: applications,
+      data: result.data,
+      pagination: result.pagination,
     });
   } catch (error: any) {
     console.error("Error fetching unassigned applications:", error);

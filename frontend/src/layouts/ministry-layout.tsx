@@ -22,6 +22,11 @@ export const MinistryLayout: React.FC = () => {
       path: "/ministry/portfolio",
       active: location.pathname.startsWith("/ministry/portfolio"),
     },
+    {
+      label: "Allocation queue",
+      path: "/ministry/allocation",
+      active: location.pathname.startsWith("/ministry/allocation"),
+    },
   ];
 
   return (

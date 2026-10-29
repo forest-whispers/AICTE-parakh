@@ -8,6 +8,7 @@ import { MyApplicationsPage } from "../features/officer/pages/my-applications-pa
 import { ExistingApplicationWorkspacePage } from "../features/officer/pages/existing-application-workspace-page";
 import { GuidedSubmissionPage } from "../features/intake/pages/guided-submission-page";
 import { MinistryPortfolioPage } from "../features/ministry/pages/ministry-portfolio-page";
+import { MinistryAllocationPage } from "../features/ministry/pages/ministry-allocation-page";
 import { ProtectedRoute } from "../shared/components/protected-route";
 import { RootRedirect } from "../shared/components/root-redirect";
 import { OfficerOnly } from "../shared/components/officer-only";
@@ -36,6 +37,10 @@ export const router = createBrowserRouter([
       {
         path: "portfolio",
         element: <MinistryPortfolioPage />,
+      },
+      {
+        path: "allocation",
+        element: <MinistryAllocationPage />,
       },
       {
         index: true,
